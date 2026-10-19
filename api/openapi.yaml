@@ -1,0 +1,430 @@
+openapi: 3.1.0
+info:
+  title: GeevheitNeural API
+  description: >-
+    Central de operação de software house mobile-first.
+    API em Go, único ponto de entrada para ações do dono e contratos de agentes.
+  version: 3.0.0
+servers:
+  - url: http://localhost:8085
+    description: Servidor Local de Desenvolvimento
+paths:
+  /healthz:
+    get:
+      summary: Liveness Probe
+      responses:
+        "200":
+          description: Serviço ativo
+
+  /readyz:
+    get:
+      summary: Readiness Probe
+      responses:
+        "200":
+          description: Serviço e PostgreSQL operacionais
+        "503":
+          description: Dependência inacessível
+
+  /v1/money-waiting:
+    get:
+      summary: Dinheiro Parado em Portões
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Total de centavos e cartões parados
+
+  /v1/cards:
+    get:
+      summary: Listar Cartões Enriquecidos
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de cartões para Hoje e Quadro Kanban
+
+  /v1/cards/{id}:
+    get:
+      summary: Detalhes do Cartão
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalhes, eventos e ficha de risco
+
+  /v1/cards/{id}/decision:
+    post:
+      summary: Decisão de Portão pelo Dono
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision:
+                  type: string
+                  enum: [aprovado, mais_info, recusado]
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Decisão registrada e cartão avançado
+
+  /v1/cards/{id}/risk:
+    get:
+      summary: Obter Ficha de Risco
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Relatório de risco e cobertura de testes
+    put:
+      summary: Atualizar Ficha de Risco
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ficha de risco atualizada
+
+  /v1/commands:
+    post:
+      summary: Processamento Determinístico de Linha de Comando (pt-BR)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [raw]
+              properties:
+                raw:
+                  type: string
+      responses:
+        "200":
+          description: Comando executado ou token emitido se for ação destrutiva
+
+  /v1/commands/confirm:
+    post:
+      summary: Confirmação de Ação Destrutiva com Token de Uso Único
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation_token]
+              properties:
+                confirmation_token:
+                  type: string
+      responses:
+        "200":
+          description: Ação confirmada e executada com sucesso
+
+  /v1/intake:
+    post:
+      summary: Formulário Público de Novas Demandas (com Honeypot antispam)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_name, description]
+              properties:
+                client_name:
+                  type: string
+                contact:
+                  type: string
+                type:
+                  type: string
+                description:
+                  type: string
+                website:
+                  type: string
+                  description: Honeypot antispam (deve ser deixado vazio por humanos)
+      responses:
+        "200":
+          description: Solicitação recebida com sucesso
+
+  /v1/public/proposals/{token}:
+    get:
+      summary: Visualização Pública de Proposta pelo Cliente
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalhes da proposta comercial
+
+  /v1/public/proposals/{token}/accept:
+    post:
+      summary: Aceite Público de Proposta pelo Cliente
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Proposta aceita e cartão avançado para prompt_aprovar
+
+  /v1/proposals:
+    post:
+      summary: Criação de Proposta Comercial pelo Dono
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [card_id, amount_cents]
+              properties:
+                card_id:
+                  type: string
+                amount_cents:
+                  type: integer
+                currency:
+                  type: string
+                  default: BRL
+                body:
+                  type: string
+      responses:
+        "201":
+          description: Proposta criada com URL de aceite gerada
+
+  /v1/clients/{id}/export:
+    get:
+      summary: Exportação de Dados do Titular (LGPD)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dados do cliente, cartões e lançamentos em JSON
+
+  /v1/clients/{id}/purge:
+    delete:
+      summary: Expurgo Definitivo dos Dados do Cliente (LGPD)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cliente removido com registro imutável em audit_log
+
+  /v1/agent/cards:
+    get:
+      summary: Listar Cartões Disponíveis para Agente (em_execucao)
+      security:
+        - AgentBearerAuth: []
+      responses:
+        "200":
+          description: Lista de cartões em execução
+        "423":
+          description: ExecutionGuard bloqueado (sistema pausado ou agente inativo)
+
+  /v1/agent/cards/{id}:
+    get:
+      summary: Obter Detalhes do Cartão em Execução
+      security:
+        - AgentBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalhes técnicos do cartão
+        "423":
+          description: ExecutionGuard bloqueado
+
+  /v1/agent/cards/{id}/progress:
+    post:
+      summary: Registrar Progresso Técnico do Agente
+      security:
+        - AgentBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                cost_cents:
+                  type: integer
+                meta:
+                  type: object
+      responses:
+        "200":
+          description: Progresso registrado com sucesso
+        "423":
+          description: ExecutionGuard bloqueado
+
+  /v1/agent/cards/{id}/submit-delivery:
+    post:
+      summary: Submeter Entrega para Aprovação do Dono (Portão 3)
+      description: >-
+        Move o cartão para entrega_aprovar. O agente NUNCA aprova o portão.
+      security:
+        - AgentBearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [summary]
+              properties:
+                summary:
+                  type: string
+                pr_url:
+                  type: string
+                meta:
+                  type: object
+      responses:
+        "200":
+          description: Entrega enviada para portão de aprovação do dono
+        "423":
+          description: ExecutionGuard bloqueado
+
+  /v1/apps:
+    get:
+      summary: Listar Meus Apps com Balanço Financeiro
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de apps
+    post:
+      summary: Cadastrar Novo App
+      security:
+        - BearerAuth: []
+      responses:
+        "201":
+          description: App cadastrado
+
+  /v1/finances:
+    get:
+      summary: Visão Geral Financeira
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Receita, custos e sugestão de consolidação
+
+  /v1/connectors:
+    get:
+      summary: Listar Conectores
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista fixa de conectores (desligados por padrão)
+
+  /v1/system/pause:
+    post:
+      summary: Parar Sistema de Emergência
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Sistema pausado
+
+  /v1/system/resume:
+    post:
+      summary: Retomar Sistema
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Sistema retomado
+
+  /v1/stream:
+    get:
+      summary: Server-Sent Events (SSE)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Stream de eventos de cartões, finanças e dinheiro parado
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT do Dono autenticado com 2FA (AAL2)
+    AgentBearerAuth:
+      type: http
+      scheme: bearer
+      description: Token secreto do Agente validado por SHA-256 no banco

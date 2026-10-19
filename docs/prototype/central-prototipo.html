@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Central – protótipo</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--surf:#fff;--ink:#14202b;--mute:#5c6b78;--line:#d8dee4;--acc:#0e6b73;--accs:#d9eef0;--warn:#b45309;--warns:#fdecc8;--bad:#b42318;--ok:#157347;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e151b;--surf:#18222b;--ink:#e8eef3;--mute:#93a3b1;--line:#2b3947;--acc:#4fc3cc;--accs:#16353a;--warn:#f5b84b;--warns:#3a2d10;--bad:#ff8a80;--ok:#5fd39a}}
+:root[data-theme="dark"]{--bg:#0e151b;--surf:#18222b;--ink:#e8eef3;--mute:#93a3b1;--line:#2b3947;--acc:#4fc3cc;--accs:#16353a;--warn:#f5b84b;--warns:#3a2d10;--bad:#ff8a80;--ok:#5fd39a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 "Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:14px 16px 8px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--mute);font-size:13px}
+.pend{background:var(--warns);color:var(--warn);border-radius:12px;padding:5px 10px;font-weight:600;font-size:12px;line-height:1.25;text-align:center;max-width:170px}
+main{padding:4px 16px 160px;max-width:1100px;margin:0 auto}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surf);border-top:1px solid var(--line);display:flex;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+nav button{flex:1;background:none;border:0;color:var(--mute);font:inherit;font-size:12px;padding:8px 2px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--acc);font-weight:600;background:var(--accs)}
+.view{display:none}.view.on{display:block}
+.board{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 0 10px;margin:0 -16px;padding-left:16px;padding-right:16px}
+.col{flex:0 0 min(82vw,300px);scroll-snap-align:start;background:color-mix(in srgb,var(--surf) 55%,transparent);border:1px solid var(--line);border-radius:14px;padding:10px;align-self:flex-start}
+.col h2{font-size:14px;margin:2px 4px 10px;display:flex;justify-content:space-between;align-items:center}
+.col h2 span{color:var(--mute);font-weight:500}
+.col.dec{border-color:var(--warn)}
+.card{display:block;width:100%;text-align:left;background:var(--surf);border:1px solid var(--line);border-left:4px solid var(--c,var(--line));border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;color:inherit;font:inherit}
+.card:hover{border-color:var(--acc)}
+.card b{display:block;font-weight:600}
+.card small{color:var(--mute)}
+.row{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:13px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--accs);color:var(--acc);font-weight:600}
+.empty{color:var(--mute);font-size:13px;padding:10px 4px}
+.list{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.box{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:14px}
+.box h3{margin:0 0 4px;font-size:16px}
+.kv{display:flex;justify-content:space-between;font-size:13px;color:var(--mute);margin-top:4px}
+.kv b{color:var(--ink);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.kpi{background:var(--surf);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi small{color:var(--mute)}.kpi div{font-size:20px;font-weight:700;margin-top:2px}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px;display:flex}
+.bar i{display:block;height:100%}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.sw{width:44px;height:26px;border-radius:99px;background:var(--line);border:0;position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--surf);box-shadow:0 1px 3px #0004}
+.con{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sheet-bg{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;justify-content:center;z-index:20}
+.sheet-bg.on{display:flex}
+.sheet{background:var(--surf);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:85vh;overflow:auto;animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet h3{margin:0 0 2px;font-size:18px}
+.hist{margin:12px 0;padding:0;list-style:none;font-size:13px;color:var(--mute);border-left:2px solid var(--line);padding-left:12px}
+.hist li{margin-bottom:6px}
+.btns{display:grid;gap:8px;margin-top:14px}
+.btn{font:inherit;font-weight:600;border-radius:10px;padding:12px;border:1px solid var(--line);background:var(--surf);color:var(--ink);cursor:pointer}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.p{color:#06262a}}
+.btn.d{color:var(--bad)}
+.toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:99px;font-size:13px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+.toast.on{opacity:1}
+.note{background:var(--accs);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.cmd{position:fixed;left:0;right:0;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;gap:8px;padding:8px 12px;background:var(--bg);border-top:1px solid var(--line)}
+.cmd input{flex:1;min-width:0;font:inherit;padding:11px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surf);color:var(--ink)}
+.cmd button{font:inherit;font-weight:600;border:0;border-radius:99px;padding:0 16px;background:var(--acc);color:var(--surf);cursor:pointer}
+.cmd #mic{background:var(--accs);color:var(--acc)}
+.sos{font:inherit;font-weight:700;font-size:12px;border:0;border-radius:99px;padding:9px 12px;background:var(--bad);color:var(--surf);cursor:pointer}
+</style>
+</head>
+<body>
+<header><div><h1 id="ttl">Hoje</h1><div class="sub">Protótipo com dados de exemplo</div></div><div style="display:flex;gap:8px;align-items:center"><div class="pend" id="pend"></div><button class="sos" id="sos" data-a="sos" aria-label="Parar todos os agentes e conexões">Parar</button></div></header>
+<main>
+<div class="note" id="ban" style="display:none;background:var(--warns);color:var(--warn);font-weight:600">Tudo pausado: nenhum agente nem conexão pode agir. Toque em Retomar para liberar.</div>
+<section class="view on" id="v-hoje"><div id="hoje"></div></section>
+<section class="view" id="v-quadro"><div class="board" id="board"></div></section>
+<section class="view" id="v-apps"><div class="note">Todos os seus apps num só lugar: onde rodam, qual banco usam e se pagam a própria conta.</div><div class="list" id="apps"></div></section>
+<section class="view" id="v-fin"><div class="kpis" id="kpis"></div><div class="list" id="fin"></div></section>
+<section class="view" id="v-con"><div class="note">Os conectores e agentes ficam desligados. Quando decidir sobre os agentes, basta colar a chave e ligar. Comece com chaves somente leitura.</div><div class="list" id="con"></div></section>
+</main>
+<div class="cmd"><input id="cin" placeholder="Dite uma ordem. Ex.: aprovar Casa Verde" autocomplete="off"><button id="mic" aria-label="Falar uma ordem">Falar</button><button id="send">Enviar</button></div>
+<nav id="nav"></nav>
+<div class="sheet-bg" id="bg"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+var STAGES=[
+{k:"entrada",n:"Entrada",act:["Mover para proposta","Triagem feita: preço e escopo definidos"]},
+{k:"proposta",n:"Proposta para aprovar",dec:1,act:["Aprovar e enviar ao cliente","Proposta enviada ao cliente"]},
+{k:"aguardando",n:"Aguardando cliente",act:["Cliente aceitou","Aceite registrado. Prompt técnico gerado"]},
+{k:"prompt",n:"Prompt para aprovar",dec:1,act:["Aprovar prompt e liberar execução","Execução liberada"]},
+{k:"exec",n:"Em execução",act:["Marcar prévia pronta","Prévia pronta para sua revisão"]},
+{k:"entrega",n:"Entrega para aprovar",dec:1,act:["Aprovar e entregar ao cliente","Entrega enviada ao cliente"]},
+{k:"done",n:"Entregue"}];
+var TYPES={orc:["Orçamento","#0e6b73"],bug:["Bug","#b42318"],sup:["Suporte","#b45309"],fin:["Financeiro","#6d4bb5"]};
+var CARDS=[
+{id:1,t:"Site para clínica odontológica",tp:"orc",cli:"Clínica Sorriso",app:"Novo",v:3200,c:260,st:"entrada",h:["Pedido recebido pelo formulário do site"]},
+{id:2,t:"Painel de estoque para loja",tp:"orc",cli:"Casa Verde",app:"Novo",v:5800,c:540,st:"proposta",h:["Pedido recebido","IA de triagem montou escopo e prazo de 3 semanas"]},
+{id:3,t:"Erro 500 ao salvar pedido",tp:"bug",cli:"Padaria Central",app:"pedidos-app",v:0,c:30,st:"entrada",h:["Cliente reportou por e-mail","Logs ligados ao app pedidos-app"]},
+{id:4,t:"Landing page de curso",tp:"orc",cli:"Prof. Marina",app:"Novo",v:1900,c:140,st:"aguardando",h:["Proposta enviada ontem","Cliente ainda não respondeu"]},
+{id:5,t:"CRM simples para imobiliária",tp:"orc",cli:"Lima Imóveis",app:"Novo",v:7400,c:880,st:"prompt",h:["Cliente aceitou a proposta e pagou o sinal","IA gerou o prompt técnico: 6 telas, login, relatórios"]},
+{id:6,t:"Migrar app para o novo banco",tp:"sup",cli:"Oficina Torque",app:"os-oficina",v:600,c:50,st:"exec",h:["Migração do Neon para o Supabase iniciada"]},
+{id:7,t:"Cobrança vencida há 12 dias",tp:"fin",cli:"Studio Flor",app:"agenda-flor",v:450,c:0,st:"entrada",h:["Mensalidade não compensou"]},
+{id:8,t:"Agenda online para salão",tp:"orc",cli:"Studio Flor",app:"agenda-flor",v:2800,c:310,st:"entrega",risk:[["Testes automáticos","14 de 14 passaram","ok"],["Segredos no código","Nenhum encontrado","ok"],["Dependências","1 aviso: biblioteca desatualizada","warn"],["Dados pessoais (LGPD)","Guarda telefone: confirmar aviso de privacidade","warn"]],h:["Prévia publicada","QA: 14 testes passaram"]},
+{id:9,t:"Ajuste de logo no rodapé",tp:"sup",cli:"Padaria Central",app:"site-padaria",v:0,c:5,st:"done",h:["Entregue e aprovado pelo cliente"]}];
+var APPS=[
+{n:"pedidos-app",cli:"Padaria Central",host:"Render",db:"Neon",c:38,r:180},
+{n:"site-padaria",cli:"Padaria Central",host:"Netlify",db:"—",c:0,r:90},
+{n:"os-oficina",cli:"Oficina Torque",host:"Vercel",db:"Neon",c:45,r:300},
+{n:"agenda-flor",cli:"Studio Flor",host:"Firebase",db:"Firebase",c:52,r:450},
+{n:"estoque-verde",cli:"Casa Verde",host:"Render",db:"Supabase",c:70,r:0},
+{n:"api-antiga",cli:"sem cliente",host:"Docker (VPS)",db:"Postgres local",c:96,r:0}];
+var CONS=["GitHub","Vercel","Render","Neon","Supabase","Netlify","Firebase","Docker Hub","Provedor de IA (agentes)"];
+var tab="hoje";
+var REC={entrada:"Responda hoje para não deixar o cliente esperando.",proposta:"Aprovar hoje evita o cliente esfriar. Margem prevista: ",prompt:"O sinal já foi pago. Aprovar libera a execução.",entrega:"Os testes passaram. Aprovar libera a entrega e o recebimento."};
+function hoje(){var l=CARDS.filter(function(c){var s=stage(c.st);return s.dec||c.st==="entrada"}).sort(function(a,b){return b.v-a.v}).slice(0,3);
+var h='<div class="note">Suas 3 decisões do dia, ordenadas por dinheiro em jogo.</div>';
+if(!l.length)h+='<div class="empty">Nada esperando por você hoje.</div>';
+l.forEach(function(c){var s=stage(c.st),ty=TYPES[c.tp];
+h+='<div class="box" style="margin-bottom:10px"><span class="tag">'+ty[0]+'</span><h3 style="margin-top:8px">'+c.t+'</h3><div class="sub">'+c.cli+' · '+(c.v?brl(c.v)+' em jogo':'sem valor')+'</div><p style="margin:10px 0 0">'+REC[c.st]+(c.st==="proposta"?brl(c.v-c.c)+'.':'')+'</p><div class="btns"><button class="btn p" data-a="go" data-id="'+c.id+'">'+s.act[0]+'</button><button class="btn" data-a="open" data-id="'+c.id+'">Ver detalhes</button></div></div>'});
+$("hoje").innerHTML=h}
+var PAUSED=false;
+function sos(){PAUSED=!PAUSED;$("ban").style.display=PAUSED?"block":"none";$("sos").textContent=PAUSED?"Retomar":"Parar";toast(PAUSED?"Agentes e conexões pausados. Nada executa até você retomar.":"Retomado. Os conectores seguem desligados até você ligar.")}
+function $(i){return document.getElementById(i)}
+function brl(n){return "R$ "+n.toLocaleString("pt-BR",{minimumFractionDigits:0})}
+function toast(m){var t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.x);toast.x=setTimeout(function(){t.classList.remove("on")},2400)}
+function stage(k){return STAGES.filter(function(s){return s.k===k})[0]}
+function board(){
+var h="";STAGES.forEach(function(s){var cs=CARDS.filter(function(c){return c.st===s.k});
+h+='<div class="col'+(s.dec?' dec':'')+'"><h2>'+s.n+'<span>'+cs.length+'</span></h2>';
+if(!cs.length)h+='<div class="empty">Nada por aqui.</div>';
+cs.forEach(function(c){var ty=TYPES[c.tp];h+='<button class="card" style="--c:'+ty[1]+'" data-id="'+c.id+'"><b>'+c.t+'</b><small>'+c.cli+(c.app!=="Novo"?' · '+c.app:'')+'</small><div class="row"><span class="tag">'+ty[0]+'</span><span>'+(c.v?brl(c.v):'sem cobrança')+'</span></div></button>'});
+h+='</div>'});
+$("board").innerHTML=h;hoje();
+var n=CARDS.filter(function(c){var s=stage(c.st);return s.dec||c.st==="entrada"}).length;
+var m=0;CARDS.forEach(function(c){var s=stage(c.st);if((s.dec||c.st==="entrada")&&c.v)m+=c.v});$("pend").textContent=brl(m)+" parados esperando você · "+n+" decisões";
+}
+function open(id){
+var c=CARDS.filter(function(x){return x.id==id})[0],s=stage(c.st),ty=TYPES[c.tp];
+var h='<span class="tag">'+ty[0]+'</span><h3 style="margin-top:8px">'+c.t+'</h3><div class="sub">'+c.cli+' · '+s.n+'</div>';
+h+='<div class="kv"><span>Valor cobrado</span><b>'+(c.v?brl(c.v):'—')+'</b></div><div class="kv"><span>Custo estimado</span><b>'+brl(c.c)+'</b></div><div class="kv"><span>Margem</span><b class="'+(c.v-c.c>=0?'pos':'neg')+'">'+brl(c.v-c.c)+'</b></div>';
+if(c.risk){h+='<div class="box" style="margin-top:12px;padding:10px 12px"><b>Ficha de risco</b>'+c.risk.map(function(r){return'<div class="kv"><span>'+r[0]+'</span><b style="max-width:62%;text-align:right;color:'+(r[2]==="ok"?'var(--ok)':'var(--warn)')+'">'+r[1]+'</b></div>'}).join('')+'</div>'}
+h+='<ul class="hist">'+c.h.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul><div class="btns">';
+if(s.act)h+='<button class="btn p" data-a="go" data-id="'+id+'">'+s.act[0]+'</button>';
+if(c.st!=="done")h+='<button class="btn" data-a="info" data-id="'+id+'">Pedir mais informações</button><button class="btn d" data-a="no" data-id="'+id+'">Recusar</button>';
+h+='<button class="btn" data-a="close">Fechar</button></div>';
+$("sheet").innerHTML=h;$("bg").classList.add("on");
+}
+function close(){$("bg").classList.remove("on")}
+function apps(){$("apps").innerHTML=APPS.map(function(a){var l=a.r-a.c;return'<div class="box"><h3>'+a.n+'</h3><div class="sub">'+a.cli+'</div><div class="kv"><span>Hospedagem</span><b>'+a.host+'</b></div><div class="kv"><span>Banco</span><b>'+a.db+'</b></div><div class="kv"><span>Custo por mês</span><b>'+brl(a.c)+'</b></div><div class="kv"><span>Receita por mês</span><b>'+brl(a.r)+'</b></div><div class="kv"><span>Resultado</span><b class="'+(l>=0?'pos':'neg')+'">'+brl(l)+'</b></div>'+(l<0?'<div class="note" style="margin:10px 0 0">Custa mais do que rende. Candidato a migrar ou encerrar.</div>':'')+'</div>'}).join('')}
+function fin(){
+var C=0,R=0;APPS.forEach(function(a){C+=a.c;R+=a.r});
+$("kpis").innerHTML='<div class="kpi"><small>Receita</small><div>'+brl(R)+'</div></div><div class="kpi"><small>Custo</small><div>'+brl(C)+'</div></div><div class="kpi"><small>Lucro</small><div class="'+(R-C>=0?'pos':'neg')+'">'+brl(R-C)+'</div></div>';
+var m=Math.max.apply(null,APPS.map(function(a){return Math.max(a.r,a.c)}));
+var by={};APPS.forEach(function(a){by[a.host]=(by[a.host]||0)+a.c});
+var h='<div class="box"><h3>Por app</h3>'+APPS.map(function(a){return'<div style="margin-top:12px"><div class="kv" style="margin:0"><b>'+a.n+'</b><span>'+brl(a.r)+' entra · '+brl(a.c)+' sai</span></div><div class="bar"><i style="width:'+a.r/m*50+'%;background:var(--ok)"></i><i style="width:'+a.c/m*50+'%;background:var(--bad)"></i></div></div>'}).join('')+'</div>';
+h+='<div class="box"><h3>Custo por serviço</h3>'+Object.keys(by).map(function(k){return'<div class="kv"><span>'+k+'</span><b>'+brl(by[k])+'</b></div>'}).join('')+'<div class="note" style="margin:12px 0 0">São '+Object.keys(by).length+' serviços diferentes. Consolidar em 2 ou 3 reduz custo e contas para vigiar.</div></div>';
+$("fin").innerHTML=h}
+function con(){$("con").innerHTML=CONS.map(function(n){return'<div class="box con"><div><h3>'+n+'</h3><div class="sub">Desligado · sem chave</div></div><button class="sw" aria-label="Ligar '+n+'" data-a="sw"></button></div>'}).join('')}
+var TT={hoje:"Hoje",quadro:"Quadro",apps:"Meus apps",fin:"Finanças",con:"Conexões"};
+var IC={hoje:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>',quadro:'<path d="M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v7h-4z"/>',apps:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',fin:'<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',con:'<path d="M9 7V3m6 4V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/>'};
+function nav(){$("nav").innerHTML=Object.keys(TT).map(function(k){return'<button data-t="'+k+'" class="'+(k===tab?'on':'')+'"><svg viewBox="0 0 24 24">'+IC[k]+'</svg>'+TT[k]+'</button>'}).join('');
+Object.keys(TT).forEach(function(k){$("v-"+k).classList.toggle("on",k===tab)});$("ttl").textContent=TT[tab]}
+document.addEventListener("click",function(e){
+var t=e.target.closest("[data-t],[data-a],.card,#bg");if(!t)return;
+if(t.dataset.t){tab=t.dataset.t;nav();window.scrollTo(0,0);return}
+if(t.classList.contains("card")){open(t.dataset.id);return}
+if(t.id==="bg"){if(e.target===t)close();return}
+var a=t.dataset.a,id=+t.dataset.id,c=CARDS.filter(function(x){return x.id===id})[0];
+if(a==="close")close();
+if(a==="open")open(id);
+if(a==="sos")sos();
+if(a==="sw")toast("Continua desligado. Ligue só depois de configurar a chave.");
+if(a==="go"){if(PAUSED&&(c.st==="prompt"||c.st==="exec"))return toast("Tudo pausado. Retome antes de liberar execuções.");var s=stage(c.st),i=STAGES.indexOf(s);c.h.push(s.act[1]);c.st=STAGES[i+1].k;close();board();toast(s.act[1])}
+if(a==="info"){c.h.push("Você pediu mais informações ao cliente");close();toast("Mensagem enviada ao cliente (simulado)")}
+if(a==="no"){CARDS.splice(CARDS.indexOf(c),1);close();board();toast("Cartão recusado e arquivado")}
+});
+function norm(s){return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function advance(c){if(PAUSED&&(c.st==="prompt"||c.st==="exec"))return toast("Tudo pausado. Retome antes de liberar execuções.");var s=stage(c.st),i=STAGES.indexOf(s);c.h.push(s.act[1]);c.st=STAGES[i+1].k;board();toast(s.act[1])}
+function run(txt){var q=norm(txt);if(!q)return;
+var C=0,R=0;APPS.forEach(function(a){C+=a.c;R+=a.r});
+if(/lucro|gast|quanto|financ/.test(q))return toast("Receita "+brl(R)+", custo "+brl(C)+", lucro "+brl(R-C));
+if(/status|resumo|decis|pendent/.test(q))return toast($("pend").textContent);
+var ap=/aprov|aceit|libera|entreg/.test(q),no=/recus|rejeit/.test(q);
+var hit=CARDS.filter(function(c){return c.st!=="done"&&norm(c.cli+" "+c.t).split(/\s+/).some(function(w){return w.length>4&&q.indexOf(w)>-1})});
+if(!hit.length)return toast("Não achei esse cartão. Tente o nome do cliente.");
+if(hit.length>1)return toast("Achei "+hit.length+" cartões. Diga o nome completo do cliente.");
+var c=hit[0];
+if(no){CARDS.splice(CARDS.indexOf(c),1);board();return toast("Cartão recusado e arquivado")}
+if(ap&&stage(c.st).act)return advance(c);
+open(c.id)}
+$("send").onclick=function(){run($("cin").value);$("cin").value=""};
+$("cin").onkeydown=function(e){if(e.key==="Enter")$("send").click()};
+$("mic").onclick=function(){var S=window.SpeechRecognition||window.webkitSpeechRecognition;if(!S)return toast("Seu navegador não tem ditado. Use o microfone do teclado.");var r=new S();r.lang="pt-BR";r.onresult=function(e){var t=e.results[0][0].transcript;$("cin").value=t;run(t);$("cin").value=""};r.start();toast("Ouvindo…")};
+board();apps();fin();con();nav();
+</script>
+</body>
+</html>

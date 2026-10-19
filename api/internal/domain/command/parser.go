@@ -1,0 +1,191 @@
+package command
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+	"unicode"
+
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
+)
+
+// Intent representa a intenção do comando interpretado pelo parser determinístico.
+type Intent string
+
+const (
+	IntentStatus       Intent = "status"
+	IntentFinances     Intent = "finances"
+	IntentApprove      Intent = "approve"
+	IntentReject       Intent = "reject"
+	IntentPauseSystem  Intent = "pause_system"
+	IntentResumeSystem Intent = "resume_system"
+	IntentUnknown      Intent = "unknown"
+)
+
+// ParsedCommand representa a estrutura resultante do parser.
+type ParsedCommand struct {
+	RawInput   string
+	Normalized string
+	Intent     Intent
+	Target     string // nome do cliente, app ou identificador informado
+	Destructive bool   // true para ações irreversíveis que exigem confirmação (F3-02)
+}
+
+var (
+	ErrAmbiguousTarget = errors.New("ambiguous_target")
+	ErrTargetNotFound  = errors.New("target_not_found")
+	ErrEmptyCommand    = errors.New("empty_command")
+)
+
+// NormalizeText remove acentuação, converte para minúsculas e remove espaços extras.
+func NormalizeText(s string) string {
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	result, _, _ := transform.String(t, s)
+	return strings.ToLower(strings.TrimSpace(result))
+}
+
+// ParseCommand interpreta o texto em linguagem natural sem depender de IA externa (ADR-001).
+func ParseCommand(raw string) (*ParsedCommand, error) {
+	normalized := NormalizeText(raw)
+	if normalized == "" {
+		return nil, ErrEmptyCommand
+	}
+
+	cmd := &ParsedCommand{
+		RawInput:   raw,
+		Normalized: normalized,
+		Intent:     IntentUnknown,
+	}
+
+	// 1. Finanças e Lucro
+	if matchAny(normalized, "lucro", "quanto gastei", "gastos", "faturamento", "receita", "custos", "financeiro", "financas") {
+		cmd.Intent = IntentFinances
+		return cmd, nil
+	}
+
+	// 2. Status e Resumo Operacional
+	if matchAny(normalized, "status", "resumo", "pendente", "pendentes", "decisoes", "dinheiro parado", "o que tem pra hoje", "hoje") {
+		cmd.Intent = IntentStatus
+		return cmd, nil
+	}
+
+	// 3. Parar de emergência
+	if matchAny(normalized, "parar sistema", "parar tudo", "emergencia", "pausar", "parar") && !strings.Contains(normalized, "aprovar") {
+		cmd.Intent = IntentPauseSystem
+		cmd.Destructive = true
+		return cmd, nil
+	}
+
+	// 4. Retomar
+	if matchAny(normalized, "retomar", "despausar", "continuar", "liberar sistema") {
+		cmd.Intent = IntentResumeSystem
+		return cmd, nil
+	}
+
+	// 5. Recusar (destrutivo)
+	if strings.HasPrefix(normalized, "recusar") || strings.HasPrefix(normalized, "rejeitar") || strings.HasPrefix(normalized, "cancelar") {
+		cmd.Intent = IntentReject
+		cmd.Destructive = true
+		cmd.Target = extractTarget(normalized, "recusar", "rejeitar", "cancelar")
+		return cmd, nil
+	}
+
+	// 6. Aprovar
+	if strings.HasPrefix(normalized, "aprovar") || strings.HasPrefix(normalized, "aceitar") || strings.HasPrefix(normalized, "liberar") || strings.HasPrefix(normalized, "entregar") {
+		cmd.Intent = IntentApprove
+		cmd.Target = extractTarget(normalized, "aprovar", "aceitar", "liberar", "entregar")
+		return cmd, nil
+	}
+
+	return cmd, nil
+}
+
+func matchAny(text string, keywords ...string) bool {
+	for _, kw := range keywords {
+		if text == kw || strings.Contains(text, kw) {
+			return true
+		}
+	}
+	return false
+}
+
+func extractTarget(text string, verbs ...string) string {
+	for _, v := range verbs {
+		if strings.HasPrefix(text, v) {
+			target := strings.TrimPrefix(text, v)
+			target = strings.TrimPrefix(target, " o ")
+			target = strings.TrimPrefix(target, " a ")
+			target = strings.TrimPrefix(target, " de ")
+			target = strings.TrimPrefix(target, " da ")
+			target = strings.TrimPrefix(target, " do ")
+			return strings.TrimSpace(target)
+		}
+	}
+	return strings.TrimSpace(text)
+}
+
+// TargetMatch representa o cartão correspondente encontrado após busca difusa.
+type TargetMatch struct {
+	CardID     string
+	ClientName string
+	Title      string
+	Stage      string
+	PriceCents int64
+}
+
+// ResolveTarget busca o alvo entre os cartões ativos e trata ambiguidades.
+func ResolveTarget(target string, available []TargetMatch) (*TargetMatch, error) {
+	normTarget := NormalizeText(target)
+	if normTarget == "" {
+		return nil, fmt.Errorf("especifique o nome do cliente ou do cartão: %w", ErrTargetNotFound)
+	}
+
+	var exactMatches []TargetMatch
+	var partialMatches []TargetMatch
+
+	for _, c := range available {
+		normClient := NormalizeText(c.ClientName)
+		normTitle := NormalizeText(c.Title)
+
+		// Correspondência exata
+		if normClient == normTarget || normTitle == normTarget {
+			exactMatches = append(exactMatches, c)
+			continue
+		}
+
+		// Correspondência parcial por palavras relevantes (>= 3 chars)
+		if strings.Contains(normClient, normTarget) || strings.Contains(normTitle, normTarget) {
+			partialMatches = append(partialMatches, c)
+			continue
+		}
+
+		words := strings.Fields(normTarget)
+		for _, w := range words {
+			if len(w) >= 3 && (strings.Contains(normClient, w) || strings.Contains(normTitle, w)) {
+				partialMatches = append(partialMatches, c)
+				break
+			}
+		}
+	}
+
+	matches := exactMatches
+	if len(matches) == 0 {
+		matches = partialMatches
+	}
+
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("nenhum cartão encontrado para '%s': %w", target, ErrTargetNotFound)
+	}
+
+	if len(matches) > 1 {
+		names := make([]string, len(matches))
+		for i, m := range matches {
+			names[i] = fmt.Sprintf("%s (%s)", m.ClientName, m.Title)
+		}
+		return nil, fmt.Errorf("comando ambíguo, encontrei %d cartões: %s: %w", len(matches), strings.Join(names, ", "), ErrAmbiguousTarget)
+	}
+
+	return &matches[0], nil
+}

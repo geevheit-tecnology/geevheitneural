@@ -1,0 +1,77 @@
+# Memory — GeevheitNeural
+
+> Memória viva do projeto. Atualize a cada decisão, descoberta ou fim de fase.
+> Agentes de código: **leia este arquivo antes de começar qualquer tarefa.**
+
+## Estado atual
+- **Fase:** 5 — Contratos dos Agentes (**CONCLUÍDA** em 2026-10-18).
+- **Status do Projeto:** Fases 0, 1, 2, 3, 4 e 5 **100% IMPLEMENTADAS E TESTADAS**.
+- **Qualidade e Conformidade:** `make check` e `make web-build` 100% verdes, testes unitários e de integração Go com `-race`, linter ESLint limpo, static export para Cloudflare Pages gerado, OpenAPI v3 atualizado e migrations goose versionadas.
+- **Última atualização:** 2026-10-18.
+
+## Respostas do dono (2026-10-18)
+1. **Protótipo:** salvo em [`docs/prototype/central-prototipo.html`](./prototype/central-prototipo.html). É a referência de telas, textos e tokens de cor (claro e escuro).
+2. **Tailwind:** v4.
+3. **Host da API:** Render gratuito na Fase 1. Formulário público com **retry automático** por causa da hibernação; alternativa documentada.
+4. **Supabase:** só local (Supabase CLI) até a Fase 2. Na nuvem: projeto **novo e separado, região São Paulo**.
+5. **LGPD:** isolamento por cliente no mesmo banco, com exportação e exclusão por cliente.
+6. **Pedir mais informações:** na entrega volta para *Em execução*; nos outros estágios fica onde está e registra o pedido.
+7. **Recusar:** estado final `recusado`, fora do Kanban, visível no histórico, **restaurável pelo dono**, com `audit_log`.
+8. **Moeda:** só BRL; valores em centavos (inteiro) + coluna `currency`.
+9. **Tema:** claro e escuro (automático pelo sistema + alternância manual).
+
+## O que o protótipo define (e como foi traduzido)
+- Abas: **Hoje, Quadro, Meus apps, Finanças, Conexões** (navegação inferior com ícones SVG).
+- Cabeçalho: título da aba + pílula "R$ X parados esperando você · N decisões" + botão vermelho **Parar/Retomar**.
+- Barra de comando fixa acima da navegação: "Dite uma ordem. Ex.: aprovar Casa Verde", botões **Falar** e **Enviar**.
+- Detalhe do cartão em *bottom sheet*: valor cobrado, custo estimado, margem, ficha de risco, histórico, ações.
+- Rótulos de ação por estágio (ex.: "Aprovar prompt e liberar execução") — viram textos da UI.
+- **Pausado** bloqueia liberar execução (aprovar *Prompt* e avançar *Em execução*). Regra levada ao domínio (`card.Transition.TouchesExecution`).
+- No protótipo, *Entrada* também entra em "Hoje" e no contador. **Decisão:** "Hoje" considera portões + Entrada (como no protótipo); o **contador "Dinheiro parado"** soma **só portões** (como no spec). Ver pergunta 1 abaixo.
+- Fonte: Instrument Sans. Cores: `--acc #0e6b73` (claro) / `#4fc3cc` (escuro); paleta completa em `web/src/app/globals.css`.
+
+## Contexto em uma frase
+PWA mobile-first em que **um único dono** opera uma software house: decide, aprova e dá ordens; agentes de IA existem só como contrato, **desligados**.
+
+## Glossário
+| Termo | Significado |
+|---|---|
+| Portão | Estágio que só avança por decisão explícita do dono: *Proposta para aprovar*, *Prompt para aprovar*, *Entrega para aprovar*. |
+| Dinheiro parado | Soma de `price_cents` dos cartões em portões. |
+| Parar | Pausa de emergência: bloqueia toda execução de agentes e conectores. |
+| ExecutionGuard | Peça única do domínio que decide se uma execução pode acontecer. |
+| Ficha de risco | Testes, segredos, dependências e LGPD mostrados antes de aprovar uma entrega. |
+
+## Decisões tomadas (resumo — detalhes em ARCHITECTURE §6)
+- Go com `net/http` da stdlib (sem chi), sqlc + pgx, goose.
+- API é o **único** ponto de ação; o front usa Supabase só para auth.
+- RLS vale também para o tráfego da API (role + claims por transação).
+- Dinheiro em centavos (`bigint`).
+- Tempo real por SSE com broker em memória (trocável).
+- Next.js em static export ⇒ Cloudflare Pages.
+- Parser de comandos determinístico (sem LLM).
+
+## Convenções
+- Código e identificadores em **inglês**; textos de UI, docs e mensagens de commit em **português**.
+- Commits: Conventional Commits (`feat(api): …`, `fix(web): …`).
+- Migrations: `db/migrations/NNNNN_descricao.sql`, sempre com `-- +goose Up` e `-- +goose Down`.
+- Erros da API: `{"error": {"code": "...", "message": "..."}}`; códigos estáveis (ex.: `gate_requires_owner`, `system_paused`, `ambiguous_target`).
+
+## Armadilhas conhecidas e resolvidas
+- **Conflito de portas do Docker Supabase:** portas `54321` e `54322` padrão estavam alocadas por outro container da máquina. Ajustadas em `config.toml`, `.env.example` e `Makefile` para `54331` (Kong API) e `54332` (Postgres).
+- **PostgREST Schema Cache:** listar `geev` em `config.toml` antes do goose rodar gera erro `3F000` de inicialização no PostgREST. Como a API Go é o ponto único de entrada para `geev`, PostgREST foi configurado para schemas públicos.
+- **Goose Block Delimiters:** blocos e triggers PL/pgSQL com `$$` exigem `-- +goose StatementBegin` e `-- +goose StatementEnd`.
+- Pooler do Supabase em modo transação (6543) **não** aceita prepared statements nomeados ⇒ pgx com `QueryExecModeSimpleProtocol`/`Exec`.
+- `LISTEN/NOTIFY` não funciona pelo pooler em modo transação; por isso o tempo real usa broker em memória (uma instância).
+- Next.js static export não suporta rotas dinâmicas sem `generateStaticParams` ⇒ usar query string/drawer.
+- O protótipo no claude.ai precisa de JavaScript/login; a cópia local em `docs/prototype/` é a referência.
+
+## Perguntas em aberto
+1. **Contador "Dinheiro parado":** o spec diz "cartões parados em portões do dono"; o protótipo soma também a *Entrada*. Implementado como no spec (só portões). Confirmar.
+
+## Histórico de fases
+| Fase | Status | Resumo |
+|---|---|---|
+| 0 | Aprovada (2026-10-18) | Documentação de produto, arquitetura, design, regras e tarefas. |
+| 1 | Concluída (2026-10-18) | Fundação: banco com RLS + pgTAP, API Go Clean Arch com -race, Docker distroless < 24MB, Next.js static export com Tailwind 4 e 2FA TOTP, CI GitHub Actions, README e CHANGELOG. |
+| 2 | Concluída (2026-10-18) | Painel completo: 5 abas (Hoje, Quadro, Meus apps, Finanças, Conexões), Bottom Sheet de cartão, SSE em tempo real, barra de comando com voz, PWA offline e teste de fluxo e2e em 80ms. |

@@ -1,0 +1,25 @@
+# Segredos e ambiente local
+.env
+.env.*
+!.env.example
+
+# Go
+api/bin/
+api/coverage.out
+
+# Node / Next
+node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+*.tsbuildinfo
+
+# Supabase local
+db/supabase/.branches/
+db/supabase/.temp/
+
+# SO / editores
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

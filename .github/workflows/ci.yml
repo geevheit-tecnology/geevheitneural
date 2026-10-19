@@ -1,0 +1,87 @@
+name: CI - GeevheitNeural
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: api/go.sum
+
+      - name: Go Format and Vet Check
+        working-directory: api
+        run: |
+          diff -u <(echo -n) <(gofmt -d .)
+          go vet ./...
+
+      - name: Run Tests with Race Detector
+        working-directory: api
+        run: go test -v -race ./...
+
+      - name: Build API Docker Image
+        run: docker build -t geevheit-api:ci api/
+
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build static export
+        working-directory: web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:54331
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+        run: npm run build
+
+  database:
+    name: Database & Security (pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install Goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@latest
+
+      - name: Start Supabase
+        working-directory: db
+        run: npx supabase start -x realtime,storage-api,imgproxy,edge-runtime,logflare,vector
+
+      - name: Apply Migrations
+        run: |
+          goose -dir db/migrations postgres "postgres://postgres:postgres@127.0.0.1:54332/postgres?sslmode=disable" up
+
+      - name: Run pgTAP Security Tests
+        working-directory: db
+        run: npx supabase test db

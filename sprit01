@@ -1,0 +1,66 @@
+# Prompt: Central de operação de software house (mobile-first)
+
+## Papel
+Você é o time de engenharia que vai construir a *Central: um sistema web instalável (PWA) pelo qual **uma única pessoa (o dono)* opera uma software house inteira pelo celular. O dono só decide, aprova e dá ordens por texto ou voz. Agentes de IA serão "funcionários" ligados depois, e *nesta fase todos ficam desligados*.
+
+Referência visual e de fluxo (protótipo já aprovado): https://claude.ai/artifact/LnFCeggXTPWBinVdnyNyKf
+Reproduza as telas, o fluxo e os textos do protótipo, evoluindo para um sistema real com dados persistidos.
+
+## Stack
+- *Banco e auth:* PostgreSQL no Supabase (RLS em todas as tabelas, migrations versionadas em SQL).
+- *API / orquestrador:* Go (net/http ou chi, sqlc para queries, goose ou migrate para migrations). É o único ponto de entrada de ações. Agentes futuros falarão só com essa API.
+- *Frontend PWA:* Next.js (App Router) + React + TypeScript, Tailwind, TanStack Query. Instalável, offline para leitura, mobile-first.
+- *Fase 2 (não construir agora, só deixar o contrato da API pronto):* app Flutter para notificações push e ditado nativo.
+- Java não é necessário nesta fase. Não introduza.
+- Monorepo: /api (Go), /web (Next), /db (migrations), /docs.
+- Hospedagem gratuita: front em Cloudflare Pages ou similar, API em um host gratuito com Dockerfile, banco no Supabase. Documente os limites dos planos gratuitos e o plano de migração se crescerem.
+
+## Modelo de dados (mínimo)
+clients, apps (nome, cliente, hospedagem, banco, repositório, domínio, status), cards (tipo: orçamento | bug | suporte | financeiro; cliente; app; valor cobrado; custo estimado; estágio; prioridade; prazo), card_events (histórico imutável), proposals, approvals (portão, quem, quando, decisão), ledger (lançamentos de custo e receita por app e cliente), services_costs (custo mensal por serviço de hospedagem), connectors (nome, ativo=false, segredo referenciado no cofre, escopo somente leitura por padrão), agents (papel, ativo=false, limite de gasto), audit_log.
+
+Estágios do cartão: Entrada → Proposta para aprovar → Aguardando cliente → Prompt para aprovar → Em execução → Entrega para aprovar → Entregue. Os três estágios de aprovação são *portões do dono* e só avançam por ação explícita dele registrada em approvals.
+
+## Funcionalidades
+1. *Hoje (tela inicial):* as 3 decisões do dia, ordenadas por dinheiro em jogo, cada uma com recomendação de uma linha e botão de ação direta.
+2. *Quadro Kanban* com cartões, detalhes, histórico e ações (aprovar, pedir mais informações, recusar).
+3. *Meus apps:* inventário com hospedagem, banco, custo, receita, resultado e alerta de "custa mais do que rende".
+4. *Finanças:* receita, custo e lucro por app, cliente e serviço; sugestão de consolidação de serviços. Entrada manual e importação de CSV.
+5. *Conexões:* GitHub, Vercel, Render, Neon, Supabase, Netlify, Firebase, Docker Hub e provedores de IA. Todos desligados, com chave opcional e escopo somente leitura por padrão.
+6. *Dinheiro parado esperando você:* contador fixo no topo com a soma dos valores de cartões parados em portões do dono e a quantidade de decisões. Atualiza em tempo real.
+7. *Barra de comando por texto e voz:* disponível em todas as telas. Ditado via Web Speech API (pt-BR). Comandos iniciais: aprovar, recusar, status, quanto gastei/lucro. Regras: se o nome for ambíguo, *pergunte, nunca aja no cartão errado*; toda ação executada por comando passa pela mesma API e pelos mesmos portões; ações destrutivas pedem confirmação.
+8. *Ficha de risco na entrega:* antes de aprovar uma entrega, mostrar resultado de testes, varredura de segredos, dependências desatualizadas e pontos de LGPD. Estrutura pronta para receber dados dos agentes de QA e segurança; por ora aceita preenchimento manual.
+9. *Botão Parar (emergência):* pausa de uma vez todos os agentes e conexões. Enquanto pausado, nenhuma execução é liberada, um aviso fica visível e só o dono retoma. Registrar em audit_log.
+10. *Entrada de pedidos:* endpoint público com formulário do site, validação, anti-spam e rate limit; cria cartão na Entrada.
+
+## Segurança e conformidade (obrigatório)
+- Login só do dono, com 2FA. RLS em todas as tabelas. Nenhum segredo no frontend.
+- Segredos de conectores apenas no cofre/variáveis do servidor, nunca em texto puro no banco.
+- Dados de cada cliente isolados por projeto (LGPD). Logs sem dados pessoais desnecessários.
+- Todo evento relevante em audit_log. Aprovações imutáveis.
+- Nenhuma ação automática em produção sem portão de aprovação do dono.
+
+## Encaixe dos agentes (preparar, não ativar)
+- Defina na API endpoints e contratos (OpenAPI) para um agente: listar cartões do seu estágio, ler contexto do cartão, registrar progresso, anexar resultado, solicitar aprovação.
+- Cada agente tem papel, escopo mínimo, limite de gasto e flag ativo=false.
+- Um agente nunca aprova portões. Só o dono aprova.
+
+## Fases e entregas
+1. *Fundação:* monorepo, migrations, auth, RLS, API base, CI com testes e lint.
+2. *Painel:* Hoje, Quadro, Meus apps, Finanças, Conexões, Parar, PWA instalável.
+3. *Comando e risco:* barra de comando por texto/voz e ficha de risco.
+4. *Fluxo comercial:* formulário público, proposta, aceite do cliente por link, aprovações.
+5. *Contratos dos agentes:* OpenAPI e endpoints desligados.
+
+Entregue cada fase com: código, testes, migrations, README de execução e um resumo curto do que mudou. Pare ao fim de cada fase e aguarde minha aprovação.
+
+## Critérios de aceite
+- Uso completo no celular (360 px de largura), com tema claro e escuro.
+- Testes automatizados da API (regras de portões, ambiguidade de comando, pausa de emergência) passando.
+- Nenhum conector ou agente consegue agir enquanto ativo=false ou enquanto o sistema estiver pausado.
+- Cadastrar meus apps reais, lançar custos e ver o lucro por app em menos de 5 minutos.
+
+## Regras de trabalho
+- Antes de codar, apresente um plano curto e as decisões de arquitetura para minha aprovação.
+- Prefira simplicidade e poucas dependências. Justifique cada dependência nova.
+- Não invente integrações. Quando uma API externa for necessária, use somente leitura e documente.
+- Se algo estiver ambíguo, pergunte antes de assumir.
