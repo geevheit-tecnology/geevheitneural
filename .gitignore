@@ -23,3 +23,7 @@ db/supabase/.temp/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# CodeGraph local index
+.codegraph/
+
