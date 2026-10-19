@@ -310,18 +310,126 @@ type MoneyWaitingReader interface {
 	GetMoneyWaiting(ctx context.Context) (totalCents int64, count int, err error)
 }
 
+// DTOs e interfaces do Sprint 02 (Fases 6 a 10)
+type PipelineDTO struct {
+	ID              string    `json:"id"`
+	CardID          string    `json:"card_id"`
+	Stage           string    `json:"stage"`
+	ActiveRole      string    `json:"active_role"`
+	SpendTotalCents int64     `json:"spend_total_cents"`
+	SpendLimitCents int64     `json:"spend_limit_cents"`
+	Status          string    `json:"status"`
+	CurrentTask     string    `json:"current_task"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type SpecificationDTO struct {
+	ID                 string           `json:"id"`
+	CardID             string           `json:"card_id"`
+	UserStories        []map[string]any `json:"user_stories"`
+	TestsCode          string           `json:"tests_code"`
+	TestsPassed        bool             `json:"tests_passed"`
+	ClientApproved     bool             `json:"client_approved"`
+	PaymentSignalCents int64            `json:"payment_signal_cents"`
+	PaymentSignalPaid  bool             `json:"payment_signal_paid"`
+	ScopeTokenRaw      string           `json:"scope_token,omitempty"`
+	ScopeURL           string           `json:"scope_url,omitempty"`
+}
+
+type PlaybookDTO struct {
+	ProductType   string         `json:"product_type"`
+	Title         string         `json:"title"`
+	Description   string         `json:"description"`
+	Stack         map[string]any `json:"stack"`
+	Checklist     []string       `json:"checklist"`
+	AutonomyLevel int            `json:"autonomy_level"`
+}
+
+type ModuleDTO struct {
+	Name          string         `json:"name"`
+	Category      string         `json:"category"`
+	Description   string         `json:"description"`
+	CodeTemplates map[string]any `json:"code_templates"`
+	IsReviewed    bool           `json:"is_reviewed"`
+}
+
+type PreviewDTO struct {
+	CardID       string         `json:"card_id"`
+	PreviewURL   string         `json:"preview_url"`
+	Status       string         `json:"status"`
+	ExpiresAt    time.Time      `json:"expires_at"`
+	RollbackPlan map[string]any `json:"rollback_plan"`
+}
+
+type FactoryScoreboardDTO struct {
+	AvgLeadTimeHours     float64 `json:"avg_lead_time_hours"`
+	TotalAICostCents     int64   `json:"total_ai_cost_cents"`
+	TotalInfraCostCents  int64   `json:"total_infra_cost_cents"`
+	TotalMarginCents     int64   `json:"total_margin_cents"`
+	AvgDecisionTimeHours float64 `json:"avg_decision_time_hours"`
+	TotalProjects        int64   `json:"total_projects"`
+	FirstTimeApprovalPct float64 `json:"first_time_approval_pct"`
+	TotalDefects         int64   `json:"total_defects"`
+}
+
+type PriceEstimateDTO struct {
+	SuggestedPriceCents int64    `json:"suggested_price_cents"`
+	EstCostCents        int64    `json:"est_cost_cents"`
+	EstimatedDays       int      `json:"estimated_days"`
+	RecommendedStack    []string `json:"recommended_stack"`
+	Playbook            string   `json:"playbook"`
+}
+
+type PipelineRepository interface {
+	Upsert(ctx context.Context, p *PipelineDTO) error
+	GetByCardID(ctx context.Context, cardID string) (*PipelineDTO, error)
+	List(ctx context.Context) ([]PipelineDTO, error)
+	AddSpend(ctx context.Context, cardID string, cents int64) error
+}
+
+type SpecificationRepository interface {
+	Upsert(ctx context.Context, spec *SpecificationDTO, tokenHash string) error
+	GetByCardID(ctx context.Context, cardID string) (*SpecificationDTO, error)
+	GetByTokenHash(ctx context.Context, hash string) (*SpecificationDTO, error)
+	ApproveByClient(ctx context.Context, hash string) error
+}
+
+type PlaybookRepository interface {
+	ListPlaybooks(ctx context.Context) ([]PlaybookDTO, error)
+	GetPlaybook(ctx context.Context, productType string) (*PlaybookDTO, error)
+	UpsertPlaybook(ctx context.Context, p *PlaybookDTO) error
+	ListModules(ctx context.Context) ([]ModuleDTO, error)
+	UpsertModule(ctx context.Context, m *ModuleDTO) error
+}
+
+type PreviewRepository interface {
+	Create(ctx context.Context, prev *PreviewDTO) error
+	GetByCardID(ctx context.Context, cardID string) (*PreviewDTO, error)
+}
+
+type FactoryMetricsRepository interface {
+	Record(ctx context.Context, cardID string, leadTimeSec, aiCost, infraCost, margin, decisionTimeSec int64, firstTimeApproved bool, defects int) error
+	GetScoreboard(ctx context.Context) (*FactoryScoreboardDTO, error)
+}
+
 type Repositories struct {
-	Cards       CardRepository
-	Apps        AppRepository
-	Finances    FinanceRepository
-	Connectors  ConnectorRepository
-	Clients     ClientRepository
-	Proposals   ProposalRepository
-	Agents      AgentRepository
-	Approvals   ApprovalRepository
-	CardEvents  CardEventRepository
-	Audit       AuditRepository
-	SystemState SystemStateRepository
+	Cards          CardRepository
+	Apps           AppRepository
+	Finances       FinanceRepository
+	Connectors     ConnectorRepository
+	Clients        ClientRepository
+	Proposals      ProposalRepository
+	Agents         AgentRepository
+	Pipelines      PipelineRepository
+	Specifications SpecificationRepository
+	Playbooks      PlaybookRepository
+	Previews       PreviewRepository
+	FactoryMetrics FactoryMetricsRepository
+	Approvals      ApprovalRepository
+	CardEvents     CardEventRepository
+	Audit          AuditRepository
+	SystemState    SystemStateRepository
 }
 
 type UnitOfWork interface {
@@ -338,4 +446,6 @@ const (
 	TopicCardsChanged        = "cards_changed"
 	TopicAppsChanged         = "apps_changed"
 	TopicFinancesChanged     = "finances_changed"
+	TopicPipelineChanged     = "pipeline_changed"
+	TopicScoreboardChanged   = "scoreboard_changed"
 )

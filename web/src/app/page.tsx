@@ -169,6 +169,18 @@ export default function HomePage() {
     },
   });
 
+  const startBuildMutation = useMutation({
+    mutationFn: (cardId: string) => api.startBuild(cardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cards"] });
+      showToast("⚡ Pipeline de agentes iniciado! Os agentes autônomos estão construindo.");
+      setIsSheetOpen(false);
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Falha ao iniciar pipeline de construção");
+    },
+  });
+
   const createAppMutation = useMutation({
     mutationFn: (data: Parameters<typeof api.createApp>[0]) => api.createApp(data),
     onSuccess: () => {
@@ -384,7 +396,8 @@ export default function HomePage() {
         onApprove={handleQuickApprove}
         onAskInfo={handleAskInfo}
         onReject={handleReject}
-        isProcessing={decideMutation.isPending}
+        onBuild={(id) => startBuildMutation.mutate(id)}
+        isProcessing={decideMutation.isPending || startBuildMutation.isPending}
       />
 
       {/* Modal de Confirmação de Ação Destrutiva (F3-02) */}

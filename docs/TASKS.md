@@ -56,3 +56,36 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F5-02 Endpoints implementados atrás do ExecutionGuard (respondem `423` enquanto `ativo=false`).
 - [x] F5-03 Tokens de agente (hash), limite de gasto, escopo mínimo.
 - [x] F5-04 Testes: agente inativo ou sistema pausado ⇒ nenhuma escrita; agente nunca aprova.
+
+## Fase 6 — Comando único e pipeline de agentes
+- [x] F6-01 Máquina de estados do Pipeline (Requisitos → Arquiteto → Dev → QA → Segurança → Publicador → Suporte).
+- [x] F6-02 Interface `AgentRunner` desacoplada (camada plugável de provedores com runner mock e real).
+- [x] F6-03 Comando "Construir" no cartão / via linha de comando (`POST /v1/cards/{id}/pipeline/start`).
+- [x] F6-04 Controle de teto de gasto por projeto e ativação explícita de agente pelo dono.
+- [x] F6-05 Exibição em tempo real do agente ativo, ação e custo acumulado no cartão e Kanban.
+
+## Fase 7 — Especificação executável antes do código
+- [x] F7-01 Geração de User Stories e Critérios de Aceite executáveis (BDD / Given-When-Then) pelo agente de Requisitos.
+- [x] F7-02 Armazenamento e execução de testes de especificação vinculados ao cartão.
+- [x] F7-03 Portal seguro de validação de escopo pelo cliente (`/escopo?token=...`) com aceite ou pedido de mudanças.
+- [x] F7-04 Registro de sinal de pagamento e bloqueio do dev até aprovação de escopo + sinal.
+
+## Fase 8 — Biblioteca de playbooks e módulos
+- [x] F8-01 Catálogo de Playbooks por tipo de produto (landing page, CRUD, painel, API, PWA, mobile).
+- [x] F8-02 Catálogo de Módulos Reutilizáveis (auth, admin, forms, reports, emails, payments).
+- [x] F8-03 Endpoint e interface para alimentar playbooks e módulos a partir de projetos concluídos (sem expor PII/código cliente).
+- [x] F8-04 Sugestão e injeção automática de playbook/módulos no planejamento do Arquiteto.
+
+## Fase 9 — Qualidade automática e entrega
+- [x] F9-01 Pipeline de qualidade automática alimentando a Ficha de Risco (testes, segredos, deps, SAST, a11y, perf, LGPD).
+- [x] F9-02 Gerador e gerenciador de Prévia ao Vivo (Preview URLs temporárias) por cartão.
+- [x] F9-03 Deploy com plano de reversão (rollback) automático e aprovação obrigatória do dono.
+- [x] F9-04 Suporte pós-entrega com monitoramento de disponibilidade e abertura automática de bugs com logs anexados.
+- [x] F9-05 Memória viva isolada por projeto (requisitos, decisões arquiteturais, pendências).
+
+## Fase 10 — Inteligência de negócio e placar da fábrica
+- [x] F10-01 Motor de Preço inteligente (sugere valor em centavos e prazo com base em projetos similares).
+- [x] F10-02 Placar da Fábrica (lead time até prévia, custo IA/infra por projeto, taxa de primeira entrega, margem líquida, tempo de decisão).
+- [x] F10-03 Suíte de avaliação de modelos (Evals) para benchmarking de custo × qualidade.
+- [x] F10-04 Roteamento inteligente de modelos (econômico para tarefas simples, avançado para código crítico).
+- [x] F10-05 Nível de autonomia por tipo de produto baseado em métricas comprovadas.

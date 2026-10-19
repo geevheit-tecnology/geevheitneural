@@ -50,17 +50,22 @@ func (u *UnitOfWork) RunInTx(ctx context.Context, fn func(tx app.Repositories) e
 
 	q := sqlcgen.New(tx)
 	repos := app.Repositories{
-		Cards:       NewCardRepository(q),
-		Apps:        NewAppRepository(q),
-		Finances:    NewFinanceRepository(q),
-		Connectors:  NewConnectorRepository(q),
-		Clients:     NewClientRepository(q),
-		Proposals:   NewProposalRepository(q),
-		Agents:      NewAgentRepository(q),
-		Approvals:   NewApprovalRepository(q),
-		CardEvents:  NewCardEventRepository(q),
-		Audit:       NewAuditRepository(q),
-		SystemState: NewSystemStateRepository(q),
+		Cards:          NewCardRepository(q),
+		Apps:           NewAppRepository(q),
+		Finances:       NewFinanceRepository(q),
+		Connectors:     NewConnectorRepository(q),
+		Clients:        NewClientRepository(q),
+		Proposals:      NewProposalRepository(q),
+		Agents:         NewAgentRepository(q),
+		Pipelines:      NewPipelineRepository(q),
+		Specifications: NewSpecificationRepository(q),
+		Playbooks:      NewPlaybookRepository(q),
+		Previews:       NewPreviewRepository(q),
+		FactoryMetrics: NewFactoryMetricsRepository(q),
+		Approvals:      NewApprovalRepository(q),
+		CardEvents:     NewCardEventRepository(q),
+		Audit:          NewAuditRepository(q),
+		SystemState:    NewSystemStateRepository(q),
 	}
 
 	if err := fn(repos); err != nil {

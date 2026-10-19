@@ -1,0 +1,55 @@
+## Visão
+A Central deixa de ser só painel e vira uma *fábrica de soluções: o cliente descreve um problema, o dono dá **um comando* ("construir este projeto"), e uma equipe de agentes de IA percorre o ciclo completo de uma software house: requisitos, arquitetura, desenvolvimento, testes, segurança, publicação de prévia, entrega e suporte. O dono continua nos portões de aprovação. O objetivo não é "zero humano": é *um humano com o alcance de uma equipe inteira*, com qualidade comprovada por métricas.
+
+## Princípios inegociáveis
+1. *Portões do dono:* proposta, prompt/escopo, entrega e qualquer ação em produção. Agente nunca aprova portão.
+2. *Autonomia conquistada:* cada tipo de produto (site, landing page, painel, CRUD, API, app) tem um nível de autonomia que começa baixo e só sobe com histórico de sucesso medido (ver Fase 10).
+3. *Isolamento total por cliente:* cada execução roda em ambiente próprio, descartável, sem acesso a credenciais de produção nem a dados de outros clientes.
+4. *Código sensível exige revisão humana obrigatória:* pagamentos, autenticação, dados pessoais e integrações financeiras recebem a marca revisão_humana_obrigatória e não podem ser entregues sem sua aprovação explícita.
+5. *Tudo rastreável:* cada passo de cada agente fica registrado e pode ser reproduzido.
+6. *Custo controlado:* teto de gasto por projeto e por agente, com parada automática.
+
+## Fase 6: Comando único e pipeline de agentes
+- Comando "Construir" no cartão aprovado dispara um *pipeline* (máquina de estados no Go, com fila e reprocessamento seguro).
+- Papéis: *Requisitos → Arquiteto → Dev (um por tarefa, em paralelo) → QA → Segurança → Publicador → Suporte*.
+- *Camada de provedores de IA:* interface única (AgentRunner) com implementações trocáveis (por exemplo Claude Agent SDK e outros). Nenhum provedor fica acoplado ao núcleo.
+- *Executor isolado:* containers efêmeros por tarefa, rede restrita, tokens de escopo mínimo, tempo e memória limitados.
+- Estados visíveis no Kanban: o cartão mostra qual agente está atuando, o que fez e quanto custou.
+- Ligar agentes é uma ação do dono, por agente, por projeto, com limite de gasto obrigatório.
+
+## Fase 7: Especificação executável antes do código
+- O agente de Requisitos gera *user stories e critérios de aceite escritos como testes executáveis* antes de qualquer código.
+- O desenvolvimento só termina quando esses testes passam. Isso reduz o clássico "não era isso que eu pedi".
+- O cliente valida o *escopo escrito* pelo portal com link seguro (aceitar, pedir mudança) e, quando aplicável, com registro de sinal de pagamento. Mudanças viram aditivo com novo orçamento.
+
+## Fase 8: Biblioteca de playbooks e módulos
+- *Playbooks por tipo de produto:* estrutura de projeto, stack padrão, checklist de qualidade e prompts testados.
+- *Módulos reutilizáveis e já revisados* (login, painel administrativo, formulários, relatórios, envio de e-mail). O agente monta a partir deles em vez de reinventar, o que acelera e melhora a qualidade.
+- Cada projeto entregue pode alimentar a biblioteca, *sem copiar dados nem código específico do cliente*; só padrões genéricos aprovados por mim.
+
+## Fase 9: Qualidade automática e entrega
+- Portões automáticos alimentando a *Ficha de risco*: testes, cobertura, varredura de segredos, auditoria de dependências, análise estática de segurança, acessibilidade, desempenho e checklist de LGPD.
+- *Prévia ao vivo* por cartão, em URL temporária, para eu e o cliente testarmos antes da aprovação.
+- Deploy em produção só após meu portão, com plano de reversão automático.
+- *Suporte pós-entrega:* monitoramento de disponibilidade e erros dos apps entregues; falhas abrem cartões de bug sozinhas, já com logs anexados e prioridade sugerida.
+- *Memória viva por projeto* (requisitos, decisões, pendências), isolada por cliente.
+
+## Fase 10: Inteligência de negócio e placar da fábrica
+- *Motor de preço:* sugere valor e prazo com base no histórico real de custo e tempo de projetos parecidos.
+- *Placar da fábrica*, para medir se estamos melhores de verdade:
+  - tempo do pedido até a primeira prévia;
+  - custo de IA e infraestrutura por projeto;
+  - taxa de aprovação na primeira entrega;
+  - defeitos encontrados depois da entrega;
+  - margem por projeto e por tipo de produto;
+  - tempo que o dono levou para decidir (dinheiro parado).
+- *Suíte de avaliação (evals):* conjunto fixo de projetos de referência rodado a cada mudança de modelo, prompt ou playbook, para impedir regressões e comparar provedores por custo e qualidade.
+- *Roteamento de modelos:* tarefas simples vão para modelos mais baratos e as críticas para os mais capazes, respeitando o teto de gasto.
+- *Níveis de autonomia por tipo de produto*, subindo só quando as métricas acima sustentarem.
+
+## Requisitos transversais
+- *Segurança:* segredos só no cofre; agentes sem acesso a produção; trilha de auditoria imutável; Botão Parar interrompe pipelines em andamento e descarta ambientes.
+- *LGPD:* isolamento, exportação e exclusão por cliente; minimização de dados enviados a provedores de IA; registro de quais provedores processam quais dados.
+- *Transparência com o cliente:* o contrato e o portal informam que parte do trabalho é feita com apoio de IA e que a entrega passa por revisão do responsável.
+- *Observabilidade:* rastros de cada passo dos agentes, com reprodução e comparação entre execuções.
+- *Custos:* previsão antes de iniciar, medição durante e relatório ao final, sempre visível no cartão.

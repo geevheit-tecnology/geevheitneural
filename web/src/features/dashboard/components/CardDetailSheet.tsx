@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { CardDetails } from "@/shared/api-client/endpoints";
+import { api, CardDetails } from "@/shared/api-client/endpoints";
 
 interface CardDetailSheetProps {
   cardDetails: CardDetails | null;
@@ -10,6 +10,7 @@ interface CardDetailSheetProps {
   onApprove: (cardId: string) => void;
   onAskInfo: (cardId: string) => void;
   onReject: (cardId: string) => void;
+  onBuild?: (cardId: string) => void;
   isProcessing: boolean;
 }
 
@@ -20,9 +21,28 @@ export function CardDetailSheet({
   onApprove,
   onAskInfo,
   onReject,
+  onBuild,
   isProcessing,
 }: CardDetailSheetProps) {
   const [riskAccepted, setRiskAccepted] = React.useState(false);
+  const [pipelineData, setPipelineData] = React.useState<{
+    active_role: string;
+    spend_total_cents: number;
+    status: string;
+    current_task: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (cardDetails?.card?.id) {
+      api.getPipeline(cardDetails.card.id)
+        .then((p) => {
+          setPipelineData(p);
+        })
+        .catch(() => {
+          setPipelineData(null);
+        });
+    }
+  }, [cardDetails?.card?.id]);
 
   if (!isOpen || !cardDetails) return null;
 
@@ -102,6 +122,34 @@ export function CardDetailSheet({
           </div>
         </div>
 
+        {/* Pipeline de Fábrica Autônoma (Fases 6 a 9) */}
+        {pipelineData && (
+          <div className="bg-[var(--surf)] border border-[var(--line)] rounded-xl p-3 mb-4 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <b className="text-[var(--ink)] flex items-center gap-1.5 text-sm">
+                <span className="w-2 h-2 rounded-full bg-[var(--acc)] animate-pulse" />
+                Pipeline da Fábrica Autônoma
+              </b>
+              <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-[var(--accs)] text-[var(--acc)]">
+                {pipelineData.status}
+              </span>
+            </div>
+            <div className="space-y-1 text-[var(--mute)]">
+              <div className="flex justify-between">
+                <span>Agente Responsável:</span>
+                <b className="text-[var(--ink)] uppercase">{pipelineData.active_role}</b>
+              </div>
+              <div className="flex justify-between">
+                <span>Custo de IA Acumulado:</span>
+                <b className="text-[var(--ok)]">{formatBRL(pipelineData.spend_total_cents)}</b>
+              </div>
+              <div className="pt-1 text-[11px] text-[var(--ink)] italic">
+                "{pipelineData.current_task}"
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Ficha de Risco (quando presente na entrega) */}
         {risk_report && (
           <div className="bg-[var(--surf)] border border-[var(--line)] rounded-xl p-3 mb-4 text-xs">
@@ -153,7 +201,7 @@ export function CardDetailSheet({
               events.map((ev, i) => (
                 <li key={i} className="leading-relaxed">
                   <span className="text-[var(--ink)] font-medium">
-                    {String(ev.payload?.title || ev.kind)}
+                    {String(ev.payload?.title || ev.payload?.output || ev.kind)}
                   </span>
                   {Boolean(ev.payload?.note) && <span className="block italic text-[11px]">{String(ev.payload?.note)}</span>}
                 </li>
@@ -166,6 +214,18 @@ export function CardDetailSheet({
 
         {/* Botões de Ação */}
         <div className="grid gap-2">
+          {/* Botão de Construção Autônoma (Fase 6) */}
+          {onBuild && card.stage !== "em_execucao" && card.stage !== "entregue" && card.stage !== "recusado" && (
+            <button
+              id="sheet-build-btn"
+              disabled={isProcessing}
+              onClick={() => onBuild(card.id)}
+              className="w-full py-3 px-4 rounded-xl font-semibold text-sm border-0 bg-gradient-to-r from-[var(--acc)] to-teal-600 text-white cursor-pointer hover:opacity-95 shadow-sm flex items-center justify-center gap-2"
+            >
+              <span>⚡</span> Construir Projeto com Agentes (Fábrica Autônoma)
+            </button>
+          )}
+
           {isDeliveryGate && (
             <label className="flex items-start gap-2 bg-[var(--warns)]/30 border border-[var(--warn)]/40 p-2.5 rounded-xl text-xs cursor-pointer mb-1 text-[var(--ink)]">
               <input

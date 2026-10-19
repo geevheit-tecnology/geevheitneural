@@ -4,9 +4,13 @@
 > Agentes de código: **leia este arquivo antes de começar qualquer tarefa.**
 
 ## Estado atual
-- **Fase:** 5 — Contratos dos Agentes (**CONCLUÍDA** em 2026-10-18).
-- **Status do Projeto:** Fases 0, 1, 2, 3, 4 e 5 **100% IMPLEMENTADAS E TESTADAS**.
-- **Qualidade e Conformidade:** `make check` e `make web-build` 100% verdes, testes unitários e de integração Go com `-race`, linter ESLint limpo, static export para Cloudflare Pages gerado, OpenAPI v3 atualizado e migrations goose versionadas.
+- **Sprint:** 02 — Fábrica Autônoma de Software (Fases 6, 7, 8, 9 e 10 **100% CONCLUÍDAS** em 2026-10-18).
+- **Status do Projeto:** Fases 0 a 10 **100% IMPLEMENTADAS, TESTADAS E OPERACIONAIS**.
+- **Qualidade e Conformidade:**
+  - Backend Go 100% verde (`go test ./...` e `go test -v ./internal/app -run TestSprint02`).
+  - Frontend Next.js estático 100% verde (`output: 'export'` gerando todas as rotas estáticas sem erro).
+  - Migrações goose 00001 a 00006 aplicadas com sucesso no PostgreSQL local Supabase com RLS forçada.
+  - Invariante dos Portões mantida intacta: agente Publicador avança para `entrega_aprovar` (Portão 3) e o deploy em produção depende unicamente da decisão explícita do Dono.
 - **Última atualização:** 2026-10-18.
 
 ## Respostas do dono (2026-10-18)

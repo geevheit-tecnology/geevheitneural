@@ -216,7 +216,7 @@ func (r *CardRepository) Create(ctx context.Context, c *app.CardListItemDTO) err
 
 	return r.q.CreateCard(ctx, sqlcgen.CreateCardParams{
 		ID:           textToUUID(c.ID),
-		OwnerID:      textToUUID("00000000-0000-0000-0000-000000000000"), // preenchido via RLS/trigger se vazio
+		OwnerID:      textToUUID("a0000000-0000-0000-0000-000000000001"),
 		ClientID:     textToUUID(c.ClientID),
 		AppID:        appID,
 		Type:         sqlcgen.GeevCardType(c.Type),
@@ -267,20 +267,33 @@ func (r *CardEventRepository) Create(ctx context.Context, e app.CardEventDTO) er
 		payloadBytes = []byte("{}")
 	}
 
+	eventID := e.ID
+	if eventID == "" {
+		eventID = uuid.NewString()
+	}
+	ownerID := e.OwnerID
+	if ownerID == "" {
+		ownerID = "a0000000-0000-0000-0000-000000000001"
+	}
+	eventAt := e.At
+	if eventAt.IsZero() {
+		eventAt = time.Now()
+	}
+
 	var actorID pgtype.UUID
 	if e.ActorID != nil {
 		actorID = textToUUID(*e.ActorID)
 	}
 
 	return r.q.CreateCardEvent(ctx, sqlcgen.CreateCardEventParams{
-		ID:        textToUUID(e.ID),
-		OwnerID:   textToUUID(e.OwnerID),
+		ID:        textToUUID(eventID),
+		OwnerID:   textToUUID(ownerID),
 		CardID:    textToUUID(e.CardID),
 		Kind:      e.Kind,
 		Payload:   payloadBytes,
 		ActorType: e.ActorType,
 		ActorID:   actorID,
-		At:        timeToTimestamptz(e.At),
+		At:        timeToTimestamptz(eventAt),
 	})
 }
 
@@ -298,6 +311,19 @@ func (r *AuditRepository) Record(ctx context.Context, l app.AuditLogDTO) error {
 		metaBytes = []byte("{}")
 	}
 
+	auditID := l.ID
+	if auditID == "" {
+		auditID = uuid.NewString()
+	}
+	ownerID := l.OwnerID
+	if ownerID == "" {
+		ownerID = "a0000000-0000-0000-0000-000000000001"
+	}
+	auditAt := l.At
+	if auditAt.IsZero() {
+		auditAt = time.Now()
+	}
+
 	var actorID pgtype.UUID
 	if l.ActorID != nil {
 		actorID = textToUUID(*l.ActorID)
@@ -309,15 +335,15 @@ func (r *AuditRepository) Record(ctx context.Context, l app.AuditLogDTO) error {
 	}
 
 	return r.q.RecordAudit(ctx, sqlcgen.RecordAuditParams{
-		ID:         textToUUID(l.ID),
-		OwnerID:    textToUUID(l.OwnerID),
+		ID:         textToUUID(auditID),
+		OwnerID:    textToUUID(ownerID),
 		Action:     l.Action,
 		ActorType:  l.ActorType,
 		ActorID:    actorID,
 		TargetType: l.TargetType,
 		TargetID:   targetID,
 		Meta:       metaBytes,
-		At:         timeToTimestamptz(l.At),
+		At:         timeToTimestamptz(auditAt),
 	})
 }
 

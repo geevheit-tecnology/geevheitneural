@@ -4,6 +4,34 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 
 ---
 
+## [Sprint 02] - Fábrica Autônoma de Software (Fases 6 a 10) — 2026-10-18
+
+### Adicionado
+- **Fase 6: Comando Único "Construir" & Pipeline de Agentes:**
+  - Máquina de estados sequencial do pipeline com os 7 papéis: `Requisitos` → `Arquiteto` → `Dev` → `QA` → `Segurança` → `Publicador` → `Suporte`.
+  - Abstração `AgentRunner` plugável, conectada a `MockAgentRunner` com computação determinística de custos e artefatos.
+  - Endpoint `POST /v1/cards/{id}/pipeline/start` e `GET /v1/cards/{id}/pipeline`.
+  - Proteção por teto de gastos configurável por projeto (`spend_limit_cents`), interrompendo o pipeline com status `paused_spend_limit` ao estourar o limite.
+  - Invariante dos Portões: o agente Publicador avança para `entrega_aprovar` (Portão 3) e NUNCA faz deploy direto sem decisão explícita do Dono.
+- **Fase 7: Especificação Executável & Validação de Escopo BDD:**
+  - Agente de Requisitos gera User Stories e Critérios de Aceite no formato BDD (Given-When-Then).
+  - Portal seguro do cliente em `/escopo?token=...` com aprovação pública imutável registrada em `card_events`.
+  - Garantia de sinal de entrada financeiro antes de liberar o início do desenvolvimento.
+- **Fase 8: Biblioteca de Playbooks & Módulos Catalogados:**
+  - Catálogo nativo com 3 playbooks de produtos (`SaaS B2B Multi-tenant`, `App Mobile Flutter / PWA`, `Landing Page de Alta Conversão`).
+  - 4 módulos reutilizáveis catalogados e revisados (`auth_supabase_totp`, `payment_webhook_idempotent`, `audit_trail_immutable`, `kanban_bottom_sheet_mobile`).
+  - Endpoints `GET /v1/playbooks` e `GET /v1/modules` com seed determinístico na inicialização.
+- **Fase 9: Qualidade Automática & Entrega Segura:**
+  - Agente QA e Segurança alimentando testes de cobertura, SAST e conformidade LGPD.
+  - Agente Publicador gerando URL de prévia ao vivo e plano de rollback blue-green instantâneo.
+  - Isolamento de memória viva por projeto (`geev.project_memory`) sem cruzamento de dados entre clientes.
+- **Fase 10: Inteligência de Negócio & Placar da Fábrica:**
+  - Motor de Preço Inteligente (`POST /v1/factory/estimate`) com cálculo por tipo de produto, complexidade e margem alvo.
+  - Placar da Fábrica (`GET /v1/factory/scoreboard`) exibindo Lead Time médio, taxa de aprovação de primeira (92.5%), custos de IA/infra e tempo de decisão do Dono.
+  - Integração no frontend em `CardDetailSheet` (botão Construir e badge de pipeline) e `FinancasTab` (cards executivos do placar e playbooks).
+
+---
+
 ## [Fase 5] - Contratos dos Agentes — 2026-10-18
 
 ### Adicionado

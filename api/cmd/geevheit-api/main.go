@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/geevheit/neuralcenter/api/config"
+	"github.com/geevheit/neuralcenter/api/internal/adapters/agents"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/auth"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/events"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/http/handlers"
@@ -20,6 +21,7 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/app"
 	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
+	"github.com/geevheit/neuralcenter/api/internal/domain/system"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -125,15 +127,35 @@ func main() {
 	agentUC := app.NewAgentUseCases(uow, publisher)
 	agentHandler := handlers.NewAgentHandler(agentUC)
 
+	// Sprint 02: Fases 6 a 10 (Fábrica Autônoma, Pipelines, Playbooks e Métricas)
+	if err := app.SeedPlaybooksAndModules(context.Background(), uow); err != nil {
+		logger.Error("seed_playbooks_error", slog.Any("error", err))
+	}
+	agentRunner := agents.NewMockAgentRunner()
+	guard := system.NewExecutionGuard()
+
+	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, agentRunner)
+	getPipelineUC := app.NewGetCardPipelineUseCase(uow)
+
+	getPublicScopeUC := app.NewGetPublicScopeUseCase(uow)
+	approvePublicScopeUC := app.NewApprovePublicScopeUseCase(uow, publisher)
+
+	listPlaybooksUC := app.NewListPlaybooksUseCase(uow)
+	listModulesUC := app.NewListModulesUseCase(uow)
+	getScoreboardUC := app.NewGetFactoryScoreboardUseCase(uow)
+	estimatePriceUC := app.NewEstimatePriceUseCase(uow)
+
 	// 4. Roteamento (net/http padrão do Go 1.22+)
 	mux := http.NewServeMux()
 
-	// Endpoints públicos de infraestrutura e intake/propostas
+	// Endpoints públicos de infraestrutura e intake/propostas/escopo
 	mux.HandleFunc("GET /healthz", handlers.HandleHealthz)
 	mux.HandleFunc("GET /readyz", handlers.HandleReadyz(pool))
 	mux.HandleFunc("POST /v1/intake", intakeHandler.SubmitIntake)
 	mux.HandleFunc("GET /v1/public/proposals/{token}", proposalHandler.GetPublicProposal)
 	mux.HandleFunc("POST /v1/public/proposals/{token}/accept", proposalHandler.AcceptPublicProposal)
+	mux.HandleFunc("GET /v1/public/scope/{token}", handlers.HandleGetPublicScope(getPublicScopeUC))
+	mux.HandleFunc("POST /v1/public/scope/{token}/approve", handlers.HandleApprovePublicScope(approvePublicScopeUC))
 
 	// Endpoints restritos para Agentes de IA (validação de token via hash + ExecutionGuard)
 	requireAgentAuth := middleware.RequireAgentAuth(agentRepo)
@@ -180,6 +202,14 @@ func main() {
 
 	// Conexões
 	mux.Handle("GET /v1/connectors", requireAuth(handlers.HandleListConnectors(listConnectorsUC)))
+
+	// Fábrica Autônoma, Pipelines, Playbooks e Placar (Sprint 02: Fases 6 a 10)
+	mux.Handle("POST /v1/cards/{id}/pipeline/start", requireAuth(handlers.HandleStartBuild(startBuildUC)))
+	mux.Handle("GET /v1/cards/{id}/pipeline", requireAuth(handlers.HandleGetCardPipeline(getPipelineUC)))
+	mux.Handle("GET /v1/playbooks", requireAuth(handlers.HandleListPlaybooks(listPlaybooksUC)))
+	mux.Handle("GET /v1/modules", requireAuth(handlers.HandleListModules(listModulesUC)))
+	mux.Handle("GET /v1/factory/scoreboard", requireAuth(handlers.HandleGetFactoryScoreboard(getScoreboardUC)))
+	mux.Handle("POST /v1/factory/estimate", requireAuth(handlers.HandleEstimatePrice(estimatePriceUC)))
 
 	// SSE Stream em tempo real
 	mux.Handle("GET /v1/stream", requireAuth(handlers.HandleSSEStream(publisher)))

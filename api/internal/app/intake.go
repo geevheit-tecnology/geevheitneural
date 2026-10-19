@@ -73,12 +73,17 @@ func (uc *IntakeUseCase) Execute(ctx context.Context, cmd IntakeCommand) (*Intak
 			title = title[:57] + "..."
 		}
 
+		cardType := "orcamento"
+		if cmd.Type == "bug" || cmd.Type == "suporte" || cmd.Type == "financeiro" {
+			cardType = cmd.Type
+		}
+
 		cardItem := &CardListItemDTO{
 			ID:           cID,
 			ClientID:     client.ID,
 			ClientName:   client.Name,
 			AppName:      "Novo",
-			Type:         "feature",
+			Type:         cardType,
 			Title:        title,
 			PriceCents:   0, // Aguarda proposta de preço
 			EstCostCents: 0,

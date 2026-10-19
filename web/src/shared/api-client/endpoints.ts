@@ -197,4 +197,106 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  // Sprint 02: Fábrica Autônoma, Pipelines, Playbooks e Escopo
+  startBuild: (cardId: string, spendLimitCents: number = 10000) =>
+    apiClient<{
+      id: string;
+      card_id: string;
+      stage: string;
+      active_role: string;
+      spend_total_cents: number;
+      spend_limit_cents: number;
+      status: string;
+      current_task: string;
+    }>(`/v1/cards/${cardId}/pipeline/start`, {
+      method: "POST",
+      body: JSON.stringify({ spend_limit_cents: spendLimitCents }),
+    }),
+
+  getPipeline: (cardId: string) =>
+    apiClient<{
+      id: string;
+      card_id: string;
+      stage: string;
+      active_role: string;
+      spend_total_cents: number;
+      spend_limit_cents: number;
+      status: string;
+      current_task: string;
+    }>(`/v1/cards/${cardId}/pipeline`),
+
+  listPlaybooks: () =>
+    apiClient<{
+      playbooks: Array<{
+        product_type: string;
+        title: string;
+        description: string;
+        stack: Record<string, unknown>;
+        checklist: string[];
+        autonomy_level: number;
+      }>;
+    }>("/v1/playbooks"),
+
+  listModules: () =>
+    apiClient<{
+      modules: Array<{
+        name: string;
+        category: string;
+        description: string;
+        code_templates: Record<string, unknown>;
+        is_reviewed: boolean;
+      }>;
+    }>("/v1/modules"),
+
+  getFactoryScoreboard: () =>
+    apiClient<{
+      avg_lead_time_hours: number;
+      total_ai_cost_cents: number;
+      total_infra_cost_cents: number;
+      total_margin_cents: number;
+      avg_decision_time_hours: number;
+      total_projects: number;
+      first_time_approval_pct: number;
+      total_defects: number;
+    }>("/v1/factory/scoreboard"),
+
+  estimatePrice: (data: {
+    title: string;
+    description: string;
+    product_type: string;
+    complexity: string;
+  }) =>
+    apiClient<{
+      suggested_price_cents: number;
+      est_cost_cents: number;
+      estimated_days: number;
+      recommended_stack: string[];
+      playbook: string;
+    }>("/v1/factory/estimate", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getPublicScope: (token: string) =>
+    apiClient<{
+      card_title: string;
+      user_stories: Array<{
+        title: string;
+        given: string;
+        when: string;
+        then: string;
+        passed: boolean;
+      }>;
+      tests_passed: boolean;
+      client_approved: boolean;
+      payment_signal_cents: number;
+      payment_signal_paid: boolean;
+    }>(`/v1/public/scope/${token}`),
+
+  approvePublicScope: (token: string) =>
+    apiClient<{ success: boolean; message: string }>(`/v1/public/scope/${token}/approve`, {
+      method: "POST",
+    }),
 };
+

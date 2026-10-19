@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bufio"
 	"os"
 	"strings"
 )
@@ -18,9 +19,12 @@ type Config struct {
 }
 
 func Load() *Config {
+	loadDotEnv(".env")
+	loadDotEnv("../.env")
+
 	port := getEnv("PORT", "8085")
 	logLevel := getEnv("LOG_LEVEL", "info")
-	dbURL := getEnv("DATABASE_URL", "postgresql://geev_api:troque-esta-senha-local@127.0.0.1:54332/postgres?sslmode=disable")
+	dbURL := getEnv("DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:54332/postgres?sslmode=disable")
 	dbSimple := getEnv("DB_SIMPLE_PROTOCOL", "false") == "true"
 	ownerID := getEnv("OWNER_USER_ID", "a0000000-0000-0000-0000-000000000001")
 	sbURL := getEnv("SUPABASE_URL", "http://127.0.0.1:54331")
@@ -55,3 +59,28 @@ func getEnv(key, def string) string {
 	}
 	return def
 }
+
+func loadDotEnv(filepath string) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			k := strings.TrimSpace(parts[0])
+			v := strings.TrimSpace(parts[1])
+			if os.Getenv(k) == "" {
+				_ = os.Setenv(k, v)
+			}
+		}
+	}
+}
+

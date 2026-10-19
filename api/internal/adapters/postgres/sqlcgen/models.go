@@ -310,6 +310,20 @@ type GeevCardEvent struct {
 	At        pgtype.Timestamptz
 }
 
+type GeevCardPipeline struct {
+	ID              pgtype.UUID
+	OwnerID         pgtype.UUID
+	CardID          pgtype.UUID
+	Stage           string
+	ActiveRole      string
+	SpendTotalCents int64
+	SpendLimitCents int64
+	Status          string
+	CurrentTask     string
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type GeevClient struct {
 	ID         pgtype.UUID
 	OwnerID    pgtype.UUID
@@ -330,6 +344,20 @@ type GeevConnector struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type GeevFactoryMetric struct {
+	ID                       pgtype.UUID
+	OwnerID                  pgtype.UUID
+	CardID                   pgtype.UUID
+	LeadTimeSeconds          int64
+	AiCostCents              int64
+	InfraCostCents           int64
+	FirstTimeApproval        bool
+	PostDeliveryDefects      int32
+	OwnerDecisionTimeSeconds int64
+	MarginCents              int64
+	CreatedAt                pgtype.Timestamptz
+}
+
 type GeevLedger struct {
 	ID          pgtype.UUID
 	OwnerID     pgtype.UUID
@@ -342,6 +370,55 @@ type GeevLedger struct {
 	Service     string
 	Description string
 	CreatedAt   pgtype.Timestamptz
+}
+
+type GeevModule struct {
+	ID            pgtype.UUID
+	OwnerID       pgtype.UUID
+	Name          string
+	Category      string
+	Description   string
+	CodeTemplates []byte
+	IsReviewed    bool
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type GeevPlaybook struct {
+	ID            pgtype.UUID
+	OwnerID       pgtype.UUID
+	ProductType   string
+	Title         string
+	Description   string
+	Stack         []byte
+	Checklist     []byte
+	Prompts       []byte
+	AutonomyLevel int32
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+type GeevPreview struct {
+	ID           pgtype.UUID
+	OwnerID      pgtype.UUID
+	CardID       pgtype.UUID
+	PreviewUrl   string
+	Status       string
+	ExpiresAt    pgtype.Timestamptz
+	RollbackPlan []byte
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type GeevProjectMemory struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	CardID    pgtype.UUID
+	ClientID  pgtype.UUID
+	Key       string
+	Category  string
+	Content   string
+	CreatedAt pgtype.Timestamptz
 }
 
 type GeevProposal struct {
@@ -380,6 +457,22 @@ type GeevServicesCost struct {
 	Currency     string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+}
+
+type GeevSpecification struct {
+	ID                 pgtype.UUID
+	OwnerID            pgtype.UUID
+	CardID             pgtype.UUID
+	UserStories        []byte
+	TestsCode          string
+	TestsPassed        bool
+	ClientApproved     bool
+	ClientApprovedAt   pgtype.Timestamptz
+	PaymentSignalCents int64
+	PaymentSignalPaid  bool
+	ScopeTokenHash     pgtype.Text
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
 }
 
 type GeevSystemState struct {

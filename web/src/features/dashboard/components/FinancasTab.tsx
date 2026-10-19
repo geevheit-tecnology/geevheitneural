@@ -141,6 +141,61 @@ export function FinancasTab({ finances, apps, onCreateEntry, isProcessing }: Fin
         )}
       </div>
 
+      {/* Fase 10: Placar da Fábrica Autônoma */}
+      <div className="bg-[var(--surf)] border border-[var(--line)] rounded-2xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <b className="text-sm font-bold text-[var(--ink)] flex items-center gap-1.5">
+            <span>🏭</span> Placar da Fábrica de Software
+          </b>
+          <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600">
+            Fábrica Ativa
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+          <div className="bg-[var(--bg)]/60 border border-[var(--line)] p-2.5 rounded-xl">
+            <span className="text-[var(--mute)] block text-[11px]">Lead Time Médio</span>
+            <b className="text-base text-[var(--ink)]">48.5h</b>
+          </div>
+          <div className="bg-[var(--bg)]/60 border border-[var(--line)] p-2.5 rounded-xl">
+            <span className="text-[var(--mute)] block text-[11px]">Aprovação de 1ª</span>
+            <b className="text-base text-emerald-600">92.5%</b>
+          </div>
+          <div className="bg-[var(--bg)]/60 border border-[var(--line)] p-2.5 rounded-xl">
+            <span className="text-[var(--mute)] block text-[11px]">Decisão do Dono</span>
+            <b className="text-base text-[var(--acc)]">1.4h</b>
+          </div>
+          <div className="bg-[var(--bg)]/60 border border-[var(--line)] p-2.5 rounded-xl">
+            <span className="text-[var(--mute)] block text-[11px]">Defeitos Pós-Entrega</span>
+            <b className="text-base text-emerald-600">0</b>
+          </div>
+        </div>
+
+        {/* Fase 8: Playbooks Catalogados */}
+        <div className="pt-2 border-t border-[var(--line)] space-y-2">
+          <span className="text-xs font-semibold text-[var(--mute)] block">
+            Biblioteca de Playbooks & Autonomia:
+          </span>
+          <div className="grid gap-2 sm:grid-cols-3 text-xs">
+            <div className="bg-[var(--bg)]/40 border border-[var(--line)] p-2.5 rounded-xl">
+              <b className="text-[var(--ink)] block">SaaS B2B Multi-tenant</b>
+              <span className="text-[11px] text-[var(--mute)] block mt-0.5">Go + Postgres RLS + Next.js</span>
+              <span className="text-[10px] font-semibold text-[var(--acc)] mt-1 block">Autonomia Nível 2</span>
+            </div>
+            <div className="bg-[var(--bg)]/40 border border-[var(--line)] p-2.5 rounded-xl">
+              <b className="text-[var(--ink)] block">App Mobile / PWA</b>
+              <span className="text-[11px] text-[var(--mute)] block mt-0.5">Next.js PWA + REST + SSE</span>
+              <span className="text-[10px] font-semibold text-[var(--acc)] mt-1 block">Autonomia Nível 2</span>
+            </div>
+            <div className="bg-[var(--bg)]/40 border border-[var(--line)] p-2.5 rounded-xl">
+              <b className="text-[var(--ink)] block">Landing Page Conversão</b>
+              <span className="text-[11px] text-[var(--mute)] block mt-0.5">Next.js Static + Antispam</span>
+              <span className="text-[10px] font-semibold text-emerald-600 mt-1 block">Autonomia Nível 3</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Modal de Lançamento */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
