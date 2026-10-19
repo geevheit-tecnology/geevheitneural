@@ -417,6 +417,124 @@ paths:
               schema:
                 type: string
 
+  /v1/cards/{id}/pipeline/start:
+    post:
+      summary: Iniciar Pipeline Autônomo de Construção (Fase 6)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                spend_limit_cents:
+                  type: integer
+                  example: 10000
+      responses:
+        "202":
+          description: Pipeline iniciado com sucesso
+
+  /v1/cards/{id}/pipeline:
+    get:
+      summary: Consultar Status do Pipeline (Fase 6)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Status, papel ativo, gasto de IA e tarefa atual
+
+  /v1/public/scope/{token}:
+    get:
+      summary: Visualizar Especificação e BDD do Escopo (Fase 7)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Critérios Given-When-Then e sinal financeiro
+
+  /v1/public/scope/{token}/approve:
+    post:
+      summary: Aprovar Escopo Formal pelo Cliente (Fase 7)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Escopo aprovado com sucesso
+
+  /v1/playbooks:
+    get:
+      summary: Listar Playbooks da Fábrica (Fase 8)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de playbooks, stacks e checklists
+
+  /v1/modules:
+    get:
+      summary: Listar Módulos Reutilizáveis (Fase 8)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Módulos catalogados e revisados
+
+  /v1/factory/scoreboard:
+    get:
+      summary: Placar da Fábrica Autônoma (Fase 10)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Métricas de Lead Time, margem, custo IA/infra e aprovação
+
+  /v1/factory/estimate:
+    post:
+      summary: Motor de Preço e Prazo Inteligente (Fase 10)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                product_type:
+                  type: string
+                  example: "saas_b2b"
+                complexity:
+                  type: string
+                  example: "medium"
+      responses:
+        "200":
+          description: Preço sugerido em centavos, dias e stack recomendada
+
 components:
   securitySchemes:
     BearerAuth:
