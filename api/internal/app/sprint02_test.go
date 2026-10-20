@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 )
 
 type mockSprint02Repos struct {
+	mu             sync.RWMutex
 	systemState    *system.SystemState
 	cards          map[string]*card.Card
 	pipelines      map[string]*app.PipelineDTO
@@ -63,9 +65,13 @@ func (u *mockSprint02UOW) RunInTx(ctx context.Context, fn func(tx app.Repositori
 type mockSystemStateRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockSystemStateRepoSprint02) Get(ctx context.Context) (*system.SystemState, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	return r.m.systemState, nil
 }
 func (r *mockSystemStateRepoSprint02) Save(ctx context.Context, s *system.SystemState) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.systemState = s
 	return nil
 }
@@ -73,14 +79,20 @@ func (r *mockSystemStateRepoSprint02) Save(ctx context.Context, s *system.System
 type mockCardRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockCardRepoSprint02) GetByID(ctx context.Context, id string) (*card.Card, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	c, ok := r.m.cards[id]
 	if !ok {
 		return nil, errors.New("cartão não encontrado")
 	}
-	return c, nil
+	cp := *c
+	return &cp, nil
 }
 func (r *mockCardRepoSprint02) Update(ctx context.Context, c *card.Card) error {
-	r.m.cards[c.ID] = c
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	cp := *c
+	r.m.cards[c.ID] = &cp
 	return nil
 }
 func (r *mockCardRepoSprint02) GetEnrichedByID(ctx context.Context, id string) (*app.CardListItemDTO, error) {
@@ -102,17 +114,26 @@ func (r *mockCardRepoSprint02) Create(ctx context.Context, c *app.CardListItemDT
 type mockPipelineRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockPipelineRepoSprint02) Upsert(ctx context.Context, p *app.PipelineDTO) error {
-	r.m.pipelines[p.CardID] = p
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	// Copia o valor para evitar corrida em campos internos
+	cp := *p
+	r.m.pipelines[p.CardID] = &cp
 	return nil
 }
 func (r *mockPipelineRepoSprint02) GetByCardID(ctx context.Context, cardID string) (*app.PipelineDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	p, ok := r.m.pipelines[cardID]
 	if !ok {
 		return nil, errors.New("pipeline não encontrado")
 	}
-	return p, nil
+	cp := *p
+	return &cp, nil
 }
 func (r *mockPipelineRepoSprint02) List(ctx context.Context) ([]app.PipelineDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	var list []app.PipelineDTO
 	for _, p := range r.m.pipelines {
 		list = append(list, *p)
@@ -120,6 +141,8 @@ func (r *mockPipelineRepoSprint02) List(ctx context.Context) ([]app.PipelineDTO,
 	return list, nil
 }
 func (r *mockPipelineRepoSprint02) AddSpend(ctx context.Context, cardID string, cents int64) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	if p, ok := r.m.pipelines[cardID]; ok {
 		p.SpendTotalCents += cents
 	}
@@ -129,6 +152,8 @@ func (r *mockPipelineRepoSprint02) AddSpend(ctx context.Context, cardID string, 
 type mockSpecRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockSpecRepoSprint02) Upsert(ctx context.Context, spec *app.SpecificationDTO, tokenHash string) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.specifications[spec.CardID] = spec
 	if tokenHash != "" {
 		r.m.specTokens[tokenHash] = spec.CardID
@@ -136,6 +161,8 @@ func (r *mockSpecRepoSprint02) Upsert(ctx context.Context, spec *app.Specificati
 	return nil
 }
 func (r *mockSpecRepoSprint02) GetByCardID(ctx context.Context, cardID string) (*app.SpecificationDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	s, ok := r.m.specifications[cardID]
 	if !ok {
 		return nil, errors.New("especificação não encontrada")
@@ -143,6 +170,8 @@ func (r *mockSpecRepoSprint02) GetByCardID(ctx context.Context, cardID string) (
 	return s, nil
 }
 func (r *mockSpecRepoSprint02) GetByTokenHash(ctx context.Context, hash string) (*app.SpecificationDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	cardID, ok := r.m.specTokens[hash]
 	if !ok {
 		return nil, errors.New("token não encontrado")
@@ -150,6 +179,8 @@ func (r *mockSpecRepoSprint02) GetByTokenHash(ctx context.Context, hash string) 
 	return r.m.specifications[cardID], nil
 }
 func (r *mockSpecRepoSprint02) ApproveByClient(ctx context.Context, hash string) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	cardID, ok := r.m.specTokens[hash]
 	if !ok {
 		return errors.New("token não encontrado")
@@ -158,9 +189,29 @@ func (r *mockSpecRepoSprint02) ApproveByClient(ctx context.Context, hash string)
 	return nil
 }
 
+func (m *mockSprint02Repos) setCard(c *card.Card) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cp := *c
+	m.cards[c.ID] = &cp
+}
+
+func (m *mockSprint02Repos) getCard(id string) *card.Card {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	c := m.cards[id]
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	return &cp
+}
+
 type mockPlaybookRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockPlaybookRepoSprint02) ListPlaybooks(ctx context.Context) ([]app.PlaybookDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	var list []app.PlaybookDTO
 	for _, p := range r.m.playbooks {
 		list = append(list, *p)
@@ -168,6 +219,8 @@ func (r *mockPlaybookRepoSprint02) ListPlaybooks(ctx context.Context) ([]app.Pla
 	return list, nil
 }
 func (r *mockPlaybookRepoSprint02) GetPlaybook(ctx context.Context, productType string) (*app.PlaybookDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	p, ok := r.m.playbooks[productType]
 	if !ok {
 		return nil, errors.New("playbook não encontrado")
@@ -175,10 +228,14 @@ func (r *mockPlaybookRepoSprint02) GetPlaybook(ctx context.Context, productType 
 	return p, nil
 }
 func (r *mockPlaybookRepoSprint02) UpsertPlaybook(ctx context.Context, p *app.PlaybookDTO) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.playbooks[p.ProductType] = p
 	return nil
 }
 func (r *mockPlaybookRepoSprint02) ListModules(ctx context.Context) ([]app.ModuleDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	var list []app.ModuleDTO
 	for _, m := range r.m.modules {
 		list = append(list, *m)
@@ -186,6 +243,8 @@ func (r *mockPlaybookRepoSprint02) ListModules(ctx context.Context) ([]app.Modul
 	return list, nil
 }
 func (r *mockPlaybookRepoSprint02) UpsertModule(ctx context.Context, m *app.ModuleDTO) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.modules[m.Name] = m
 	return nil
 }
@@ -193,10 +252,14 @@ func (r *mockPlaybookRepoSprint02) UpsertModule(ctx context.Context, m *app.Modu
 type mockPreviewRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockPreviewRepoSprint02) Create(ctx context.Context, prev *app.PreviewDTO) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.previews[prev.CardID] = prev
 	return nil
 }
 func (r *mockPreviewRepoSprint02) GetByCardID(ctx context.Context, cardID string) (*app.PreviewDTO, error) {
+	r.m.mu.RLock()
+	defer r.m.mu.RUnlock()
 	p, ok := r.m.previews[cardID]
 	if !ok {
 		return nil, errors.New("preview não encontrado")
@@ -207,6 +270,8 @@ func (r *mockPreviewRepoSprint02) GetByCardID(ctx context.Context, cardID string
 type mockMetricsRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockMetricsRepoSprint02) Record(ctx context.Context, cardID string, leadTimeSec, aiCost, infraCost, margin, decisionTimeSec int64, firstTimeApproved bool, defects int) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.metrics = append(r.m.metrics, map[string]any{"card_id": cardID, "margin": margin})
 	return nil
 }
@@ -226,6 +291,8 @@ func (r *mockMetricsRepoSprint02) GetScoreboard(ctx context.Context) (*app.Facto
 type mockCardEventsRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockCardEventsRepoSprint02) Create(ctx context.Context, event app.CardEventDTO) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.cardEvents = append(r.m.cardEvents, event)
 	return nil
 }
@@ -233,6 +300,8 @@ func (r *mockCardEventsRepoSprint02) Create(ctx context.Context, event app.CardE
 type mockAuditRepoSprint02 struct{ m *mockSprint02Repos }
 
 func (r *mockAuditRepoSprint02) Record(ctx context.Context, log app.AuditLogDTO) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
 	r.m.audits = append(r.m.audits, log)
 	return nil
 }
@@ -254,14 +323,14 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 	owner := system.OwnerPrincipal{ID: "owner-1", AAL: "aal2"}
 
 	cardID := uuid.NewString()
-	m.cards[cardID] = &card.Card{
+	m.setCard(&card.Card{
 		ID:        cardID,
 		Title:     "Portal SaaS B2B",
 		ClientID:  "client-1",
 		Stage:     card.StagePromptAprovar,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-	}
+	})
 
 	startBuildUC := app.NewStartBuildUseCase(uow, pub, guard, runner)
 	getPipelineUC := app.NewGetCardPipelineUseCase(uow)
@@ -278,7 +347,7 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 			t.Errorf("status esperado %s, obteve %s", pipeline.StatusRunning, p.Status)
 		}
 
-		c := m.cards[cardID]
+		c := m.getCard(cardID)
 		if c.Stage != card.StageEmExecucao && c.Stage != card.StageEntregaAprovar {
 			t.Errorf("estágio esperado em_execucao ou entrega_aprovar, obteve %s", c.Stage)
 		}
@@ -297,7 +366,7 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 
 	t.Run("Fase 6 & 9: Invariante dos Portões - Agente Publicador nunca aprova direto", func(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
-		c := m.cards[cardID]
+		c := m.getCard(cardID)
 		// O agente Publicador DEVE transitar para entrega_aprovar (Portão 3), NUNCA para entregue!
 		if c.Stage == card.StageEntregue {
 			t.Fatalf("VIOLAÇÃO CRÍTICA: agente publicador aprovou e entregou o projeto direto sem decisão do dono!")
@@ -308,9 +377,12 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 	})
 
 	t.Run("Fase 6: Bloqueio imediato quando o sistema estiver pausado", func(t *testing.T) {
+		m.mu.Lock()
 		m.systemState.Paused = true
+		m.mu.Unlock()
+
 		otherCardID := uuid.NewString()
-		m.cards[otherCardID] = &card.Card{ID: otherCardID, Title: "Outro App"}
+		m.setCard(&card.Card{ID: otherCardID, Title: "Outro App"})
 
 		_, err := startBuildUC.Execute(context.Background(), owner, app.StartBuildCommand{CardID: otherCardID})
 		if err == nil {
@@ -319,7 +391,10 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 		if !errors.Is(err, card.ErrSystemPaused) {
 			t.Errorf("esperava card.ErrSystemPaused, obteve %v", err)
 		}
+
+		m.mu.Lock()
 		m.systemState.Paused = false
+		m.mu.Unlock()
 	})
 
 	t.Run("Fase 8: Playbooks e Módulos Catalogados", func(t *testing.T) {
