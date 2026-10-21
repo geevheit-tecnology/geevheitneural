@@ -81,5 +81,7 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 | 2 | Concluída (2026-10-18) | Painel completo: 5 abas (Hoje, Quadro, Meus apps, Finanças, Conexões), Bottom Sheet de cartão, SSE em tempo real, barra de comando com voz, PWA offline e teste de fluxo e2e em 80ms. |
 | 3 a 5 | Concluída (2026-10-19) | Fechamento do Sprint 01: PWA offline com background sync, rotas públicas (/intake, /escopo, /aceite), health check e métricas. |
 | 6 a 10 | Concluída (2026-10-19) | Fábrica Autônoma de Software (Sprint 02): pipelines multi-agente, playbooks, sandbox de preview, placar de margem/lead-time, estimativa inteligente de preço. |
-| Deploy Prep | Concluída (2026-10-19) | Preparação completa para produção: render.yaml (IaC), docs/DEPLOYMENT.md, scripts/pre_deploy_check.sh, CodeGraph indexado. Supabase Cloud e Vercel NÃO conectados, aguardando ordem final de deploy. |
+| Deploy Prep | Concluída (2026-10-19) | Preparação completa para produção: render.yaml (IaC), docs/DEPLOYMENT.md, scripts/pre_deploy_check.sh, CodeGraph indexado. |
+| Deploy Produção | Concluída (2026-10-21) | Banco Supabase migrado (Goose v6 com RLS forçada), repositório GitHub sincronizado, usuário Dono provisionado no Auth, Frontend Vercel LIVE em produção (https://web-lake-eight-gwn3vopv94.vercel.app). |
+
 
