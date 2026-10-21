@@ -2,6 +2,19 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 12] - Identidade Visual Proprietária & Branding — 2026-10-21
+
+### Adicionado
+- **Logotipo e Ícones Customizados GeevheitNeural:**
+  - Substituição completa de todos os favicons e logos genéricos do Next.js / Vercel.
+  - Implementação do ícone orbital "G" constelação futurista em alta definição (1024x1024).
+  - Ícones PWA multi-resolução gerados: `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon-32x32.png` e container Windows ICO multi-formato (`favicon.ico`).
+  - Atualização do `manifest.json` com apontamento para os novos ícones PNG maskable.
+  - Integração visual no Header do Dashboard mobile-first ao lado do título da aplicação.
+  - Integração visual no topo do `LoginForm` de autenticação segura do Dono.
+
+---
+
 ## [Sprint 03 - Fase 11] - Motor de Cobrança PIX e Conciliação Financeira — 2026-10-21
 
 ### Adicionado

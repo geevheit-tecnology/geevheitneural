@@ -83,6 +83,11 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   return (
     <div className="w-full max-w-[360px] mx-auto p-4">
       <div className="text-center mb-6">
+        <img
+          src="/logo.png"
+          alt="GeevheitNeural"
+          className="w-16 h-16 mx-auto mb-3 rounded-2xl shadow-md border border-[var(--line)] object-cover"
+        />
         <h1 className="text-xl font-bold tracking-tight">GeevheitNeural</h1>
         <p className="text-xs text-[var(--mute)] mt-1">
           Acesso exclusivo do dono (2FA obrigatório)

@@ -40,11 +40,18 @@ export function Header({
   return (
     <>
       <header className="sticky top-0 z-30 bg-[var(--bg)] px-4 pt-3 pb-2 flex items-center justify-between gap-2.5">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--ink)] m-0 leading-tight">
-            {title}
-          </h1>
-          <div className="text-xs text-[var(--mute)]">Central de Operação</div>
+        <div className="flex items-center gap-2.5">
+          <img
+            src="/icon-192.png"
+            alt="GeevheitNeural"
+            className="w-9 h-9 rounded-xl border border-[var(--line)] shadow-sm object-cover flex-shrink-0"
+          />
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-[var(--ink)] m-0 leading-tight">
+              {title}
+            </h1>
+            <div className="text-xs text-[var(--mute)]">Central de Operação</div>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
