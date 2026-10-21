@@ -239,3 +239,204 @@ func (uc *ProposalUseCases) AcceptProposal(ctx context.Context, rawToken string)
 
 	return nil
 }
+
+// GenerateProposalDocument gera um documento executivo e comercial de proposta e contrato para o cartão
+func (uc *ProposalUseCases) GenerateProposalDocument(ctx context.Context, principal system.OwnerPrincipal, cardID string) (*ProposalDocumentDTO, error) {
+	if cardID == "" {
+		return nil, fmt.Errorf("card_id é obrigatório")
+	}
+
+	var doc *ProposalDocumentDTO
+	now := time.Now()
+
+	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		// 1. Busca dados completos do cartão
+		cardItem, err := tx.Cards.GetEnrichedByID(ctx, cardID)
+		if err != nil {
+			return fmt.Errorf("cartão não encontrado: %w", err)
+		}
+
+		// 2. Determina escopo, entregáveis e cronograma
+		scopeSummary := fmt.Sprintf("Desenvolvimento e entrega profissional de software para o módulo '%s'. Inclui arquitetura, implementação, testes de conformidade e deploy seguro.", cardItem.Title)
+		deliverables := []string{
+			"Arquitetura de software limpa (SOLID) com desacoplamento de banco e infraestrutura",
+			"Implementação das funcionalidades com testes automatizados de regressão",
+			"Segurança de dados e conformidade com RLS (Row Level Security) e LGPD",
+			"Ambiente de prévia ao vivo (Sandbox) para homologação antes do deploy em produção",
+			"Plano de rollback imediato e monitoramento pós-entrega",
+		}
+
+		timelineDays := 10
+		switch cardItem.Type {
+		case "bug":
+			scopeSummary = fmt.Sprintf("Diagnóstico, correção emergencial de defeito e testes de validação para '%s'.", cardItem.Title)
+			deliverables = []string{
+				"Identificação de causa-raiz e mitigação do incidente",
+				"Correção de código e testes de regressão automatizados",
+				"Publicação segura em produção com monitoramento pós-deploy",
+			}
+			timelineDays = 3
+		case "suporte":
+			scopeSummary = fmt.Sprintf("Atendimento técnico e manutenção contínua para '%s'.", cardItem.Title)
+			deliverables = []string{
+				"Ajustes de configuração e otimização operacional",
+				"Verificação de integridade de dados e auditoria de acessos",
+				"Suporte direto ao dono da aplicação",
+			}
+			timelineDays = 2
+		case "orcamento":
+			timelineDays = 12
+		}
+
+		acceptURL := fmt.Sprintf("%s/aceite", uc.baseURL)
+
+		// 3. Tenta enriquecer com especificações BDD se existirem
+		if spec, err := tx.Specifications.GetByCardID(ctx, cardID); err == nil && spec != nil {
+			if len(spec.UserStories) > 0 {
+				var stories []string
+				for _, us := range spec.UserStories {
+					if title, ok := us["title"].(string); ok && title != "" {
+						stories = append(stories, title)
+					}
+				}
+				if len(stories) > 0 {
+					deliverables = append([]string{fmt.Sprintf("User Stories BDD validadas (%d módulos mapeados)", len(stories))}, deliverables...)
+				}
+			}
+			if spec.ScopeURL != "" {
+				acceptURL = spec.ScopeURL
+			}
+		}
+
+		// 4. Busca informações do PIX se existirem
+		var pixEMV, pixTxID string
+		if paymentOrder, err := tx.PaymentOrders.GetByCardID(ctx, cardID); err == nil && paymentOrder != nil {
+			pixEMV = paymentOrder.PixEMV
+			pixTxID = paymentOrder.PixTxID
+		}
+
+		// 5. Condições comerciais
+		priceCents := cardItem.PriceCents
+		currency := cardItem.Currency
+		if currency == "" {
+			currency = "BRL"
+		}
+
+		formattedPrice := fmt.Sprintf("%.2f", float64(priceCents)/100.0)
+		formattedPriceBR := fmt.Sprintf("R$ %s", formattedPrice)
+		if priceCents == 0 {
+			formattedPriceBR = "A Definir / Sob Demanda"
+		}
+
+		paymentTerms := "Sinal de 50% via PIX no início do desenvolvimento e 50% na aprovação final da entrega em ambiente de prévia."
+		if cardItem.Type == "bug" || cardItem.Type == "suporte" {
+			paymentTerms = "Pagamento único de 100% via PIX após validação da solução em prévia."
+		}
+
+		warrantyDays := 90
+		terms := "1. A Geevheit Software House garante a correção sem custos adicionais de qualquer inconformidade técnica ou bug pelo prazo improrrogável de 90 dias após a entrega.\n2. Alterações de escopo não contempladas nesta proposta serão tratadas como nova demanda com orçamento prévio.\n3. O início dos trabalhos ocorre após a confirmação do sinal financeiro e aceite formal da proposta."
+
+		// 6. Mensagem formatada para WhatsApp
+		deliverablesListText := ""
+		for _, d := range deliverables {
+			deliverablesListText += fmt.Sprintf("  • %s\n", d)
+		}
+
+		whatsAppMsg := fmt.Sprintf(`*PROPOSTA COMERCIAL — GEEVHEIT SOFTWARE HOUSE* 🚀
+Olá, *%s*! Tudo bem?
+Segue a proposta técnica e comercial referente ao projeto:
+
+📋 *Projeto:* %s (%s)
+⏱️ *Prazo de Execução:* %d dias úteis
+🛡️ *Garantia Técnica:* %d dias com suporte incluso
+
+📦 *Principais Entregas:*
+%s
+💰 *Investimento:* %s
+💳 *Condição:* %s`,
+			cardItem.ClientName,
+			cardItem.Title,
+			cardItem.AppName,
+			timelineDays,
+			warrantyDays,
+			deliverablesListText,
+			formattedPriceBR,
+			paymentTerms,
+		)
+
+		if pixEMV != "" {
+			whatsAppMsg += fmt.Sprintf("\n\n🔑 *Chave PIX Copia e Cola (Sinal):*\n```%s```", pixEMV)
+		}
+
+		whatsAppMsg += fmt.Sprintf(`
+
+✍️ *Aprovação Formal:*
+Para aprovar o projeto e acompanhar o status:
+%s
+
+Atenciosamente,
+*Geevheit Software House*`, acceptURL)
+
+		docID := uuid.New().String()
+		doc = &ProposalDocumentDTO{
+			ID:                 docID,
+			CardID:             cardID,
+			Title:              cardItem.Title,
+			ClientName:         cardItem.ClientName,
+			AppName:            cardItem.AppName,
+			ScopeSummary:       scopeSummary,
+			Deliverables:       deliverables,
+			TimelineDays:       timelineDays,
+			WarrantyDays:       warrantyDays,
+			PriceCents:         priceCents,
+			Currency:           currency,
+			PaymentTerms:       paymentTerms,
+			AcceptURL:          acceptURL,
+			PixEMV:             pixEMV,
+			PixTxID:            pixTxID,
+			FormattedWhatsApp:  whatsAppMsg,
+			TermsAndConditions: terms,
+			GeneratedAt:        now,
+		}
+
+		// 7. Registra evento no cartão
+		if err := tx.CardEvents.Create(ctx, CardEventDTO{
+			ID:        uuid.New().String(),
+			CardID:    cardID,
+			Kind:      "proposal_document_generated",
+			ActorType: "owner",
+			Payload: map[string]any{
+				"proposal_doc_id": docID,
+				"price_cents":     priceCents,
+				"timeline_days":   timelineDays,
+			},
+			At: now,
+		}); err != nil {
+			return fmt.Errorf("erro ao registrar evento: %w", err)
+		}
+
+		// 8. Registra no audit log
+		return tx.Audit.Record(ctx, AuditLogDTO{
+			ID:         uuid.New().String(),
+			OwnerID:    principal.ID,
+			Action:     "proposal.document_generated",
+			ActorType:  "owner",
+			TargetType: "card",
+			TargetID:   &cardID,
+			Meta: map[string]any{
+				"price_cents":   priceCents,
+				"timeline_days": timelineDays,
+			},
+			At: now,
+		})
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	_ = uc.publisher.Publish(ctx, TopicCardsChanged, map[string]string{"card_id": cardID})
+
+	return doc, nil
+}
+

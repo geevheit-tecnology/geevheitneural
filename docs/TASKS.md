@@ -99,10 +99,10 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F11-04 Conciliação automática: confirmação de pagamento avança estágio do cartão e lança crédito em `geev.financial_entries`.
 - [x] F11-05 Interface na Bottom Sheet do cartão: exibir botão "Gerar PIX", QR Code copia-e-cola e status de pagamento em tempo real.
 
-## Fase 12 — Gerador de Propostas Comerciais e Contratos
-- [ ] F12-01 Caso de uso `GenerateProposalDocument` com modelo de escopo, cronograma, termos de garantia e valor em BRL.
-- [ ] F12-02 Exportação e visualização de Proposta Comercial formatada (HTML/PDF) com branding Geevheit.
-- [ ] F12-03 Ação de 1 toque no painel: "Copiar Proposta Formatada para WhatsApp" e "Baixar Proposta em PDF".
+## Fase 12 — Gerador de Propostas Comerciais e Contratos *(concluída)*
+- [x] F12-01 Caso de uso `GenerateProposalDocument` com modelo de escopo, cronograma, termos de garantia e valor em BRL.
+- [x] F12-02 Exportação e visualização de Proposta Comercial formatada (HTML/PDF) com branding Geevheit.
+- [x] F12-03 Ação de 1 toque no painel: "Copiar Proposta Formatada para WhatsApp" e "Baixar Proposta em PDF".
 
 ## Fase 13 — Portal Exclusivo do Cliente
 - [ ] F13-01 Rota pública protegida por token `/portal` para acompanhamento de status do projeto pelo cliente final.

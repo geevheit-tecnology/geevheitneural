@@ -332,5 +332,36 @@ export const api = {
       paid_at?: string;
       created_at: string;
     }>(`/v1/cards/${cardId}/pix`),
+
+  // Sprint 03: Propostas Comerciais & Contratos (Fase 12)
+  getProposalDocument: (cardId: string) =>
+    apiClient<ProposalDocument>(`/v1/cards/${cardId}/proposal-document`),
+
+  generateProposalDocument: (cardId: string) =>
+    apiClient<ProposalDocument>(`/v1/cards/${cardId}/proposal-document`, {
+      method: "POST",
+    }),
 };
+
+export interface ProposalDocument {
+  id: string;
+  card_id: string;
+  title: string;
+  client_name: string;
+  app_name: string;
+  scope_summary: string;
+  deliverables: string[];
+  timeline_days: number;
+  warranty_days: number;
+  price_cents: number;
+  currency: string;
+  payment_terms: string;
+  accept_url?: string;
+  pix_emv?: string;
+  pix_txid?: string;
+  formatted_whatsapp: string;
+  terms_and_conditions: string;
+  generated_at: string;
+}
+
 

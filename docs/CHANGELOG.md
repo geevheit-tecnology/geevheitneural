@@ -2,6 +2,22 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 12] - Gerador de Propostas Comerciais e Contratos — 2026-10-21
+
+### Adicionado
+- **Motor de Geração de Propostas & Contratos Técnicos:**
+  - Caso de uso `GenerateProposalDocument` na API Go com escopo executivo, cronograma por tipo de demanda, garantia técnica de 90 dias e condições de pagamento em BRL.
+  - Integração com especificações BDD (User Stories) e ordens PIX quando existentes no cartão.
+  - Endpoints autenticados `GET /v1/cards/{id}/proposal-document` e `POST /v1/cards/{id}/proposal-document`.
+  - Registro de auditoria em `audit_log` e eventos imutáveis no histórico do cartão (`proposal_document_generated`).
+- **Visualizador e Exportador Executivo (`ProposalModal`):**
+  - Layout timbrado profissional com logo Geevheit e metadados de projeto.
+  - Ação de 1 toque: **"Copiar Proposta para WhatsApp"** pré-formatada em Markdown com emojis, tópicos, link de aceite e chave PIX.
+  - Ação de 1 toque: **"Imprimir / Salvar PDF"** com estilização `@media print` para exportar documento A4 de alta fidelidade sem dependências de terceiros.
+  - Botão de abertura rápida integrado à `CardDetailSheet` do Dashboard.
+
+---
+
 ## [Sprint 03 - Extra] - Identidade Visual Proprietária & Branding — 2026-10-21
 
 ### Adicionado

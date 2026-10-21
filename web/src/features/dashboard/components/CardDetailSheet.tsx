@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { api, CardDetails } from "@/shared/api-client/endpoints";
+import { api, CardDetails, ProposalDocument } from "@/shared/api-client/endpoints";
+import { ProposalModal } from "./ProposalModal";
 
 interface CardDetailSheetProps {
   cardDetails: CardDetails | null;
@@ -40,6 +41,30 @@ export function CardDetailSheet({
   } | null>(null);
   const [loadingPix, setLoadingPix] = React.useState(false);
   const [copiedPix, setCopiedPix] = React.useState(false);
+
+  const [proposalData, setProposalData] = React.useState<ProposalDocument | null>(null);
+  const [isProposalOpen, setIsProposalOpen] = React.useState(false);
+  const [loadingProposal, setLoadingProposal] = React.useState(false);
+
+  const handleOpenProposal = async () => {
+    if (!cardDetails?.card?.id) return;
+    setLoadingProposal(true);
+    try {
+      const doc = await api.getProposalDocument(cardDetails.card.id);
+      setProposalData(doc);
+      setIsProposalOpen(true);
+    } catch {
+      try {
+        const doc = await api.generateProposalDocument(cardDetails.card.id);
+        setProposalData(doc);
+        setIsProposalOpen(true);
+      } catch (err) {
+        console.error("Falha ao abrir proposta comercial:", err);
+      }
+    } finally {
+      setLoadingProposal(false);
+    }
+  };
 
   React.useEffect(() => {
     if (cardDetails?.card?.id) {
@@ -374,6 +399,17 @@ export function CardDetailSheet({
             </div>
           )}
 
+          {/* Botão de Proposta Comercial & Contrato (Fase 12) */}
+          <button
+            type="button"
+            id="sheet-proposal-btn"
+            disabled={loadingProposal}
+            onClick={handleOpenProposal}
+            className="w-full py-2.5 px-3 rounded-xl font-bold text-xs border border-indigo-500/40 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 cursor-pointer flex items-center justify-center gap-2 transition-colors shadow-sm"
+          >
+            <span>📄</span> {loadingProposal ? "Abrindo proposta..." : "Visualizar Proposta Comercial & Contrato"}
+          </button>
+
           <button
             id="sheet-close-btn"
             onClick={onClose}
@@ -383,6 +419,13 @@ export function CardDetailSheet({
           </button>
         </div>
       </div>
+
+      {/* Modal de Proposta Comercial e Contrato (Fase 12) */}
+      <ProposalModal
+        proposal={proposalData}
+        isOpen={isProposalOpen}
+        onClose={() => setIsProposalOpen(false)}
+      />
     </div>
   );
 }

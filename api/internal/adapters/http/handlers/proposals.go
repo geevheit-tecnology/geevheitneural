@@ -99,3 +99,41 @@ func (h *ProposalHandler) AcceptPublicProposal(w http.ResponseWriter, r *http.Re
 		"message": "Proposta aceita com sucesso! Nossa equipe iniciará a especificação do projeto.",
 	})
 }
+
+// GetProposalDocument - Endpoint autenticado (Dono AAL2): GET/POST /v1/cards/{id}/proposal-document
+func (h *ProposalHandler) GetProposalDocument(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		http.Error(w, "método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	principal, ok := middleware.GetOwnerPrincipal(r.Context())
+	if !ok {
+		http.Error(w, "não autorizado", http.StatusUnauthorized)
+		return
+	}
+
+	cardID := r.PathValue("id")
+	if cardID == "" {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) >= 3 && parts[0] == "v1" && parts[1] == "cards" {
+			cardID = parts[2]
+		}
+	}
+
+	if cardID == "" {
+		http.Error(w, "id do cartão não informado", http.StatusBadRequest)
+		return
+	}
+
+	doc, err := h.uc.GenerateProposalDocument(r.Context(), principal, cardID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(doc)
+}
+

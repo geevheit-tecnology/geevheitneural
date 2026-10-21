@@ -188,8 +188,10 @@ func main() {
 	mux.Handle("GET /v1/cards/{id}/risk", requireAuth(riskHandlers.Get()))
 	mux.Handle("PUT /v1/cards/{id}/risk", requireAuth(riskHandlers.Save()))
 
-	// Propostas e Clientes / LGPD (F4-02, F4-04)
+	// Propostas e Clientes / LGPD (F4-02, F4-04, F12)
 	mux.Handle("POST /v1/proposals", requireAuth(http.HandlerFunc(proposalHandler.CreateProposal)))
+	mux.Handle("GET /v1/cards/{id}/proposal-document", requireAuth(http.HandlerFunc(proposalHandler.GetProposalDocument)))
+	mux.Handle("POST /v1/cards/{id}/proposal-document", requireAuth(http.HandlerFunc(proposalHandler.GetProposalDocument)))
 	mux.Handle("GET /v1/clients/{id}/export", requireAuth(http.HandlerFunc(clientLGPDHandler.ExportClient)))
 	mux.Handle("DELETE /v1/clients/{id}/purge", requireAuth(http.HandlerFunc(clientLGPDHandler.PurgeClient)))
 

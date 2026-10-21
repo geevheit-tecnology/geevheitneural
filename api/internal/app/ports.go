@@ -188,6 +188,27 @@ type PublicProposalViewDTO struct {
 	Status      string `json:"status"`
 }
 
+type ProposalDocumentDTO struct {
+	ID                 string    `json:"id"`
+	CardID             string    `json:"card_id"`
+	Title              string    `json:"title"`
+	ClientName         string    `json:"client_name"`
+	AppName            string    `json:"app_name"`
+	ScopeSummary       string    `json:"scope_summary"`
+	Deliverables       []string  `json:"deliverables"`
+	TimelineDays       int       `json:"timeline_days"`
+	WarrantyDays       int       `json:"warranty_days"`
+	PriceCents         int64     `json:"price_cents"`
+	Currency           string    `json:"currency"`
+	PaymentTerms       string    `json:"payment_terms"`
+	AcceptURL          string    `json:"accept_url,omitempty"`
+	PixEMV             string    `json:"pix_emv,omitempty"`
+	PixTxID            string    `json:"pix_txid,omitempty"`
+	FormattedWhatsApp  string    `json:"formatted_whatsapp"`
+	TermsAndConditions string    `json:"terms_and_conditions"`
+	GeneratedAt        time.Time `json:"generated_at"`
+}
+
 type ClientDTO struct {
 	ID         string    `json:"id"`
 	Name       string    `json:"name"`
