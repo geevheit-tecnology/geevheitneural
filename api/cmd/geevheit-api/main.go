@@ -22,6 +22,7 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,7 +53,7 @@ func main() {
 
 	// Se configurado para Simple Protocol (Render / pooler Supabase porta 6543)
 	if cfg.DBSimpleProtocol {
-		poolConfig.ConnConfig.DefaultQueryExecMode = 0 // pgx.QueryExecModeSimpleProtocol
+		poolConfig.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
