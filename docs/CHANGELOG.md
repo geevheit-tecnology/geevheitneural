@@ -2,6 +2,17 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 11] - Motor de Cobrança PIX e Conciliação Financeira — 2026-10-21
+
+### Adicionado
+- **Motor de Cobrança PIX Oficial (BR Code / EMV-QRCPS-MPM):**
+  - Geração determinística de payload copia-e-cola EMV com cálculo de CRC16 (polinômio 0x1021 CCITT-FALSE).
+  - Tabela `geev.payment_orders` com Row Level Security (RLS) forçada e triggers automáticos de timestamp.
+  - Endpoints `POST /v1/cards/{id}/pix` e `GET /v1/cards/{id}/pix` exclusivos do Dono.
+  - Endpoint público `POST /v1/payments/pix/webhook` para confirmação automática de pagamentos.
+  - Conciliação bancária automática: a confirmação do webhook liquida a ordem, registra receita em `financial_entries` na mesma UoW e dispara evento de histórico no cartão.
+  - Interface visual integrada na `CardDetailSheet` com QR Code dinâmico, código Copia-e-Cola e botão de 1 toque para copiar.
+
 ---
 
 ## [Sprint 02] - Fábrica Autônoma de Software (Fases 6 a 10) — 2026-10-18

@@ -92,12 +92,12 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 
 ## Sprint 03 — Expansão Comercial e Motor de Negócio
 
-## Fase 11 — Motor de Cobrança PIX e Conciliação Financeira *(atual)*
-- [ ] F11-01 Modelo e migração para ordens de pagamento e cobranças PIX (`geev.payment_orders`).
-- [ ] F11-02 Domínio `payment` e caso de uso `GeneratePixPayment` com payload EMV copia-e-cola e QR Code.
-- [ ] F11-03 Endpoint público `POST /v1/payments/webhook` com validação de assinatura e idempotência.
-- [ ] F11-04 Conciliação automática: confirmação de pagamento avança estágio do cartão e lança crédito em `geev.financial_entries`.
-- [ ] F11-05 Interface na Bottom Sheet do cartão: exibir botão "Gerar PIX", QR Code copia-e-cola e status de pagamento em tempo real.
+## Fase 11 — Motor de Cobrança PIX e Conciliação Financeira *(concluída)*
+- [x] F11-01 Modelo e migração para ordens de pagamento e cobranças PIX (`geev.payment_orders`).
+- [x] F11-02 Domínio `payment` e caso de uso `GeneratePixPayment` com payload EMV copia-e-cola e QR Code.
+- [x] F11-03 Endpoint público `POST /v1/payments/webhook` com validação de assinatura e idempotência.
+- [x] F11-04 Conciliação automática: confirmação de pagamento avança estágio do cartão e lança crédito em `geev.financial_entries`.
+- [x] F11-05 Interface na Bottom Sheet do cartão: exibir botão "Gerar PIX", QR Code copia-e-cola e status de pagamento em tempo real.
 
 ## Fase 12 — Gerador de Propostas Comerciais e Contratos
 - [ ] F12-01 Caso de uso `GenerateProposalDocument` com modelo de escopo, cronograma, termos de garantia e valor em BRL.
