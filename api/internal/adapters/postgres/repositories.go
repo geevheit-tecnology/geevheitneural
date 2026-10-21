@@ -988,4 +988,90 @@ func (r *AgentRepository) Toggle(ctx context.Context, id string, active bool) er
 	})
 }
 
+// PaymentOrderRepository implementa app.PaymentOrderRepository via sqlc.
+type PaymentOrderRepository struct {
+	q *sqlcgen.Queries
+}
+
+func NewPaymentOrderRepository(q *sqlcgen.Queries) *PaymentOrderRepository {
+	return &PaymentOrderRepository{q: q}
+}
+
+func (r *PaymentOrderRepository) Create(ctx context.Context, o *app.PaymentOrderDTO) error {
+	return r.q.CreatePaymentOrder(ctx, sqlcgen.CreatePaymentOrderParams{
+		ID:          textToUUID(o.ID),
+		OwnerID:     textToUUID(o.OwnerID),
+		CardID:      textToUUID(o.CardID),
+		ClientID:    textToUUID(o.ClientID),
+		AmountCents: o.AmountCents,
+		Currency:    o.Currency,
+		PixEmv:      o.PixEMV,
+		PixTxid:     o.PixTxID,
+		PixKey:      o.PixKey,
+		Status:      o.Status,
+		CreatedAt:   timeToTimestamptz(o.CreatedAt),
+		UpdatedAt:   timeToTimestamptz(o.UpdatedAt),
+	})
+}
+
+func (r *PaymentOrderRepository) GetByID(ctx context.Context, id string) (*app.PaymentOrderDTO, error) {
+	row, err := r.q.GetPaymentOrderByID(ctx, textToUUID(id))
+	if err != nil {
+		return nil, err
+	}
+	return mapPaymentOrderRow(row), nil
+}
+
+func (r *PaymentOrderRepository) GetByTxID(ctx context.Context, txid string) (*app.PaymentOrderDTO, error) {
+	row, err := r.q.GetPaymentOrderByTxID(ctx, txid)
+	if err != nil {
+		return nil, err
+	}
+	return mapPaymentOrderRow(row), nil
+}
+
+func (r *PaymentOrderRepository) GetByCardID(ctx context.Context, cardID string) (*app.PaymentOrderDTO, error) {
+	row, err := r.q.GetPaymentOrderByCardID(ctx, textToUUID(cardID))
+	if err != nil {
+		return nil, err
+	}
+	return mapPaymentOrderRow(row), nil
+}
+
+func (r *PaymentOrderRepository) UpdateStatus(ctx context.Context, id, status string, paidAt *time.Time) error {
+	var paidAtTs pgtype.Timestamptz
+	if paidAt != nil {
+		paidAtTs = timeToTimestamptz(*paidAt)
+	}
+	return r.q.UpdatePaymentOrderStatus(ctx, sqlcgen.UpdatePaymentOrderStatusParams{
+		ID:        textToUUID(id),
+		Status:    status,
+		PaidAt:    paidAtTs,
+		UpdatedAt: timeToTimestamptz(time.Now()),
+	})
+}
+
+func mapPaymentOrderRow(row sqlcgen.GeevPaymentOrder) *app.PaymentOrderDTO {
+	dto := &app.PaymentOrderDTO{
+		ID:          uuidToText(row.ID),
+		OwnerID:     uuidToText(row.OwnerID),
+		CardID:      uuidToText(row.CardID),
+		ClientID:    uuidToText(row.ClientID),
+		AmountCents: row.AmountCents,
+		Currency:    row.Currency,
+		PixEMV:      row.PixEmv,
+		PixTxID:     row.PixTxid,
+		PixKey:      row.PixKey,
+		Status:      row.Status,
+		CreatedAt:   timestamptzToTime(row.CreatedAt),
+		UpdatedAt:   timestamptzToTime(row.UpdatedAt),
+	}
+	if row.PaidAt.Valid {
+		t := timestamptzToTime(row.PaidAt)
+		dto.PaidAt = &t
+	}
+	return dto
+}
+
+
 

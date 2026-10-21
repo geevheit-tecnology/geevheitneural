@@ -4,14 +4,14 @@
 > Agentes de código: **leia este arquivo antes de começar qualquer tarefa.**
 
 ## Estado atual
-- **Sprint:** 02 — Fábrica Autônoma de Software (Fases 6, 7, 8, 9 e 10 **100% CONCLUÍDAS** em 2026-10-18).
-- **Status do Projeto:** Fases 0 a 10 **100% IMPLEMENTADAS, TESTADAS E OPERACIONAIS**.
+- **Sprint:** 03 — Expansão Comercial e Motor de Negócio (Fase 11 em andamento).
+- **Status do Projeto:** Fases 0 a 10 e Deploy em Produção **100% OPERACIONAIS NA NUVEM**.
 - **Qualidade e Conformidade:**
-  - Backend Go 100% verde (`go test ./...` e `go test -v ./internal/app -run TestSprint02`).
-  - Frontend Next.js estático 100% verde (`output: 'export'` gerando todas as rotas estáticas sem erro).
-  - Migrações goose 00001 a 00006 aplicadas com sucesso no PostgreSQL local Supabase com RLS forçada.
-  - Invariante dos Portões mantida intacta: agente Publicador avança para `entrega_aprovar` (Portão 3) e o deploy em produção depende unicamente da decisão explícita do Dono.
-- **Última atualização:** 2026-10-18.
+  - Backend Go 100% verde (`go test -race ./...`).
+  - Frontend Next.js estático 100% verde na Vercel (`https://web-lake-eight-gwn3vopv94.vercel.app`).
+  - Banco de Dados Supabase Nuvem com RLS forçada e Goose v6.
+  - Invariantes mantidas: Dinheiro sempre em centavos (`bigint`/`int64`), RLS em todas as tabelas, portões exclusivos do dono, zero quebra de regressão.
+- **Última atualização:** 2026-10-21.
 
 ## Respostas do dono (2026-10-18)
 1. **Protótipo:** salvo em [`docs/prototype/central-prototipo.html`](./prototype/central-prototipo.html). É a referência de telas, textos e tokens de cor (claro e escuro).

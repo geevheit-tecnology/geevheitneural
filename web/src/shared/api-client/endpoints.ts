@@ -298,5 +298,39 @@ export const api = {
     apiClient<{ success: boolean; message: string }>(`/v1/public/scope/${token}/approve`, {
       method: "POST",
     }),
+
+  // Sprint 03: Motor de Cobrança PIX (Fase 11)
+  generatePix: (cardId: string, pixKey?: string) =>
+    apiClient<{
+      id: string;
+      card_id: string;
+      client_id: string;
+      amount_cents: number;
+      currency: string;
+      pix_emv: string;
+      pix_txid: string;
+      pix_key: string;
+      status: string;
+      paid_at?: string;
+      created_at: string;
+    }>(`/v1/cards/${cardId}/pix`, {
+      method: "POST",
+      body: JSON.stringify({ pix_key: pixKey }),
+    }),
+
+  getPix: (cardId: string) =>
+    apiClient<{
+      id: string;
+      card_id: string;
+      client_id: string;
+      amount_cents: number;
+      currency: string;
+      pix_emv: string;
+      pix_txid: string;
+      pix_key: string;
+      status: string;
+      paid_at?: string;
+      created_at: string;
+    }>(`/v1/cards/${cardId}/pix`),
 };
 

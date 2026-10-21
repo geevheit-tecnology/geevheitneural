@@ -89,3 +89,32 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F10-03 Suíte de avaliação de modelos (Evals) para benchmarking de custo × qualidade.
 - [x] F10-04 Roteamento inteligente de modelos (econômico para tarefas simples, avançado para código crítico).
 - [x] F10-05 Nível de autonomia por tipo de produto baseado em métricas comprovadas.
+
+## Sprint 03 — Expansão Comercial e Motor de Negócio
+
+## Fase 11 — Motor de Cobrança PIX e Conciliação Financeira *(atual)*
+- [ ] F11-01 Modelo e migração para ordens de pagamento e cobranças PIX (`geev.payment_orders`).
+- [ ] F11-02 Domínio `payment` e caso de uso `GeneratePixPayment` com payload EMV copia-e-cola e QR Code.
+- [ ] F11-03 Endpoint público `POST /v1/payments/webhook` com validação de assinatura e idempotência.
+- [ ] F11-04 Conciliação automática: confirmação de pagamento avança estágio do cartão e lança crédito em `geev.financial_entries`.
+- [ ] F11-05 Interface na Bottom Sheet do cartão: exibir botão "Gerar PIX", QR Code copia-e-cola e status de pagamento em tempo real.
+
+## Fase 12 — Gerador de Propostas Comerciais e Contratos
+- [ ] F12-01 Caso de uso `GenerateProposalDocument` com modelo de escopo, cronograma, termos de garantia e valor em BRL.
+- [ ] F12-02 Exportação e visualização de Proposta Comercial formatada (HTML/PDF) com branding Geevheit.
+- [ ] F12-03 Ação de 1 toque no painel: "Copiar Proposta Formatada para WhatsApp" e "Baixar Proposta em PDF".
+
+## Fase 13 — Portal Exclusivo do Cliente
+- [ ] F13-01 Rota pública protegida por token `/portal` para acompanhamento de status do projeto pelo cliente final.
+- [ ] F13-02 Visualização clara das etapas (Requisitos → Construção → Testes → Entrega) sem expor custos ou dados de agentes internos.
+- [ ] F13-03 Botão de "Aceite Formal da Entrega" pelo cliente com registro imutável em `audit_log`.
+
+## Fase 14 — Gestão de Mensalidades (MRR) e Alertas de Renovação
+- [ ] F14-01 Tabela e migração de assinaturas recorrentes (`geev.subscriptions`) vinculadas a clientes e apps.
+- [ ] F14-02 Métricas de MRR (Receita Recorrente Mensal) e previsão de faturamento na aba Finanças.
+- [ ] F14-03 Alertas de faturas pendentes e histórico de mensalidades por cliente.
+
+## Fase 15 — Notificações de Negócio e Webhooks
+- [ ] F15-01 Adaptador de mensageria para despachar alertas de novos leads, pagamentos confirmados e aceites.
+- [ ] F15-02 Configuração segura de webhook de saída (`secret_ref`).
+

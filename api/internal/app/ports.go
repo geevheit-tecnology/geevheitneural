@@ -413,6 +413,30 @@ type FactoryMetricsRepository interface {
 	GetScoreboard(ctx context.Context) (*FactoryScoreboardDTO, error)
 }
 
+type PaymentOrderDTO struct {
+	ID          string     `json:"id"`
+	OwnerID     string     `json:"owner_id"`
+	CardID      string     `json:"card_id"`
+	ClientID    string     `json:"client_id"`
+	AmountCents int64      `json:"amount_cents"`
+	Currency    string     `json:"currency"`
+	PixEMV      string     `json:"pix_emv"`
+	PixTxID     string     `json:"pix_txid"`
+	PixKey      string     `json:"pix_key"`
+	Status      string     `json:"status"`
+	PaidAt      *time.Time `json:"paid_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+type PaymentOrderRepository interface {
+	Create(ctx context.Context, order *PaymentOrderDTO) error
+	GetByID(ctx context.Context, id string) (*PaymentOrderDTO, error)
+	GetByTxID(ctx context.Context, txid string) (*PaymentOrderDTO, error)
+	GetByCardID(ctx context.Context, cardID string) (*PaymentOrderDTO, error)
+	UpdateStatus(ctx context.Context, id, status string, paidAt *time.Time) error
+}
+
 type Repositories struct {
 	Cards          CardRepository
 	Apps           AppRepository
@@ -426,6 +450,7 @@ type Repositories struct {
 	Playbooks      PlaybookRepository
 	Previews       PreviewRepository
 	FactoryMetrics FactoryMetricsRepository
+	PaymentOrders  PaymentOrderRepository
 	Approvals      ApprovalRepository
 	CardEvents     CardEventRepository
 	Audit          AuditRepository

@@ -146,10 +146,15 @@ func main() {
 	getScoreboardUC := app.NewGetFactoryScoreboardUseCase(uow)
 	estimatePriceUC := app.NewEstimatePriceUseCase(uow)
 
+	// Sprint 03: Fase 11 - Motor de Pagamentos PIX e Webhooks
+	generatePixUC := app.NewGeneratePixPaymentUseCase(uow, publisher, clk)
+	getPixUC := app.NewGetPixPaymentUseCase(uow)
+	processPixWebhookUC := app.NewProcessPixWebhookUseCase(uow, publisher, clk)
+
 	// 4. Roteamento (net/http padrão do Go 1.22+)
 	mux := http.NewServeMux()
 
-	// Endpoints públicos de infraestrutura e intake/propostas/escopo
+	// Endpoints públicos de infraestrutura, intake/propostas/escopo e webhook PIX
 	mux.HandleFunc("GET /healthz", handlers.HandleHealthz)
 	mux.HandleFunc("GET /readyz", handlers.HandleReadyz(pool))
 	mux.HandleFunc("POST /v1/intake", intakeHandler.SubmitIntake)
@@ -157,6 +162,7 @@ func main() {
 	mux.HandleFunc("POST /v1/public/proposals/{token}/accept", proposalHandler.AcceptPublicProposal)
 	mux.HandleFunc("GET /v1/public/scope/{token}", handlers.HandleGetPublicScope(getPublicScopeUC))
 	mux.HandleFunc("POST /v1/public/scope/{token}/approve", handlers.HandleApprovePublicScope(approvePublicScopeUC))
+	mux.HandleFunc("POST /v1/payments/pix/webhook", handlers.HandlePixWebhook(processPixWebhookUC, ""))
 
 	// Endpoints restritos para Agentes de IA (validação de token via hash + ExecutionGuard)
 	requireAgentAuth := middleware.RequireAgentAuth(agentRepo)
@@ -211,6 +217,10 @@ func main() {
 	mux.Handle("GET /v1/modules", requireAuth(handlers.HandleListModules(listModulesUC)))
 	mux.Handle("GET /v1/factory/scoreboard", requireAuth(handlers.HandleGetFactoryScoreboard(getScoreboardUC)))
 	mux.Handle("POST /v1/factory/estimate", requireAuth(handlers.HandleEstimatePrice(estimatePriceUC)))
+
+	// Cobrança PIX (Fase 11)
+	mux.Handle("POST /v1/cards/{id}/pix", requireAuth(handlers.HandleGeneratePix(generatePixUC, cfg.OwnerUserID)))
+	mux.Handle("GET /v1/cards/{id}/pix", requireAuth(handlers.HandleGetPix(getPixUC)))
 
 	// SSE Stream em tempo real
 	mux.Handle("GET /v1/stream", requireAuth(handlers.HandleSSEStream(publisher)))

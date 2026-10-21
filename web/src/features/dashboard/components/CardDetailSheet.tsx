@@ -32,6 +32,15 @@ export function CardDetailSheet({
     current_task: string;
   } | null>(null);
 
+  const [pixData, setPixData] = React.useState<{
+    id: string;
+    pix_emv: string;
+    pix_txid: string;
+    status: string;
+  } | null>(null);
+  const [loadingPix, setLoadingPix] = React.useState(false);
+  const [copiedPix, setCopiedPix] = React.useState(false);
+
   React.useEffect(() => {
     if (cardDetails?.card?.id) {
       api.getPipeline(cardDetails.card.id)
@@ -41,8 +50,37 @@ export function CardDetailSheet({
         .catch(() => {
           setPipelineData(null);
         });
+
+      if (cardDetails.card.price_cents > 0) {
+        api.getPix(cardDetails.card.id)
+          .then((p) => setPixData(p))
+          .catch(() => setPixData(null));
+      } else {
+        setPixData(null);
+      }
     }
-  }, [cardDetails?.card?.id]);
+  }, [cardDetails?.card?.id, cardDetails?.card?.price_cents]);
+
+  const handleGeneratePix = async () => {
+    if (!cardDetails?.card?.id) return;
+    setLoadingPix(true);
+    try {
+      const p = await api.generatePix(cardDetails.card.id);
+      setPixData(p);
+    } catch {
+      // fallback
+    } finally {
+      setLoadingPix(false);
+    }
+  };
+
+  const handleCopyPix = () => {
+    if (pixData?.pix_emv) {
+      navigator.clipboard.writeText(pixData.pix_emv);
+      setCopiedPix(true);
+      setTimeout(() => setCopiedPix(false), 3000);
+    }
+  };
 
   if (!isOpen || !cardDetails) return null;
 
@@ -121,6 +159,65 @@ export function CardDetailSheet({
             </b>
           </div>
         </div>
+
+        {/* Cobrança PIX Instantânea (Fase 11) */}
+        {card.price_cents > 0 && (
+          <div className="bg-[var(--surf)] border border-emerald-500/30 rounded-xl p-3.5 mb-4 text-xs">
+            <div className="flex items-center justify-between mb-2">
+              <b className="text-[var(--ink)] flex items-center gap-1.5 text-sm font-bold">
+                <span className="text-emerald-500 font-mono">❖</span> Cobrança via PIX
+              </b>
+              {pixData && (
+                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                  pixData.status === "paid" 
+                    ? "bg-emerald-500/20 text-emerald-500" 
+                    : "bg-amber-500/20 text-amber-500"
+                }`}>
+                  {pixData.status === "paid" ? "Liquidado ✓" : "Pendente"}
+                </span>
+              )}
+            </div>
+
+            {!pixData ? (
+              <button
+                type="button"
+                id="btn-generate-pix"
+                disabled={loadingPix}
+                onClick={handleGeneratePix}
+                className="w-full py-2.5 px-3 rounded-lg font-semibold text-xs border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 cursor-pointer flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>💳</span> {loadingPix ? "Gerando cobrança..." : "Gerar QR Code PIX de " + formatBRL(card.price_cents)}
+              </button>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <div className="flex flex-col items-center justify-center bg-white p-3 rounded-xl border border-[var(--line)]">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(pixData.pix_emv)}`}
+                    alt="QR Code PIX"
+                    className="w-36 h-36"
+                  />
+                  <span className="text-[10px] text-gray-500 mt-1 font-mono">TXID: {pixData.pix_txid}</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <span className="text-[11px] text-[var(--mute)] block">Código PIX Copia e Cola:</span>
+                  <div className="p-2 bg-[var(--bg)] border border-[var(--line)] rounded-lg font-mono text-[10px] break-all select-all max-h-16 overflow-y-auto">
+                    {pixData.pix_emv}
+                  </div>
+                  <button
+                    type="button"
+                    id="btn-copy-pix"
+                    onClick={handleCopyPix}
+                    className="w-full py-2 px-3 rounded-lg font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <span>{copiedPix ? "✓" : "📋"}</span>
+                    {copiedPix ? "Código PIX Copiado!" : "Copiar Código PIX"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Pipeline de Fábrica Autônoma (Fases 6 a 9) */}
         {pipelineData && (

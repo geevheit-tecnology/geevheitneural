@@ -384,6 +384,22 @@ type GeevModule struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type GeevPaymentOrder struct {
+	ID          pgtype.UUID
+	OwnerID     pgtype.UUID
+	CardID      pgtype.UUID
+	ClientID    pgtype.UUID
+	AmountCents int64
+	Currency    string
+	PixEmv      string
+	PixTxid     string
+	PixKey      string
+	Status      string
+	PaidAt      pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type GeevPlaybook struct {
 	ID            pgtype.UUID
 	OwnerID       pgtype.UUID
