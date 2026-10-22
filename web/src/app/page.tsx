@@ -11,6 +11,8 @@ import { PausedBanner } from "@/features/dashboard/components/PausedBanner";
 import { BottomNav, TabKey } from "@/features/dashboard/components/BottomNav";
 import { CommandLine } from "@/features/dashboard/components/CommandLine";
 import { HojeTab } from "@/features/dashboard/components/HojeTab";
+import { HomeHubTab } from "@/features/dashboard/components/HomeHubTab";
+import { NewBoardModal } from "@/features/dashboard/components/NewBoardModal";
 import { QuadroTab } from "@/features/dashboard/components/QuadroTab";
 import { MeusAppsTab } from "@/features/dashboard/components/MeusAppsTab";
 import { FinancasTab } from "@/features/dashboard/components/FinancasTab";
@@ -55,6 +57,9 @@ export default function HomePage() {
     token: string;
     prompt: string;
   } | null>(null);
+
+  // Modal de Criação de Novo Quadro (spec01)
+  const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -296,12 +301,26 @@ export default function HomePage() {
   const decisionsCount = moneyWaiting?.count ?? pendingCards.length;
 
   const tabTitles: Record<TabKey, string> = {
-    hoje: "Hoje",
+    hoje: "Início",
     quadro: "Quadro",
     apps: "Meus apps",
     fin: "Finanças",
     con: "Conexões",
   };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Erro ao encerrar sessão:", err);
+    } finally {
+      queryClient.clear();
+      setSession(null);
+      showToast("Sessão encerrada com segurança.");
+    }
+  };
+
+  const userEmail = (session as { user?: { email?: string } })?.user?.email;
 
   if (loadingAuth) {
     return (
@@ -321,7 +340,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--ink)] font-sans antialiased">
-      {/* Cabeçalho */}
+      {/* Cabeçalho com Menu do Usuário e Logout */}
       <Header
         title={tabTitles[activeTab]}
         moneyWaitingFormatted={formattedWaiting}
@@ -332,6 +351,10 @@ export default function HomePage() {
           else pauseMutation.mutate();
         }}
         isTogglingPause={pauseMutation.isPending || resumeMutation.isPending}
+        userEmail={userEmail}
+        onLogout={handleLogout}
+        onNavigateHome={() => setActiveTab("hoje")}
+        currentTab={activeTab}
       />
 
       {/* Banner de Sistema Pausado */}
@@ -340,11 +363,16 @@ export default function HomePage() {
       {/* Conteúdo Principal com scroll livre */}
       <main className="flex-1 px-4 max-w-[1100px] w-full mx-auto pb-36 pt-1">
         {activeTab === "hoje" && (
-          <HojeTab
+          <HomeHubTab
             cards={cards}
+            apps={apps}
+            finances={finances}
+            isPaused={isPaused}
             onOpenCard={handleOpenCard}
             onQuickApprove={handleQuickApprove}
-            isProcessing={decideMutation.isPending}
+            onOpenNewBoardModal={() => setIsNewBoardModalOpen(true)}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
+            isProcessingDecision={decideMutation.isPending}
           />
         )}
 
@@ -433,6 +461,14 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Criação de Novo Quadro (spec01) */}
+      <NewBoardModal
+        isOpen={isNewBoardModalOpen}
+        onClose={() => setIsNewBoardModalOpen(false)}
+        onCreateBoard={(data) => createAppMutation.mutate(data)}
+        isProcessing={createAppMutation.isPending}
+      />
 
       {/* Toast Flutuante */}
       {toastMessage && (

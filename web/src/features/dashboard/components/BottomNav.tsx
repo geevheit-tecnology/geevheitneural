@@ -13,11 +13,11 @@ export function BottomNav({ currentTab, onTabChange }: BottomNavProps) {
   const tabs = [
     {
       key: "hoje" as TabKey,
-      label: "Hoje",
+      label: "Início",
       icon: (
         <>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+          <path d="M3 9.5L12 3l9 6.5V20a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 20V9.5z" />
+          <polyline points="9 21 9 12 15 12 15 21" />
         </>
       ),
     },
