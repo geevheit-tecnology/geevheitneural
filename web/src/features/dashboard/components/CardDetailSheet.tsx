@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { api, CardDetails, ProposalDocument } from "@/shared/api-client/endpoints";
+import { api, CardDetails, ProposalDocument, PortalStatusResponse } from "@/shared/api-client/endpoints";
 import { ProposalModal } from "./ProposalModal";
 
 interface CardDetailSheetProps {
@@ -41,6 +41,10 @@ export function CardDetailSheet({
   } | null>(null);
   const [loadingPix, setLoadingPix] = React.useState(false);
   const [copiedPix, setCopiedPix] = React.useState(false);
+
+  const [portalStatus, setPortalStatus] = React.useState<PortalStatusResponse | null>(null);
+  const [loadingPortal, setLoadingPortal] = React.useState(false);
+  const [copiedPortal, setCopiedPortal] = React.useState(false);
 
   const [proposalData, setProposalData] = React.useState<ProposalDocument | null>(null);
   const [isProposalOpen, setIsProposalOpen] = React.useState(false);
@@ -83,6 +87,10 @@ export function CardDetailSheet({
       } else {
         setPixData(null);
       }
+
+      api.getPortalStatus(cardDetails.card.id)
+        .then((st) => setPortalStatus(st))
+        .catch(() => setPortalStatus(null));
     }
   }, [cardDetails?.card?.id, cardDetails?.card?.price_cents]);
 
@@ -104,6 +112,51 @@ export function CardDetailSheet({
       navigator.clipboard.writeText(pixData.pix_emv);
       setCopiedPix(true);
       setTimeout(() => setCopiedPix(false), 3000);
+    }
+  };
+
+  const handleGeneratePortal = async () => {
+    if (!cardDetails?.card?.id) return;
+    setLoadingPortal(true);
+    try {
+      const res = await api.generatePortalLink(cardDetails.card.id, 30);
+      setPortalStatus({
+        card_id: res.card_id,
+        is_active: true,
+        portal_url: res.portal_url,
+        expires_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+      });
+      if (res.portal_url) {
+        navigator.clipboard.writeText(res.portal_url);
+        setCopiedPortal(true);
+        setTimeout(() => setCopiedPortal(false), 3000);
+      }
+    } catch (err) {
+      console.error("Erro ao gerar link do portal:", err);
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
+
+  const handleRevokePortal = async () => {
+    if (!cardDetails?.card?.id) return;
+    if (!confirm("Tem certeza que deseja revogar o link do portal do cliente? O cliente perderá o acesso imediatamente.")) return;
+    setLoadingPortal(true);
+    try {
+      await api.revokePortalLink(cardDetails.card.id);
+      setPortalStatus(null);
+    } catch (err) {
+      console.error("Erro ao revogar portal:", err);
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
+
+  const handleCopyPortal = () => {
+    if (portalStatus?.portal_url) {
+      navigator.clipboard.writeText(portalStatus.portal_url);
+      setCopiedPortal(true);
+      setTimeout(() => setCopiedPortal(false), 3000);
     }
   };
 
@@ -243,6 +296,83 @@ export function CardDetailSheet({
             )}
           </div>
         )}
+
+        {/* Portal Exclusivo do Cliente (Fase 13) */}
+        <div className="bg-[var(--surf)] border border-sky-500/30 rounded-xl p-3.5 mb-4 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <b className="text-[var(--ink)] flex items-center gap-1.5 text-sm font-bold">
+              <span className="text-sky-500">🌐</span> Portal do Cliente
+            </b>
+            {portalStatus?.is_active && (
+              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-sky-500/20 text-sky-500">
+                Link Ativo
+              </span>
+            )}
+          </div>
+
+          {!portalStatus?.is_active ? (
+            <div>
+              <p className="text-[11px] text-[var(--mute)] mb-2.5">
+                Compartilhe com o cliente um link seguro e criptografado para acompanhamento das etapas e aceite formal do projeto.
+              </p>
+              <button
+                type="button"
+                id="btn-generate-portal"
+                disabled={loadingPortal}
+                onClick={handleGeneratePortal}
+                className="w-full py-2.5 px-3 rounded-lg font-semibold text-xs border border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 cursor-pointer flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>🔗</span> {loadingPortal ? "Gerando link..." : "Gerar Link do Portal do Cliente"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2.5 pt-1">
+              {portalStatus.accepted_at ? (
+                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                  <span className="text-base">✓</span>
+                  <div>
+                    <div className="font-bold text-[11px]">Aceite Formal Registrado pelo Cliente!</div>
+                    <div className="text-[10px] opacity-80">
+                      Assinado por {portalStatus.accepted_by || "Cliente"} em {new Date(portalStatus.accepted_at).toLocaleString("pt-BR")}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11px] text-[var(--mute)]">
+                  O cliente visualiza o progresso em tempo real e pode realizar o aceite formal na etapa de entrega.
+                </div>
+              )}
+
+              {portalStatus.last_accessed_at && (
+                <div className="text-[10px] text-[var(--mute)]">
+                  Último acesso do cliente: {new Date(portalStatus.last_accessed_at).toLocaleString("pt-BR")}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  id="btn-copy-portal"
+                  onClick={handleCopyPortal}
+                  className="flex-1 py-2 px-3 rounded-lg font-bold text-xs bg-sky-600 hover:bg-sky-700 text-white cursor-pointer transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <span>{copiedPortal ? "✓" : "📋"}</span>
+                  {copiedPortal ? "Link do Portal Copiado!" : "Copiar Link do Portal"}
+                </button>
+                <button
+                  type="button"
+                  id="btn-revoke-portal"
+                  disabled={loadingPortal}
+                  onClick={handleRevokePortal}
+                  className="py-2 px-3 rounded-lg font-semibold text-xs border border-red-500/30 bg-red-500/10 text-red-500 hover:bg-red-500/20 cursor-pointer transition-colors"
+                  title="Revogar link"
+                >
+                  Revogar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Pipeline de Fábrica Autônoma (Fases 6 a 9) */}
         {pipelineData && (

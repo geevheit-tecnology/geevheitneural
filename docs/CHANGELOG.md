@@ -2,6 +2,25 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 13] - Portal Exclusivo do Cliente e Aceite Formal — 2026-10-21
+
+### Adicionado
+- **Portal Exclusivo do Cliente (`/portal`):**
+  - Rota pública do cliente protegida por token criptografado de 32 bytes (armazenado com hash SHA-256 no banco).
+  - Linha do tempo visual mobile-first em 4 fases: Requisitos, Construção, Testes e Entrega.
+  - Isolamento estrito de dados: zero vazamento de custos internos, margens de lucro, prompts de IA ou notas internas confidenciais para o cliente final.
+  - Atualização automática de status (polling a cada 15 segundos).
+  - Modal de Aceite Formal em 2 etapas na fase de entrega, com assinatura do cliente, hash de estado imutável e registro em `audit_log`.
+- **Backend Go e Armazenamento Seguro:**
+  - Migração `00008_client_portal_tokens.sql` com RLS ativada e forçada.
+  - Endpoints públicos `GET /v1/public/portal/{token}` e `POST /v1/public/portal/{token}/accept`.
+  - Endpoints autenticados do Dono: `POST /v1/cards/{id}/portal-link`, `GET /v1/cards/{id}/portal-link` e `DELETE /v1/cards/{id}/portal-link`.
+  - Suíte de testes automatizados `portal_test.go` cobrindo geração de tokens, isolamento estrito de dados financeiros e auditoria de aceite formal idempotente.
+- **Integração no Painel do Dono:**
+  - Widget de gestão do Portal do Cliente dentro da `CardDetailSheet` do cartão com geração de link, cópia rápida para compartilhamento, exibição de último acesso do cliente, confirmação de aceite formal e revogação imediata de acesso.
+
+---
+
 ## [Sprint 03 - Fase 12] - Gerador de Propostas Comerciais e Contratos — 2026-10-21
 
 ### Adicionado

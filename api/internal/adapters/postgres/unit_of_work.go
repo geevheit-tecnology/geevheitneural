@@ -63,6 +63,7 @@ func (u *UnitOfWork) RunInTx(ctx context.Context, fn func(tx app.Repositories) e
 		Previews:       NewPreviewRepository(q),
 		FactoryMetrics: NewFactoryMetricsRepository(q),
 		PaymentOrders:  NewPaymentOrderRepository(q),
+		PortalTokens:   NewPortalTokenRepository(q),
 		Approvals:      NewApprovalRepository(q),
 		CardEvents:     NewCardEventRepository(q),
 		Audit:          NewAuditRepository(q),

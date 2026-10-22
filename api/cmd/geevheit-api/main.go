@@ -151,10 +151,14 @@ func main() {
 	getPixUC := app.NewGetPixPaymentUseCase(uow)
 	processPixWebhookUC := app.NewProcessPixWebhookUseCase(uow, publisher, clk)
 
+	// Sprint 03: Fase 13 - Portal Exclusivo do Cliente
+	portalUC := app.NewPortalUseCases(uow, publisher, cfg.BaseURL)
+	portalHandler := handlers.NewPortalHandler(portalUC)
+
 	// 4. Roteamento (net/http padrão do Go 1.22+)
 	mux := http.NewServeMux()
 
-	// Endpoints públicos de infraestrutura, intake/propostas/escopo e webhook PIX
+	// Endpoints públicos de infraestrutura, intake/propostas/escopo, portal do cliente e webhook PIX
 	mux.HandleFunc("GET /healthz", handlers.HandleHealthz)
 	mux.HandleFunc("GET /readyz", handlers.HandleReadyz(pool))
 	mux.HandleFunc("POST /v1/intake", intakeHandler.SubmitIntake)
@@ -162,6 +166,8 @@ func main() {
 	mux.HandleFunc("POST /v1/public/proposals/{token}/accept", proposalHandler.AcceptPublicProposal)
 	mux.HandleFunc("GET /v1/public/scope/{token}", handlers.HandleGetPublicScope(getPublicScopeUC))
 	mux.HandleFunc("POST /v1/public/scope/{token}/approve", handlers.HandleApprovePublicScope(approvePublicScopeUC))
+	mux.HandleFunc("GET /v1/public/portal/{token}", portalHandler.GetPublicPortal)
+	mux.HandleFunc("POST /v1/public/portal/{token}/accept", portalHandler.AcceptPublicDelivery)
 	mux.HandleFunc("POST /v1/payments/pix/webhook", handlers.HandlePixWebhook(processPixWebhookUC, ""))
 
 	// Endpoints restritos para Agentes de IA (validação de token via hash + ExecutionGuard)
@@ -198,6 +204,11 @@ func main() {
 	// Cartões (Hoje e Quadro Kanban)
 	mux.Handle("GET /v1/cards", requireAuth(handlers.HandleListCards(listCardsUC)))
 	mux.Handle("GET /v1/cards/{id}", requireAuth(handlers.HandleGetCardDetails(getCardDetailsUC)))
+
+	// Portal do Cliente (Fase 13)
+	mux.Handle("POST /v1/cards/{id}/portal-link", requireAuth(http.HandlerFunc(portalHandler.GeneratePortalLink)))
+	mux.Handle("DELETE /v1/cards/{id}/portal-link", requireAuth(http.HandlerFunc(portalHandler.RevokePortalLink)))
+	mux.Handle("GET /v1/cards/{id}/portal-link", requireAuth(http.HandlerFunc(portalHandler.GetPortalStatus)))
 
 	// Meus Apps
 	mux.Handle("GET /v1/apps", requireAuth(appHandlers.List()))

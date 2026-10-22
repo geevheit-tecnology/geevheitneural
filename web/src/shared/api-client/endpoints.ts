@@ -341,6 +341,26 @@ export const api = {
     apiClient<ProposalDocument>(`/v1/cards/${cardId}/proposal-document`, {
       method: "POST",
     }),
+
+  // Sprint 03: Portal Exclusivo do Cliente (Fase 13)
+  generatePortalLink: (cardId: string, daysValid: number = 30) =>
+    apiClient<{
+      token: string;
+      portal_url: string;
+      card_id: string;
+      days_valid: number;
+    }>(`/v1/cards/${cardId}/portal-link`, {
+      method: "POST",
+      body: JSON.stringify({ days_valid: daysValid }),
+    }),
+
+  getPortalStatus: (cardId: string) =>
+    apiClient<PortalStatusResponse>(`/v1/cards/${cardId}/portal-link`),
+
+  revokePortalLink: (cardId: string) =>
+    apiClient<{ message: string }>(`/v1/cards/${cardId}/portal-link`, {
+      method: "DELETE",
+    }),
 };
 
 export interface ProposalDocument {
@@ -362,6 +382,38 @@ export interface ProposalDocument {
   formatted_whatsapp: string;
   terms_and_conditions: string;
   generated_at: string;
+}
+
+export interface PortalStageItem {
+  key: string;
+  label: string;
+  description: string;
+  status: "concluido" | "em_andamento" | "pendente";
+  order: number;
+  updated_at?: string;
+}
+
+export interface ClientPortalData {
+  project_title: string;
+  client_name: string;
+  app_name: string;
+  current_stage_label: string;
+  progress_percentage: number;
+  stages: PortalStageItem[];
+  can_accept: boolean;
+  is_accepted: boolean;
+  accepted_at?: string;
+  accepted_by?: string;
+}
+
+export interface PortalStatusResponse {
+  card_id: string;
+  is_active: boolean;
+  portal_url?: string;
+  expires_at?: string;
+  last_accessed_at?: string;
+  accepted_at?: string;
+  accepted_by?: string;
 }
 
 

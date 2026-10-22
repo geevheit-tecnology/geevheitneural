@@ -482,6 +482,47 @@ paths:
         "200":
           description: Escopo aprovado com sucesso
 
+  /v1/public/portal/{token}:
+    get:
+      summary: Visualizar Portal Exclusivo do Cliente (Fase 13)
+      description: DTO estritamente isolado sem expor custos, margem ou logs de IA
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Linha do tempo e status do projeto
+        "404":
+          description: Link de acesso inválido ou expirado
+
+  /v1/public/portal/{token}/accept:
+    post:
+      summary: Aceite Formal da Entrega pelo Cliente (Fase 13)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accepted_by]
+              properties:
+                accepted_by:
+                  type: string
+      responses:
+        "200":
+          description: Entrega aceita formalmente com registro em audit_log
+        "400":
+          description: Erro na validação ou projeto não pronto para entrega
+
   /v1/playbooks:
     get:
       summary: Listar Playbooks da Fábrica (Fase 8)

@@ -109,10 +109,10 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] E0-02 Logout seguro: menu dropdown do dono (DN), indicador 2FA AAL2, atalho `← Início`, confirmação de encerramento seguro de sessão e limpeza de cache.
 - [x] E0-03 Linha de base e validação: builds Next.js e Go 100% verdes sem qualquer quebra de regressão.
 
-## Fase 13 — Portal Exclusivo do Cliente
-- [ ] F13-01 Rota pública protegida por token `/portal` para acompanhamento de status do projeto pelo cliente final.
-- [ ] F13-02 Visualização clara das etapas (Requisitos → Construção → Testes → Entrega) sem expor custos ou dados de agentes internos.
-- [ ] F13-03 Botão de "Aceite Formal da Entrega" pelo cliente com registro imutável em `audit_log`.
+## Fase 13 — Portal Exclusivo do Cliente *(concluída em feature/fase-13-portal-cliente — aguardando aprovação para merge)*
+- [x] F13-01 Rota pública protegida por token `/portal` para acompanhamento de status do projeto pelo cliente final.
+- [x] F13-02 Visualização clara das etapas (Requisitos → Construção → Testes → Entrega) sem expor custos ou dados de agentes internos.
+- [x] F13-03 Botão de "Aceite Formal da Entrega" pelo cliente com registro imutável em `audit_log`.
 
 ## Fase 14 — Gestão de Mensalidades (MRR) e Alertas de Renovação
 - [ ] F14-01 Tabela e migração de assinaturas recorrentes (`geev.subscriptions`) vinculadas a clientes e apps.

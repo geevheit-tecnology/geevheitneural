@@ -7,6 +7,7 @@ import (
 
 	"github.com/geevheit/neuralcenter/api/internal/domain/approval"
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
+	"github.com/geevheit/neuralcenter/api/internal/domain/portal"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
 )
 
@@ -458,6 +459,14 @@ type PaymentOrderRepository interface {
 	UpdateStatus(ctx context.Context, id, status string, paidAt *time.Time) error
 }
 
+type PortalTokenRepository interface {
+	Create(ctx context.Context, token *portal.PortalToken) error
+	GetByHash(ctx context.Context, tokenHash string) (*portal.PortalToken, error)
+	GetByCardID(ctx context.Context, cardID string) (*portal.PortalToken, error)
+	Update(ctx context.Context, token *portal.PortalToken) error
+	RevokeByCardID(ctx context.Context, cardID string, revokedAt time.Time) error
+}
+
 type Repositories struct {
 	Cards          CardRepository
 	Apps           AppRepository
@@ -472,6 +481,7 @@ type Repositories struct {
 	Previews       PreviewRepository
 	FactoryMetrics FactoryMetricsRepository
 	PaymentOrders  PaymentOrderRepository
+	PortalTokens   PortalTokenRepository
 	Approvals      ApprovalRepository
 	CardEvents     CardEventRepository
 	Audit          AuditRepository
