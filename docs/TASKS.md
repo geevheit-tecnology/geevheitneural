@@ -104,6 +104,11 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F12-02 Exportação e visualização de Proposta Comercial formatada (HTML/PDF) com branding Geevheit.
 - [x] F12-03 Ação de 1 toque no painel: "Copiar Proposta Formatada para WhatsApp" e "Baixar Proposta em PDF".
 
+## Etapa 0 — Hub de Quadros + Logout Seguro (spec01) *(concluída em feature/home-hub-logout — aguardando aprovação para merge)*
+- [x] E0-01 Tela Inicial (Hub de Quadros): saudação, continuar de onde parei, painel das 7 etapas de produção, visualização em grade e lista de todos os quadros, alertas de portão, saúde da infraestrutura e modal de criação de quadro.
+- [x] E0-02 Logout seguro: menu dropdown do dono (DN), indicador 2FA AAL2, atalho `← Início`, confirmação de encerramento seguro de sessão e limpeza de cache.
+- [x] E0-03 Linha de base e validação: builds Next.js e Go 100% verdes sem qualquer quebra de regressão.
+
 ## Fase 13 — Portal Exclusivo do Cliente
 - [ ] F13-01 Rota pública protegida por token `/portal` para acompanhamento de status do projeto pelo cliente final.
 - [ ] F13-02 Visualização clara das etapas (Requisitos → Construção → Testes → Entrega) sem expor custos ou dados de agentes internos.
