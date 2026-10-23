@@ -7,9 +7,11 @@ import (
 
 	"github.com/geevheit/neuralcenter/api/internal/domain/approval"
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
+	"github.com/geevheit/neuralcenter/api/internal/domain/notification"
 	"github.com/geevheit/neuralcenter/api/internal/domain/portal"
 	"github.com/geevheit/neuralcenter/api/internal/domain/subscription"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
+	"github.com/geevheit/neuralcenter/api/internal/domain/webhook"
 )
 
 var ErrExecutionLocked = errors.New("execução bloqueada: sistema pausado ou agente inativo")
@@ -481,6 +483,20 @@ type SubscriptionRepository interface {
 	UpdateChargeStatus(ctx context.Context, id string, status subscription.ChargeStatus, paidAt *time.Time, method string) error
 }
 
+type WebhookRepository interface {
+	CreateEndpoint(ctx context.Context, ep *webhook.Endpoint) error
+	GetEndpointByID(ctx context.Context, id string) (*webhook.Endpoint, error)
+	ListEndpoints(ctx context.Context, activeOnly bool) ([]webhook.Endpoint, error)
+	DeleteEndpoint(ctx context.Context, id string) error
+	RecordDelivery(ctx context.Context, d *webhook.Delivery) error
+	ListDeliveries(ctx context.Context, webhookID *string, limit int) ([]webhook.Delivery, error)
+}
+
+type NotificationRepository interface {
+	GetPreferences(ctx context.Context, ownerID string) (*notification.Preferences, error)
+	SavePreferences(ctx context.Context, prefs *notification.Preferences) error
+}
+
 type Repositories struct {
 	Cards          CardRepository
 	Apps           AppRepository
@@ -497,6 +513,8 @@ type Repositories struct {
 	PaymentOrders  PaymentOrderRepository
 	PortalTokens   PortalTokenRepository
 	Subscriptions  SubscriptionRepository
+	Webhooks       WebhookRepository
+	Notifications  NotificationRepository
 	Approvals      ApprovalRepository
 	CardEvents     CardEventRepository
 	Audit          AuditRepository

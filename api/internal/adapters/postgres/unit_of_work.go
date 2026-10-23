@@ -65,6 +65,8 @@ func (u *UnitOfWork) RunInTx(ctx context.Context, fn func(tx app.Repositories) e
 		PaymentOrders:  NewPaymentOrderRepository(q),
 		PortalTokens:   NewPortalTokenRepository(q),
 		Subscriptions:  NewSubscriptionRepository(q),
+		Webhooks:       NewWebhookRepository(q),
+		Notifications:  NewNotificationRepository(q),
 		Approvals:      NewApprovalRepository(q),
 		CardEvents:     NewCardEventRepository(q),
 		Audit:          NewAuditRepository(q),

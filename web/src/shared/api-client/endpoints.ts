@@ -398,6 +398,32 @@ export const api = {
       "/v1/subscriptions/process-daily",
       { method: "POST" }
     ),
+
+  // Webhooks & Notificações (Fase 15)
+  listWebhooks: () => apiClient<WebhookEndpoint[]>("/v1/webhooks"),
+  createWebhook: (data: { url: string; description: string; events: string[] }) =>
+    apiClient<WebhookEndpoint>("/v1/webhooks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  deleteWebhook: (id: string) =>
+    apiClient<{ message: string }>(`/v1/webhooks/${id}`, { method: "DELETE" }),
+  listWebhookDeliveries: (webhookId?: string) => {
+    const qs = webhookId ? `?webhook_id=${webhookId}` : "";
+    return apiClient<WebhookDelivery[]>(`/v1/webhooks/deliveries${qs}`);
+  },
+  redeliverWebhook: (id: string, event: string, payload: Record<string, unknown>) =>
+    apiClient<WebhookDelivery>(`/v1/webhooks/${id}/redeliver`, {
+      method: "POST",
+      body: JSON.stringify({ event, payload }),
+    }),
+  getNotificationPreferences: () =>
+    apiClient<NotificationPreferences>("/v1/notifications/preferences"),
+  saveNotificationPreferences: (prefs: NotificationPreferences) =>
+    apiClient<NotificationPreferences>("/v1/notifications/preferences", {
+      method: "PUT",
+      body: JSON.stringify(prefs),
+    }),
 };
 
 export interface ProposalDocument {
@@ -506,6 +532,46 @@ export interface CreateSubscriptionInput {
   interval: "mensal" | "trimestral" | "semestral" | "anual";
   due_day: number;
 }
+
+export interface WebhookEndpoint {
+  id: string;
+  owner_id: string;
+  url: string;
+  description: string;
+  secret_token?: string;
+  events: string[];
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event: string;
+  payload: Record<string, unknown>;
+  status_code: number;
+  attempts: number;
+  response_body: string;
+  success: boolean;
+  created_at: string;
+}
+
+export interface NotificationPreferences {
+  owner_id?: string;
+  channels: {
+    telegram_enabled: boolean;
+    whatsapp_enabled: boolean;
+    email_enabled: boolean;
+  };
+  events: {
+    intake_enabled: boolean;
+    pix_enabled: boolean;
+    portal_accept_enabled: boolean;
+    subscription_overdue_enabled: boolean;
+  };
+}
+
 
 
 

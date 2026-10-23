@@ -2,6 +2,30 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 15] - Notificações de Negócio, Webhooks com HMAC/SSRF e Grafo de Agentes — 2026-10-23
+
+### Adicionado
+- **Notificações Operacionais Multicanal (`MultiNotifier`):**
+  - Modelagem e migração `00010_notifications_and_webhooks.sql` criando `geev.notification_preferences`, `geev.webhooks` e `geev.webhook_deliveries` com RLS ativada e forçada.
+  - Interface desacoplada `Notifier` e adaptador `MultiNotifier` com suporte a Telegram Bot, WhatsApp Gateway e E-mail operacional.
+  - Disparo de alertas críticos: novos pedidos em `/intake`, confirmação de pagamento PIX, aceite formal no Portal e atraso de mensalidades.
+  - Endpoints REST autenticados: `GET /v1/notifications/preferences` e `PUT /v1/notifications/preferences`.
+- **Webhooks de Saída com Assinatura Criptográfica e Proteção Anti-SSRF:**
+  - Assinatura HMAC-SHA256 (`X-Geevheit-Signature: sha256=...`) com carimbo de tempo Unix (`X-Geevheit-Timestamp`) para prevenção de ataques de replay.
+  - Validador estrito anti-SSRF bloqueando ranges privados (RFC 1918), loopback (`127.0.0.1`, `localhost`) e metadados de nuvem (`169.254.169.254`).
+  - Despachante assíncrono em segundo plano com timeout de 10s e registro imutável em `geev.webhook_deliveries` (status code, tempo de resposta e payload).
+  - Endpoints REST autenticados: `POST /v1/webhooks`, `GET /v1/webhooks`, `DELETE /v1/webhooks/{id}`, `GET /v1/webhooks/deliveries` e `POST /v1/webhooks/{id}/redeliver`.
+- **Interface na Aba Conexões:**
+  - Seções integradas: "Notificações Operacionais do Dono" e "Webhooks de Saída (Eventos em Tempo Real)".
+  - Gerenciador de preferências com toggles por canal e por tipo de evento crítico.
+  - Formulário de cadastro de webhook com visualização do secret HMAC para configuração no cliente.
+  - Histórico de entregas com status HTTP, duração em ms, carimbo de data e botão de reenvio manual imediato.
+- **Documentação e Arquitetura do Grafo de Agentes (F15-03):**
+  - Criação de `docs/WEBHOOKS_AND_ORCHESTRATION.md` com exemplos prontos de validação HMAC em Node.js/Express e workflows no n8n.
+  - Especificação arquitetural completa do Grafo de Agentes determinístico (Requisitos → Arquiteto → Dev → QA → Deploy → Aceite do Cliente), com isolamento em sandbox, portões com 2FA do Dono e garantias de segurança via `ExecutionGuard`.
+
+---
+
 ## [Sprint 03 - Fase 14] - Gestão de Mensalidades (MRR) e Recorrência — 2026-10-23
 
 ### Adicionado

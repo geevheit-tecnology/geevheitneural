@@ -16,8 +16,10 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/adapters/events"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/http/handlers"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/http/middleware"
+	"github.com/geevheit/neuralcenter/api/internal/adapters/notifications"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/postgres"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/postgres/sqlcgen"
+	"github.com/geevheit/neuralcenter/api/internal/adapters/webhooks"
 	"github.com/geevheit/neuralcenter/api/internal/app"
 	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
@@ -159,6 +161,44 @@ func main() {
 	subscriptionUC := app.NewSubscriptionsUseCases(uow, publisher)
 	subscriptionHandlers := handlers.NewSubscriptionHandlers(subscriptionUC)
 
+	// Sprint 03: Fase 15 - Notificações de Negócio e Webhooks
+	telegramToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	telegramChatID := os.Getenv("TELEGRAM_CHAT_ID")
+	whatsAppURL := os.Getenv("WHATSAPP_API_URL")
+	whatsAppToken := os.Getenv("WHATSAPP_API_TOKEN")
+	multiNotifier := notifications.NewMultiNotifier(logger, telegramToken, telegramChatID, whatsAppURL, whatsAppToken)
+	webhookDispatcher := webhooks.NewDispatcher(logger, postgres.NewWebhookRepository(sqlcgen.New(pool)), false)
+	notificationWebhooksUC := app.NewNotificationWebhooksUseCases(uow, multiNotifier, webhookDispatcher, false)
+	notificationWebhooksHandlers := handlers.NewNotificationWebhookHandlers(notificationWebhooksUC)
+
+	// Listener em background para despachar eventos de negócio a notificações e webhooks
+	go func() {
+		cardCh := publisher.Subscribe(app.TopicCardsChanged)
+		financeCh := publisher.Subscribe(app.TopicFinancesChanged)
+		for {
+			select {
+			case payload, ok := <-cardCh:
+				if !ok {
+					return
+				}
+				if m, ok := payload.(map[string]any); ok {
+					if evt, ok := m["event"].(string); ok && evt == "portal_delivery_accepted" {
+						notificationWebhooksUC.DispatchBusinessEvent(context.Background(), "portal.delivery_accepted", "Aceite Formal Recebido", "Cliente aceitou formalmente a entrega do projeto", m)
+					}
+				}
+			case payload, ok := <-financeCh:
+				if !ok {
+					return
+				}
+				if m, ok := payload.(map[string]any); ok {
+					if evt, ok := m["event"].(string); ok && evt == "pix_payment_confirmed" {
+						notificationWebhooksUC.DispatchBusinessEvent(context.Background(), "payment.pix_confirmed", "Pagamento PIX Confirmado", "Pagamento de cliente liquidado via PIX", m)
+					}
+				}
+			}
+		}
+	}()
+
 	// 4. Roteamento (net/http padrão do Go 1.22+)
 	mux := http.NewServeMux()
 
@@ -232,6 +272,15 @@ func main() {
 	mux.Handle("GET /v1/subscriptions", requireAuth(subscriptionHandlers.ListSubscriptions()))
 	mux.Handle("PATCH /v1/subscriptions/{id}/status", requireAuth(subscriptionHandlers.UpdateStatus()))
 	mux.Handle("POST /v1/subscriptions/process-daily", requireAuth(subscriptionHandlers.ProcessDaily()))
+
+	// Webhooks de Saída e Notificações de Negócio (Fase 15)
+	mux.Handle("GET /v1/webhooks", requireAuth(notificationWebhooksHandlers.ListEndpoints()))
+	mux.Handle("POST /v1/webhooks", requireAuth(notificationWebhooksHandlers.CreateEndpoint()))
+	mux.Handle("DELETE /v1/webhooks/{id}", requireAuth(notificationWebhooksHandlers.DeleteEndpoint()))
+	mux.Handle("GET /v1/webhooks/deliveries", requireAuth(notificationWebhooksHandlers.ListDeliveries()))
+	mux.Handle("POST /v1/webhooks/{id}/redeliver", requireAuth(notificationWebhooksHandlers.Redeliver()))
+	mux.Handle("GET /v1/notifications/preferences", requireAuth(notificationWebhooksHandlers.GetPreferences()))
+	mux.Handle("PUT /v1/notifications/preferences", requireAuth(notificationWebhooksHandlers.SavePreferences()))
 
 	// Conexões
 	mux.Handle("GET /v1/connectors", requireAuth(handlers.HandleListConnectors(listConnectorsUC)))

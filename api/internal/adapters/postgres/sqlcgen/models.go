@@ -402,6 +402,15 @@ type GeevModule struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type GeevNotificationPreference struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	Channels  []byte
+	Events    []byte
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type GeevPaymentOrder struct {
 	ID          pgtype.UUID
 	OwnerID     pgtype.UUID
@@ -550,4 +559,29 @@ type GeevSystemState struct {
 	PausedAt  pgtype.Timestamptz
 	Reason    string
 	UpdatedAt pgtype.Timestamptz
+}
+
+type GeevWebhookDelivery struct {
+	ID           pgtype.UUID
+	OwnerID      pgtype.UUID
+	WebhookID    pgtype.UUID
+	Event        string
+	Payload      []byte
+	StatusCode   int32
+	Attempts     int32
+	ResponseBody string
+	Success      bool
+	CreatedAt    pgtype.Timestamptz
+}
+
+type GeevWebhookEndpoint struct {
+	ID          pgtype.UUID
+	OwnerID     pgtype.UUID
+	Url         string
+	Description string
+	SecretToken string
+	Events      []string
+	Active      bool
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }

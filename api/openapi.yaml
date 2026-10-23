@@ -671,6 +671,114 @@ paths:
         "200":
           description: Relatório de cobranças vencidas e faturas geradas
 
+  /v1/webhooks:
+    get:
+      summary: Listar Webhooks de Saída (Fase 15)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de endpoints de webhook registrados
+    post:
+      summary: Cadastrar Novo Webhook de Saída (Fase 15)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url:
+                  type: string
+                  example: "https://automations.suaempresa.com/webhook"
+                events:
+                  type: array
+                  items:
+                    type: string
+                  example: ["*"]
+                description:
+                  type: string
+      responses:
+        "201":
+          description: Webhook cadastrado com secret HMAC gerado
+
+  /v1/webhooks/{id}:
+    delete:
+      summary: Excluir Webhook de Saída (Fase 15)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Webhook desativado/removido com sucesso
+
+  /v1/webhooks/deliveries:
+    get:
+      summary: Listar Histórico de Entregas de Webhooks (Fase 15)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Histórico recente de entregas, status code HTTP e payloads
+    post:
+      summary: Reenviar Entrega de Webhook (Fase 15)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Disparo assíncrono acionado para reenvio
+
+  /v1/notifications/preferences:
+    get:
+      summary: Obter Preferências de Notificação do Dono (Fase 15)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Configuração de canais (Telegram, WhatsApp, E-mail) e eventos
+    put:
+      summary: Atualizar Preferências de Notificação do Dono (Fase 15)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channels:
+                  type: object
+                  properties:
+                    telegram_enabled:
+                      type: boolean
+                    whatsapp_enabled:
+                      type: boolean
+                    email_enabled:
+                      type: boolean
+                events:
+                  type: object
+                  properties:
+                    intake_enabled:
+                      type: boolean
+                    pix_enabled:
+                      type: boolean
+                    portal_accept_enabled:
+                      type: boolean
+                    subscription_overdue_enabled:
+                      type: boolean
+      responses:
+        "200":
+          description: Preferências salvas com sucesso
+
 components:
   securitySchemes:
     BearerAuth:

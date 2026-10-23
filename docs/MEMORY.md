@@ -86,5 +86,7 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 | Etapa 0 (spec01) | Concluída (2026-10-21) | Hub de Quadros (Tela Inicial com 7 etapas, grade/lista, saúde infra) + Logout Seguro com 2FA AAL2 (branch feature/home-hub-logout). |
 | 13 (spec02) | Concluída (2026-10-21) | Portal Exclusivo do Cliente (/portal): token criptografado SHA-256, isolamento estrito de dados internos, polling 15s, aceite formal imutável em audit_log (branch feature/fase-13-portal-cliente). |
 | 14 (spec02) | Concluída (2026-10-23) | Gestão de Mensalidades (MRR) e Recorrência: modelo de assinaturas e faturas, cálculo de MRR sem float, rotina diária idempotente e painel com alertas em Finanças (branch feature/fase-14-mrr). |
+| 15 (spec02) | Concluída (2026-10-23) | Notificações Operacionais & Webhooks de Saída: mensageria com MultiNotifier (Telegram, WhatsApp, E-mail), webhooks com assinatura HMAC-SHA256 e proteção anti-SSRF, histórico imutável de entregas, gestão de preferências na aba Conexões e especificação detalhada do Grafo de Agentes em docs/WEBHOOKS_AND_ORCHESTRATION.md (branch feature/fase-15-notifications-webhooks). |
+
 
 

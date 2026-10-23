@@ -121,8 +121,8 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F14-04 Rotina diária idempotente (`POST /v1/subscriptions/process-daily`) para atualizar status de atraso e gerar faturas futuras.
 
 ## Fase 15 — Notificações de Negócio e Webhooks
-- [ ] F15-01 Adaptador de mensageria para despachar alertas de novos leads, pagamentos confirmados e aceites.
-- [ ] F15-02 Configuração segura de webhook de saída (`secret_ref`).
-- [ ] F15-03 como faco para gerar o grafo de agentes que vai ser ligaod nesse sistema para fazer a roda girar pois a ideia e ter um escritrio de tecnologia software tudo por agente e um orquestrador para autorixar os ervicos ou noa, exemplo clinte entra no site faz o pedido de orcamentopara uma landpage ai passa na triagem aprovanado o istema ja sugere um agente e tempo de exceusao e custo de tokens
-ai aporvandoja inicia ate o deploy depois outro agente revisa passandoo no qa libera pro xlietne em forma de link para aceear.
+- [x] F15-01 Adaptador de mensageria (`MultiNotifier` para Telegram, WhatsApp e E-mail com fallback seguro) para despachar alertas de novos leads, pagamentos confirmados, aceites no portal e faturas em atraso.
+- [x] F15-02 Configuração segura de webhooks de saída com assinatura HMAC-SHA256 (`X-Geevheit-Signature`), proteção anti-SSRF de IPs internos/privados/cloud metadata e registro imutável de entregas (`POST /v1/webhooks`, `POST /v1/webhooks/{id}/redeliver`, `GET /v1/webhooks/deliveries`).
+- [x] F15-03 Especificação arquitetural do Grafo de Agentes multidisciplinar e determinístico (Requisitos → Arquiteto → Dev → QA → Deploy → Aceite do Cliente), documentado detalhadamente em `docs/WEBHOOKS_AND_ORCHESTRATION.md` com garantias do `ExecutionGuard`, portões de decisão exclusiva do Dono e modelo de esteira autônoma segura.
+
 
