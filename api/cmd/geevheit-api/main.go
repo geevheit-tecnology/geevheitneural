@@ -155,6 +155,10 @@ func main() {
 	portalUC := app.NewPortalUseCases(uow, publisher, cfg.BaseURL)
 	portalHandler := handlers.NewPortalHandler(portalUC)
 
+	// Sprint 03: Fase 14 - Gestão de Mensalidades (MRR) e Recorrência
+	subscriptionUC := app.NewSubscriptionsUseCases(uow, publisher)
+	subscriptionHandlers := handlers.NewSubscriptionHandlers(subscriptionUC)
+
 	// 4. Roteamento (net/http padrão do Go 1.22+)
 	mux := http.NewServeMux()
 
@@ -219,6 +223,15 @@ func main() {
 	// Finanças
 	mux.Handle("GET /v1/finances", requireAuth(financeHandlers.Overview()))
 	mux.Handle("POST /v1/finances/entries", requireAuth(financeHandlers.CreateEntry()))
+	mux.Handle("GET /v1/finances/mrr", requireAuth(subscriptionHandlers.GetMRRMetrics()))
+	mux.Handle("GET /v1/finances/charges", requireAuth(subscriptionHandlers.ListCharges()))
+	mux.Handle("POST /v1/finances/charges/{id}/pay", requireAuth(subscriptionHandlers.PayCharge()))
+
+	// Gestão de Mensalidades (MRR) e Recorrência (Fase 14)
+	mux.Handle("POST /v1/subscriptions", requireAuth(subscriptionHandlers.CreateSubscription()))
+	mux.Handle("GET /v1/subscriptions", requireAuth(subscriptionHandlers.ListSubscriptions()))
+	mux.Handle("PATCH /v1/subscriptions/{id}/status", requireAuth(subscriptionHandlers.UpdateStatus()))
+	mux.Handle("POST /v1/subscriptions/process-daily", requireAuth(subscriptionHandlers.ProcessDaily()))
 
 	// Conexões
 	mux.Handle("GET /v1/connectors", requireAuth(handlers.HandleListConnectors(listConnectorsUC)))

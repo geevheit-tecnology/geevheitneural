@@ -8,6 +8,7 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/domain/approval"
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
 	"github.com/geevheit/neuralcenter/api/internal/domain/portal"
+	"github.com/geevheit/neuralcenter/api/internal/domain/subscription"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
 )
 
@@ -467,6 +468,19 @@ type PortalTokenRepository interface {
 	RevokeByCardID(ctx context.Context, cardID string, revokedAt time.Time) error
 }
 
+type SubscriptionRepository interface {
+	CreateSubscription(ctx context.Context, sub *subscription.Subscription) error
+	GetSubscriptionByID(ctx context.Context, id string) (*subscription.Subscription, error)
+	ListSubscriptions(ctx context.Context, clientID *string, status *string) ([]subscription.Subscription, error)
+	UpdateSubscriptionStatus(ctx context.Context, id string, status subscription.Status, nextDue *time.Time) error
+	UpdateSubscriptionNextDueDate(ctx context.Context, id string, nextDue time.Time) error
+
+	CreateCharge(ctx context.Context, charge *subscription.SubscriptionCharge) error
+	GetChargeByID(ctx context.Context, id string) (*subscription.SubscriptionCharge, error)
+	ListCharges(ctx context.Context, status *string, dueBefore *time.Time) ([]subscription.SubscriptionCharge, error)
+	UpdateChargeStatus(ctx context.Context, id string, status subscription.ChargeStatus, paidAt *time.Time, method string) error
+}
+
 type Repositories struct {
 	Cards          CardRepository
 	Apps           AppRepository
@@ -482,6 +496,7 @@ type Repositories struct {
 	FactoryMetrics FactoryMetricsRepository
 	PaymentOrders  PaymentOrderRepository
 	PortalTokens   PortalTokenRepository
+	Subscriptions  SubscriptionRepository
 	Approvals      ApprovalRepository
 	CardEvents     CardEventRepository
 	Audit          AuditRepository

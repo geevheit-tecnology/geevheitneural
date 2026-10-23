@@ -2,6 +2,27 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 14] - Gestão de Mensalidades (MRR) e Recorrência — 2026-10-23
+
+### Adicionado
+- **Motor e Modelagem de Assinaturas Recorrentes:**
+  - Migração `00009_subscriptions_and_mrr.sql` criando `geev.subscriptions` e `geev.subscription_charges` com RLS forçada e restrição de unicidade por ciclo.
+  - Domínio `subscription` com cálculo de MRR estritamente em centavos inteiros (sem ponto flutuante), suportando periodicidades mensal, trimestral, semestral e anual.
+  - Métricas de faturamento recorrente (MRR Atual, MRR Previsto, Ativas, Pausadas, Inadimplência e Churn).
+  - Rotina diária idempotente (`POST /v1/subscriptions/process-daily`) para atualizar cobranças vencidas para atrasadas e gerar faturas futuras.
+  - Endpoints REST autenticados: `POST /v1/subscriptions`, `GET /v1/subscriptions`, `PATCH /v1/subscriptions/{id}/status`, `GET /v1/finances/mrr`, `GET /v1/finances/charges`, `POST /v1/finances/charges/{id}/pay`.
+  - Baixa de mensalidade integrando crédito de receita automático no Ledger financeiro e gravação de histórico imutável em `audit_log`.
+- **Interface na Aba Finanças:**
+  - Seletor de abas: "Mensalidades & MRR" e "Visão Geral & Lançamentos".
+  - Cards de KPIs com MRR Atual, Previsto, Assinaturas Ativas e alerta de Inadimplência.
+  - Painel de faturas vencidas e a vencer com botão de baixa direta ("Marcar Pago").
+  - Tabela de assinaturas com badges de status e ações rápidas (Pausar, Reativar, Cancelar).
+  - Modal de cadastro de nova assinatura recorrente com seleção de app, dia de vencimento e periodicidade.
+- **Qualidade & Segurança:**
+  - Testes unitários com corrida (`-race`) cobrindo cálculo exato de MRR, idempotência da rotina diária e liquidação de mensalidades.
+
+---
+
 ## [Sprint 03 - Fase 13] - Portal Exclusivo do Cliente e Aceite Formal — 2026-10-21
 
 ### Adicionado

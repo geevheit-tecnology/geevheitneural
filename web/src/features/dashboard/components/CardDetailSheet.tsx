@@ -85,7 +85,7 @@ export function CardDetailSheet({
           .then((p) => setPixData(p))
           .catch(() => setPixData(null));
       } else {
-        setPixData(null);
+        Promise.resolve().then(() => setPixData(null));
       }
 
       api.getPortalStatus(cardDetails.card.id)
@@ -396,7 +396,7 @@ export function CardDetailSheet({
                 <b className="text-[var(--ok)]">{formatBRL(pipelineData.spend_total_cents)}</b>
               </div>
               <div className="pt-1 text-[11px] text-[var(--ink)] italic">
-                "{pipelineData.current_task}"
+                &quot;{pipelineData.current_task}&quot;
               </div>
             </div>
           </div>

@@ -361,6 +361,43 @@ export const api = {
     apiClient<{ message: string }>(`/v1/cards/${cardId}/portal-link`, {
       method: "DELETE",
     }),
+
+  // Subscriptions & MRR (Fase 14)
+  getMRRMetrics: () => apiClient<MRRMetrics>("/v1/finances/mrr"),
+  getSubscriptions: (params?: { client_id?: string; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.client_id) q.set("client_id", params.client_id);
+    if (params?.status) q.set("status", params.status);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return apiClient<SubscriptionItem[]>(`/v1/subscriptions${qs}`);
+  },
+  createSubscription: (data: CreateSubscriptionInput) =>
+    apiClient<SubscriptionItem>("/v1/subscriptions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  updateSubscriptionStatus: (id: string, status: string) =>
+    apiClient<SubscriptionItem>(`/v1/subscriptions/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+  getSubscriptionCharges: (params?: { status?: string; due_before?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.due_before) q.set("due_before", params.due_before);
+    const qs = q.toString() ? `?${q.toString()}` : "";
+    return apiClient<SubscriptionChargeItem[]>(`/v1/finances/charges${qs}`);
+  },
+  paySubscriptionCharge: (id: string, paymentMethod = "pix") =>
+    apiClient<SubscriptionChargeItem>(`/v1/finances/charges/${id}/pay`, {
+      method: "POST",
+      body: JSON.stringify({ payment_method: paymentMethod }),
+    }),
+  processDailySubscriptions: () =>
+    apiClient<{ overdue_count: number; generated_count: number; processed_at: string }>(
+      "/v1/subscriptions/process-daily",
+      { method: "POST" }
+    ),
 };
 
 export interface ProposalDocument {
@@ -415,5 +452,60 @@ export interface PortalStatusResponse {
   accepted_at?: string;
   accepted_by?: string;
 }
+
+export interface SubscriptionItem {
+  id: string;
+  owner_id: string;
+  client_id: string;
+  app_id?: string;
+  plan: string;
+  description: string;
+  amount_cents: number;
+  currency: string;
+  interval: "mensal" | "trimestral" | "semestral" | "anual";
+  due_day: number;
+  status: "ativa" | "pausada" | "cancelada" | "inadimplente";
+  start_date: string;
+  end_date?: string;
+  next_due_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubscriptionChargeItem {
+  id: string;
+  owner_id: string;
+  subscription_id: string;
+  amount_cents: number;
+  currency: string;
+  due_date: string;
+  status: "pendente" | "paga" | "atrasada";
+  paid_at?: string;
+  payment_method: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MRRMetrics {
+  current_mrr_cents: number;
+  projected_mrr_cents: number;
+  active_count: number;
+  paused_count: number;
+  canceled_count: number;
+  delinquent_count: number;
+  delinquent_amount_cents: number;
+}
+
+export interface CreateSubscriptionInput {
+  client_id: string;
+  app_id?: string;
+  plan: string;
+  description?: string;
+  amount_cents: number;
+  currency?: string;
+  interval: "mensal" | "trimestral" | "semestral" | "anual";
+  due_day: number;
+}
+
 
 

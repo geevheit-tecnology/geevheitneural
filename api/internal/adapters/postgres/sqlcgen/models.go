@@ -333,6 +333,24 @@ type GeevClient struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
+type GeevClientPortalToken struct {
+	ID                pgtype.UUID
+	OwnerID           pgtype.UUID
+	CardID            pgtype.UUID
+	ClientID          pgtype.UUID
+	TokenHash         string
+	ExpiresAt         pgtype.Timestamptz
+	RevokedAt         pgtype.Timestamptz
+	LastAccessedAt    pgtype.Timestamptz
+	AcceptedAt        pgtype.Timestamptz
+	AcceptedBy        pgtype.Text
+	AcceptedIp        pgtype.Text
+	AcceptedUserAgent pgtype.Text
+	AcceptedStateHash pgtype.Text
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+}
+
 type GeevConnector struct {
 	ID        pgtype.UUID
 	OwnerID   pgtype.UUID
@@ -489,6 +507,39 @@ type GeevSpecification struct {
 	ScopeTokenHash     pgtype.Text
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
+}
+
+type GeevSubscription struct {
+	ID          pgtype.UUID
+	OwnerID     pgtype.UUID
+	ClientID    pgtype.UUID
+	AppID       pgtype.UUID
+	Plan        string
+	Description string
+	AmountCents int64
+	Currency    string
+	Interval    string
+	DueDay      int32
+	Status      string
+	StartDate   pgtype.Date
+	EndDate     pgtype.Date
+	NextDueDate pgtype.Date
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type GeevSubscriptionCharge struct {
+	ID             pgtype.UUID
+	OwnerID        pgtype.UUID
+	SubscriptionID pgtype.UUID
+	AmountCents    int64
+	Currency       string
+	DueDate        pgtype.Date
+	Status         string
+	PaidAt         pgtype.Timestamptz
+	PaymentMethod  string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type GeevSystemState struct {

@@ -32,8 +32,10 @@ function EscopoContent() {
 
   useEffect(() => {
     if (!token) {
-      setError("Token de escopo não fornecido.");
-      setLoading(false);
+      Promise.resolve().then(() => {
+        setError("Token de escopo não fornecido.");
+        setLoading(false);
+      });
       return;
     }
 
@@ -69,8 +71,9 @@ function EscopoContent() {
         throw new Error("Falha ao registrar aprovação do escopo.");
       }
       setApprovedSuccess(true);
-    } catch (err: any) {
-      alert(err.message || "Erro ao aprovar escopo.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao aprovar escopo.";
+      alert(message);
     } finally {
       setApproving(false);
     }

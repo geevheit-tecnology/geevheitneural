@@ -114,12 +114,15 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F13-02 Visualização clara das etapas (Requisitos → Construção → Testes → Entrega) sem expor custos ou dados de agentes internos.
 - [x] F13-03 Botão de "Aceite Formal da Entrega" pelo cliente com registro imutável em `audit_log`.
 
-## Fase 14 — Gestão de Mensalidades (MRR) e Alertas de Renovação
-- [ ] F14-01 Tabela e migração de assinaturas recorrentes (`geev.subscriptions`) vinculadas a clientes e apps.
-- [ ] F14-02 Métricas de MRR (Receita Recorrente Mensal) e previsão de faturamento na aba Finanças.
-- [ ] F14-03 Alertas de faturas pendentes e histórico de mensalidades por cliente.
+## Fase 14 — Gestão de Mensalidades (MRR) e Alertas de Renovação *(concluída em feature/fase-14-mrr)*
+- [x] F14-01 Tabela e migração de assinaturas recorrentes (`geev.subscriptions` e `geev.subscription_charges`) com RLS e restrição única de vencimento.
+- [x] F14-02 Métricas de MRR (Receita Recorrente Mensal), projeção, inadimplência e normalização de periodicidades sem float.
+- [x] F14-03 Interface na aba Finanças (Cards de MRR, painel de faturas vencidas/a vencer, baixa com PIX e cadastro de planos).
+- [x] F14-04 Rotina diária idempotente (`POST /v1/subscriptions/process-daily`) para atualizar status de atraso e gerar faturas futuras.
 
 ## Fase 15 — Notificações de Negócio e Webhooks
 - [ ] F15-01 Adaptador de mensageria para despachar alertas de novos leads, pagamentos confirmados e aceites.
 - [ ] F15-02 Configuração segura de webhook de saída (`secret_ref`).
+- [ ] F15-03 como faco para gerar o grafo de agentes que vai ser ligaod nesse sistema para fazer a roda girar pois a ideia e ter um escritrio de tecnologia software tudo por agente e um orquestrador para autorixar os ervicos ou noa, exemplo clinte entra no site faz o pedido de orcamentopara uma landpage ai passa na triagem aprovanado o istema ja sugere um agente e tempo de exceusao e custo de tokens
+ai aporvandoja inicia ate o deploy depois outro agente revisa passandoo no qa libera pro xlietne em forma de link para aceear.
 

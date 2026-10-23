@@ -82,7 +82,7 @@ func (r *PortalTokenRepository) RevokeByCardID(ctx context.Context, cardID strin
 	})
 }
 
-func mapPortalTokenRow(row sqlcgen.GetPortalTokenByHashRow) *portal.PortalToken {
+func mapPortalTokenRow(row sqlcgen.GeevClientPortalToken) *portal.PortalToken {
 	t := &portal.PortalToken{
 		ID:        uuidToText(row.ID),
 		OwnerID:   uuidToText(row.OwnerID),

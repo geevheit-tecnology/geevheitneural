@@ -576,6 +576,101 @@ paths:
         "200":
           description: Preço sugerido em centavos, dias e stack recomendada
 
+  /v1/finances/mrr:
+    get:
+      summary: Métricas de MRR e Recorrência (Fase 14)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Placar de faturamento recorrente, projeção e inadimplência
+
+  /v1/finances/charges:
+    get:
+      summary: Listar Cobranças de Mensalidades (Fase 14)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: due_before
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Cobranças pendentes, pagas ou atrasadas
+
+  /v1/finances/charges/{id}/pay:
+    post:
+      summary: Liquidar Cobrança de Mensalidade (Fase 14)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cobrança liquidada com lançamento correspondente no Ledger
+
+  /v1/subscriptions:
+    get:
+      summary: Listar Assinaturas Recorrentes (Fase 14)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lista de planos e contratos recorrentes
+    post:
+      summary: Criar Nova Assinatura Recorrente (Fase 14)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id, plan, amount_cents, interval, due_day]
+              properties:
+                client_id:
+                  type: string
+                app_id:
+                  type: string
+                plan:
+                  type: string
+                description:
+                  type: string
+                amount_cents:
+                  type: integer
+                currency:
+                  type: string
+                interval:
+                  type: string
+                  enum: [mensal, trimestral, semestral, anual]
+                due_day:
+                  type: integer
+      responses:
+        "201":
+          description: Assinatura cadastrada com primeira cobrança agendada
+
+  /v1/subscriptions/process-daily:
+    post:
+      summary: Executar Rotina Diária Idempotente de Mensalidades (Fase 14)
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Relatório de cobranças vencidas e faturas geradas
+
 components:
   securitySchemes:
     BearerAuth:
