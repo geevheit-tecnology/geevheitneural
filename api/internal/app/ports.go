@@ -497,6 +497,44 @@ type NotificationRepository interface {
 	SavePreferences(ctx context.Context, prefs *notification.Preferences) error
 }
 
+// ProjectFile representa um arquivo de código gerado no workspace
+type ProjectFile struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// ExecResult representa o resultado da execução de um comando ou teste na sandbox
+type ExecResult struct {
+	ExitCode int    `json:"exit_code"`
+	Output   string `json:"output"`
+	Error    string `json:"error,omitempty"`
+}
+
+// SandboxManager abstrai o ambiente isolado de compilação, escrita e teste de código
+type SandboxManager interface {
+	InitWorkspace(cardID string) (string, error)
+	WriteFiles(cardID string, files []ProjectFile) error
+	ReadFiles(cardID string) ([]ProjectFile, error)
+	RunValidation(ctx context.Context, cardID string, cmd string, args ...string) (*ExecResult, error)
+	GetWorkspacePath(cardID string) string
+	CleanupWorkspace(cardID string) error
+}
+
+// PublishedPreviewDTO representa o resultado de publicação do workspace
+type PublishedPreviewDTO struct {
+	CommitHash string `json:"commit_hash"`
+	PreviewURL string `json:"preview_url"`
+	Branch     string `json:"branch"`
+	Message    string `json:"message"`
+}
+
+// WorkspacePublisher abstrai o versionador de código e gerador de link de prévia
+type WorkspacePublisher interface {
+	PublishWorkspace(ctx context.Context, cardID string, commitMsg string) (*PublishedPreviewDTO, error)
+}
+
+
+
 type Repositories struct {
 	Cards          CardRepository
 	Apps           AppRepository
