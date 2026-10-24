@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { CardItem, AppItem, FinancesOverview } from "@/shared/api-client/endpoints";
+import { AgendaView } from "./AgendaView";
+import { HojeTab } from "./HojeTab";
 
 interface HomeHubTabProps {
   cards: CardItem[];
@@ -30,6 +32,7 @@ export function HomeHubTab({
   const [selectedStageFilter, setSelectedStageFilter] = useState<string | null>(null);
   const [boardViewMode, setBoardViewMode] = useState<"grid" | "list">("grid");
   const [boardSortBy, setBoardSortBy] = useState<"recent" | "name" | "margin">("recent");
+  const [hubViewMode, setHubViewMode] = useState<"hub" | "agenda" | "decisoes">("hub");
 
   // Saudação de acordo com o horário local
   const greeting = useMemo(() => {
@@ -132,7 +135,7 @@ export function HomeHubTab({
     <div id="home-hub" className="space-y-5 pb-8 animate-fadeIn">
       {/* a) Cabeçalho do Hub de Quadros */}
       <section id="hub-header-section" className="bg-[var(--surf)] border border-[var(--line)] rounded-2xl p-4 sm:p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-[var(--acc)]">
               Hub de Operação da Software House
@@ -163,30 +166,85 @@ export function HomeHubTab({
             </button>
           </div>
         </div>
-
-        {/* Busca Global */}
-        <div className="relative">
-          <input
-            id="hub-search-input"
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por nome de quadro, tarefa, cliente ou tecnologia..."
-            className="w-full pl-9 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] focus:outline-none focus:border-[var(--acc)] transition-colors"
-          />
-          <span className="absolute left-3 top-3 text-[var(--mute)] text-sm pointer-events-none">
-            🔍
-          </span>
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              className="absolute right-3 top-2.5 text-xs text-[var(--mute)] hover:text-[var(--ink)] bg-transparent border-0 cursor-pointer"
-            >
-              Limpar
-            </button>
-          )}
-        </div>
       </section>
+
+      {/* Seletor de Visão do Início: Hub de Quadros | Agenda & Prazos | 3 Decisões */}
+      <div className="flex bg-[var(--surf)] p-1 rounded-xl border border-[var(--line)]">
+        <button
+          id="hub-tab-hub"
+          onClick={() => setHubViewMode("hub")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 flex items-center justify-center gap-1.5 ${
+            hubViewMode === "hub"
+              ? "bg-[var(--acc)] text-white shadow-sm"
+              : "bg-transparent text-[var(--mute)] hover:text-[var(--ink)]"
+          }`}
+        >
+          <span>🏢</span>
+          <span>Hub de Quadros</span>
+        </button>
+
+        <button
+          id="hub-tab-agenda"
+          onClick={() => setHubViewMode("agenda")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 flex items-center justify-center gap-1.5 ${
+            hubViewMode === "agenda"
+              ? "bg-[var(--acc)] text-white shadow-sm"
+              : "bg-transparent text-[var(--mute)] hover:text-[var(--ink)]"
+          }`}
+        >
+          <span>📅</span>
+          <span>Agenda & Prazos</span>
+        </button>
+
+        <button
+          id="hub-tab-decisoes"
+          onClick={() => setHubViewMode("decisoes")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 flex items-center justify-center gap-1.5 ${
+            hubViewMode === "decisoes"
+              ? "bg-[var(--acc)] text-white shadow-sm"
+              : "bg-transparent text-[var(--mute)] hover:text-[var(--ink)]"
+          }`}
+        >
+          <span>⚡</span>
+          <span>3 Decisões</span>
+        </button>
+      </div>
+
+      {hubViewMode === "agenda" ? (
+        <AgendaView cards={cards} onOpenCard={onOpenCard} />
+      ) : hubViewMode === "decisoes" ? (
+        <HojeTab
+          cards={cards}
+          onOpenCard={onOpenCard}
+          onQuickApprove={onQuickApprove}
+          isProcessing={isProcessingDecision}
+        />
+      ) : (
+        <>
+          {/* Busca Global */}
+          <section className="bg-[var(--surf)] border border-[var(--line)] rounded-2xl p-4 shadow-sm">
+            <div className="relative">
+              <input
+                id="hub-search-input"
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por nome de quadro, tarefa, cliente ou tecnologia..."
+                className="w-full pl-9 pr-4 py-2.5 text-xs sm:text-sm rounded-xl border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] focus:outline-none focus:border-[var(--acc)] transition-colors"
+              />
+              <span className="absolute left-3 top-3 text-[var(--mute)] text-sm pointer-events-none">
+                🔍
+              </span>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-2.5 text-xs text-[var(--mute)] hover:text-[var(--ink)] bg-transparent border-0 cursor-pointer"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          </section>
 
       {/* g) Indicadores Gerais da Empresa */}
       <section id="hub-kpis-section" className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -655,6 +713,8 @@ export function HomeHubTab({
           </div>
         </section>
       </div>
+          </>
+        )}
     </div>
   );
 }
