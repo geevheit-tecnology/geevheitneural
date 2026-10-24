@@ -19,17 +19,23 @@ import { FinancasTab } from "@/features/dashboard/components/FinancasTab";
 import { ConexoesTab } from "@/features/dashboard/components/ConexoesTab";
 import { CardDetailSheet } from "@/features/dashboard/components/CardDetailSheet";
 
-// Dados iniciais de demonstração fiéis ao protótipo aprovado
+const now = new Date();
+const addDays = (days: number) => {
+  const d = new Date(now);
+  d.setDate(now.getDate() + days);
+  return d.toISOString();
+};
+
 const INITIAL_CARDS: CardItem[] = [
-  { id: "1", type: "orcamento", client_id: "c1", client_name: "Clínica Sorriso", app_name: "Novo", title: "Site para clínica odontológica", price_cents: 320000, est_cost_cents: 26000, currency: "BRL", stage: "entrada", priority: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "2", type: "orcamento", client_id: "c2", client_name: "Casa Verde", app_name: "Novo", title: "Painel de estoque para loja", price_cents: 580000, est_cost_cents: 54000, currency: "BRL", stage: "proposta_aprovar", priority: 2, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "3", type: "bug", client_id: "c3", client_name: "Padaria Central", app_name: "pedidos-app", title: "Erro 500 ao salvar pedido", price_cents: 0, est_cost_cents: 3000, currency: "BRL", stage: "entrada", priority: 3, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "4", type: "orcamento", client_id: "c4", client_name: "Prof. Marina", app_name: "Novo", title: "Landing page de curso", price_cents: 190000, est_cost_cents: 14000, currency: "BRL", stage: "aguardando_cliente", priority: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "5", type: "orcamento", client_id: "c5", client_name: "Lima Imóveis", app_name: "Novo", title: "CRM simples para imobiliária", price_cents: 740000, est_cost_cents: 88000, currency: "BRL", stage: "prompt_aprovar", priority: 2, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "6", type: "suporte", client_id: "c6", client_name: "Oficina Torque", app_name: "os-oficina", title: "Migrar app para o novo banco", price_cents: 60000, est_cost_cents: 5000, currency: "BRL", stage: "em_execucao", priority: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "7", type: "financeiro", client_id: "c7", client_name: "Studio Flor", app_name: "agenda-flor", title: "Cobrança vencida há 12 dias", price_cents: 45000, est_cost_cents: 0, currency: "BRL", stage: "entrada", priority: 2, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "8", type: "orcamento", client_id: "c7", client_name: "Studio Flor", app_name: "agenda-flor", title: "Agenda online para salão", price_cents: 280000, est_cost_cents: 31000, currency: "BRL", stage: "entrega_aprovar", priority: 3, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  { id: "9", type: "suporte", client_id: "c3", client_name: "Padaria Central", app_name: "site-padaria", title: "Ajuste de logo no rodapé", price_cents: 0, est_cost_cents: 500, currency: "BRL", stage: "entregue", priority: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: "1", type: "orcamento", client_id: "c1", client_name: "Clínica Sorriso", app_name: "Novo", title: "Site para clínica odontológica", price_cents: 320000, est_cost_cents: 26000, currency: "BRL", stage: "entrada", priority: 1, due_date: addDays(0), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "2", type: "orcamento", client_id: "c2", client_name: "Casa Verde", app_name: "Novo", title: "Painel de estoque para loja", price_cents: 580000, est_cost_cents: 54000, currency: "BRL", stage: "proposta_aprovar", priority: 2, due_date: addDays(2), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "3", type: "bug", client_id: "c3", client_name: "Padaria Central", app_name: "pedidos-app", title: "Erro 500 ao salvar pedido", price_cents: 0, est_cost_cents: 3000, currency: "BRL", stage: "entrada", priority: 3, due_date: addDays(-1), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "4", type: "orcamento", client_id: "c4", client_name: "Prof. Marina", app_name: "Novo", title: "Landing page de curso", price_cents: 190000, est_cost_cents: 14000, currency: "BRL", stage: "aguardando_cliente", priority: 1, due_date: addDays(5), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "5", type: "orcamento", client_id: "c5", client_name: "Lima Imóveis", app_name: "Novo", title: "CRM simples para imobiliária", price_cents: 740000, est_cost_cents: 88000, currency: "BRL", stage: "prompt_aprovar", priority: 2, due_date: addDays(3), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "6", type: "suporte", client_id: "c6", client_name: "Oficina Torque", app_name: "os-oficina", title: "Migrar app para o novo banco", price_cents: 60000, est_cost_cents: 5000, currency: "BRL", stage: "em_execucao", priority: 1, due_date: addDays(4), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "7", type: "financeiro", client_id: "c7", client_name: "Studio Flor", app_name: "agenda-flor", title: "Cobrança vencida há 12 dias", price_cents: 45000, est_cost_cents: 0, currency: "BRL", stage: "entrada", priority: 2, due_date: addDays(-12), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "8", type: "orcamento", client_id: "c7", client_name: "Studio Flor", app_name: "agenda-flor", title: "Agenda online para salão", price_cents: 280000, est_cost_cents: 31000, currency: "BRL", stage: "entrega_aprovar", priority: 3, due_date: addDays(0), created_at: now.toISOString(), updated_at: now.toISOString() },
+  { id: "9", type: "suporte", client_id: "c3", client_name: "Padaria Central", app_name: "site-padaria", title: "Ajuste de logo no rodapé", price_cents: 0, est_cost_cents: 500, currency: "BRL", stage: "entregue", priority: 0, due_date: addDays(6), created_at: now.toISOString(), updated_at: now.toISOString() },
 ];
 
 const INITIAL_APPS: AppItem[] = [

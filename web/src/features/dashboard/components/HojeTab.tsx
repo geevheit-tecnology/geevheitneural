@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { CardItem } from "@/shared/api-client/endpoints";
+import { AgendaView } from "./AgendaView";
 
 interface HojeTabProps {
   cards: CardItem[];
@@ -11,6 +12,8 @@ interface HojeTabProps {
 }
 
 export function HojeTab({ cards, onOpenCard, onQuickApprove, isProcessing }: HojeTabProps) {
+  const [viewMode, setViewMode] = useState<"decisoes" | "agenda">("decisoes");
+
   // Filtra cartões que exigem decisão do dono ou entrada
   const pendingStages = ["entrada", "proposta_aprovar", "prompt_aprovar", "entrega_aprovar"];
   const priorityCards = cards
@@ -66,15 +69,47 @@ export function HojeTab({ cards, onOpenCard, onQuickApprove, isProcessing }: Hoj
 
   return (
     <div id="tab-hoje" className="space-y-3">
-      <div className="bg-[var(--accs)] text-[var(--ink)] rounded-xl p-3 text-xs sm:text-sm font-medium">
-        Suas 3 decisões do dia, ordenadas por dinheiro em jogo.
+      {/* Alternador de Modo: 3 Decisões vs Agenda Completa */}
+      <div className="flex bg-[var(--surf)] p-1 rounded-xl border border-[var(--line)]">
+        <button
+          id="toggle-view-decisoes"
+          onClick={() => setViewMode("decisoes")}
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 ${
+            viewMode === "decisoes"
+              ? "bg-[var(--acc)] text-white shadow-sm"
+              : "bg-transparent text-[var(--mute)] hover:text-[var(--ink)]"
+          }`}
+        >
+          ⚡ 3 Decisões do Dia
+        </button>
+        <button
+          id="toggle-view-agenda"
+          onClick={() => setViewMode("agenda")}
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 flex items-center justify-center gap-1.5 ${
+            viewMode === "agenda"
+              ? "bg-[var(--acc)] text-white shadow-sm"
+              : "bg-transparent text-[var(--mute)] hover:text-[var(--ink)]"
+          }`}
+        >
+          <span>📅</span>
+          <span>Agenda & Prazos</span>
+        </button>
       </div>
 
-      {priorityCards.length === 0 ? (
-        <div className="text-center py-12 text-[var(--mute)] text-sm">
-          Nada esperando por você hoje. Todas as decisões estão em dia!
-        </div>
+      {viewMode === "agenda" ? (
+        <AgendaView cards={cards} onOpenCard={onOpenCard} />
       ) : (
+        <>
+          <div className="bg-[var(--accs)] text-[var(--ink)] rounded-xl p-3 text-xs sm:text-sm font-medium">
+            Suas 3 decisões do dia, ordenadas por dinheiro em jogo.
+          </div>
+
+          {priorityCards.length === 0 ? (
+            <div className="text-center py-12 text-[var(--mute)] text-sm">
+              Nada esperando por você hoje. Todas as decisões estão em dia!
+            </div>
+          ) : (
+
         priorityCards.map((card) => {
           const tConfig = typeConfig[card.type] || { label: card.type, color: "var(--mute)" };
           const actionLabel = getActionLabel(card.stage);
@@ -125,6 +160,8 @@ export function HojeTab({ cards, onOpenCard, onQuickApprove, isProcessing }: Hoj
             </div>
           );
         })
+      )}
+        </>
       )}
     </div>
   );
