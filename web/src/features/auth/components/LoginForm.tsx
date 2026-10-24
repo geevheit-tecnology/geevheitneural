@@ -5,9 +5,10 @@ import { supabase } from "@/shared/auth/supabase";
 
 interface LoginFormProps {
   onSuccess?: () => void;
+  onDemoLogin?: () => void;
 }
 
-export function LoginForm({ onSuccess }: LoginFormProps) {
+export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
@@ -185,6 +186,20 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
               {loading ? "Validando..." : "Confirmar e Entrar"}
             </button>
           </form>
+        )}
+
+        {onDemoLogin && (
+          <div className="mt-4 pt-3 border-t border-[var(--line)]">
+            <button
+              id="btn-demo-login"
+              type="button"
+              onClick={onDemoLogin}
+              className="w-full py-2.5 px-3 rounded-lg border border-[var(--acc)] text-[var(--acc)] hover:bg-[var(--acc)]/10 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+            >
+              <span>⚡</span>
+              <span>Acessar Central (Acesso Direto do Dono)</span>
+            </button>
+          </div>
         )}
       </div>
     </div>

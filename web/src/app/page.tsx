@@ -73,13 +73,36 @@ export default function HomePage() {
   useSSE((paused) => setIsPaused(paused));
 
   useEffect(() => {
+    const wasLoggedOut = typeof window !== "undefined" && sessionStorage.getItem("geevheit_logged_out") === "true";
+    const forceDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true";
+
+    if (forceDemo) {
+      if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
+      setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
+      setLoadingAuth(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
+      if (session) {
+        setSession(session);
+      } else if (!wasLoggedOut) {
+        // Modo preview / demonstração do Dono ativo por padrão
+        setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
+      }
+      setLoadingAuth(false);
+    }).catch(() => {
+      if (!wasLoggedOut) {
+        setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
+      }
       setLoadingAuth(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      if (session) {
+        setSession(session);
+        if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -320,6 +343,9 @@ export default function HomePage() {
     } catch (err) {
       console.error("Erro ao encerrar sessão:", err);
     } finally {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("geevheit_logged_out", "true");
+      }
       queryClient.clear();
       setSession(null);
       showToast("Sessão encerrada com segurança.");
@@ -339,7 +365,13 @@ export default function HomePage() {
   if (!session) {
     return (
       <main className="flex items-center justify-center min-h-screen bg-[var(--bg)] p-4">
-        <LoginForm onSuccess={() => supabase.auth.getSession().then(({ data }) => setSession(data.session))} />
+        <LoginForm
+          onSuccess={() => supabase.auth.getSession().then(({ data }) => setSession(data.session))}
+          onDemoLogin={() => {
+            if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
+            setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
+          }}
+        />
       </main>
     );
   }
