@@ -2,7 +2,34 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 16] - Fábrica Autônoma de Software 100% Gratuita (Free Tier) — 2026-10-23
+
+### Adicionado
+- **Adapter de IA Google Gemini (`GeminiAgentRunner`):**
+  - Implementação real de `pipeline.AgentRunner` conectando à API do Google Gemini (Google AI Studio Free Tier).
+  - Rate Limiter determinístico interno com intervalo mínimo entre requisições respeitando estritamente o limite gratuito de 15 RPM (1.500 req/dia com R$ 0,00 de custo).
+  - Sanitização de Markdown fences (`cleanJSONMarkdown`) e tradução determinística para artefatos de negócio por papel.
+  - Testes de unidade completos com mock HTTP validando ausência de chave, sucesso, portão de entrega obrigatório e tratamento de erros de API.
+- **Gerenciador de Sandboxes e Workspaces Efêmeros (`LocalSandboxManager`):**
+  - Criação isolada de diretórios de trabalho por projeto em `scratch/builds/<card-id>/`.
+  - Validação estrita de segurança anti-path traversal (bloqueando `..`, caminhos absolutos e escapes de diretório).
+  - Escrita multi-file atômica de código-fonte (`WriteFiles`) e leitura recursiva de artefatos (`ReadFiles`).
+  - Execução segura de comandos de validação/build em container local ou shell isolado (`RunValidation`).
+  - Testes de unidade cobrindo ciclo de vida, integridade de arquivos, rejeição de travessia maliciosa e limpeza.
+- **Conector de Versionamento Git e Deploy de Prévia (`LocalPublisher`):**
+  - Inicialização automática de repositório Git local (`git init`), configuração de autor e commits atômicos padronizados por build.
+  - Endpoints REST para visualização e inspeção de código gerado:
+    - `GET /v1/cards/{id}/preview`: entrega a interface web compilada (`index.html`) para teste interativo no navegador.
+    - `GET /v1/cards/{id}/workspace`: lista todos os arquivos e conteúdos do sistema gerado em JSON (protegido pelo Dono).
+- **Integração no Composition Root e Invariantes:**
+  - Injeção em `cmd/geevheit-api/main.go` com comutação via `AGENT_RUNNER_TYPE=gemini|mock` e detecção de `GEMINI_API_KEY`.
+  - Conexão no caso de uso `StartBuildUseCase` para geração física de arquivos no `RoleDev` e publicação atômica no `RolePublicador`.
+  - 100% dos testes da suíte passando com `-race` (`go test -race ./...`).
+
+---
+
 ## [Sprint 03 - Fase 15] - Notificações de Negócio, Webhooks com HMAC/SSRF e Grafo de Agentes — 2026-10-23
+
 
 ### Adicionado
 - **Notificações Operacionais Multicanal (`MultiNotifier`):**

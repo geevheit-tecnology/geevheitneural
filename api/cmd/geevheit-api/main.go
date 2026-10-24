@@ -19,10 +19,13 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/adapters/notifications"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/postgres"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/postgres/sqlcgen"
+	localpub "github.com/geevheit/neuralcenter/api/internal/adapters/publisher"
+	"github.com/geevheit/neuralcenter/api/internal/adapters/sandbox"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/webhooks"
 	"github.com/geevheit/neuralcenter/api/internal/app"
 	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
+	"github.com/geevheit/neuralcenter/api/internal/domain/pipeline"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -134,10 +137,28 @@ func main() {
 	if err := app.SeedPlaybooksAndModules(context.Background(), uow); err != nil {
 		logger.Error("seed_playbooks_error", slog.Any("error", err))
 	}
-	agentRunner := agents.NewMockAgentRunner()
+	// Sprint 02 e Fase 16 (Fábrica Autônoma, Sandboxes e Provedor Gemini Free Tier)
+	localSandbox, err := sandbox.NewLocalSandboxManager("")
+	if err != nil {
+		logger.Error("sandbox_init_failed", slog.Any("error", err))
+	}
+	localPublisher := localpub.NewLocalPublisher(cfg.BaseURL, localSandbox)
+
+	var agentRunner pipeline.AgentRunner = agents.NewMockAgentRunner()
+	geminiKey := os.Getenv("GEMINI_API_KEY")
+	runnerType := os.Getenv("AGENT_RUNNER_TYPE")
+	if runnerType == "gemini" || (runnerType == "" && geminiKey != "") {
+		if geminiKey != "" {
+			logger.Info("autonomous_factory_runner_enabled", slog.String("provider", "google_gemini_free_tier"))
+			agentRunner = agents.NewGeminiAgentRunner(agents.GeminiConfig{
+				APIKey: geminiKey,
+				Model:  os.Getenv("GEMINI_MODEL"),
+			})
+		}
+	}
 	guard := system.NewExecutionGuard()
 
-	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, agentRunner)
+	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, agentRunner, localSandbox, localPublisher)
 	getPipelineUC := app.NewGetCardPipelineUseCase(uow)
 
 	getPublicScopeUC := app.NewGetPublicScopeUseCase(uow)
@@ -292,6 +313,9 @@ func main() {
 	mux.Handle("GET /v1/modules", requireAuth(handlers.HandleListModules(listModulesUC)))
 	mux.Handle("GET /v1/factory/scoreboard", requireAuth(handlers.HandleGetFactoryScoreboard(getScoreboardUC)))
 	mux.Handle("POST /v1/factory/estimate", requireAuth(handlers.HandleEstimatePrice(estimatePriceUC)))
+	mux.HandleFunc("GET /v1/cards/{id}/preview", handlers.HandleGetCardPreview(localSandbox))
+	mux.Handle("GET /v1/cards/{id}/workspace", requireAuth(handlers.HandleGetCardWorkspace(localSandbox)))
+
 
 	// Cobrança PIX (Fase 11)
 	mux.Handle("POST /v1/cards/{id}/pix", requireAuth(handlers.HandleGeneratePix(generatePixUC, cfg.OwnerUserID)))

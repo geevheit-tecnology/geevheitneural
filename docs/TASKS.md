@@ -125,4 +125,13 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] F15-02 Configuração segura de webhooks de saída com assinatura HMAC-SHA256 (`X-Geevheit-Signature`), proteção anti-SSRF de IPs internos/privados/cloud metadata e registro imutável de entregas (`POST /v1/webhooks`, `POST /v1/webhooks/{id}/redeliver`, `GET /v1/webhooks/deliveries`).
 - [x] F15-03 Especificação arquitetural do Grafo de Agentes multidisciplinar e determinístico (Requisitos → Arquiteto → Dev → QA → Deploy → Aceite do Cliente), documentado detalhadamente em `docs/WEBHOOKS_AND_ORCHESTRATION.md` com garantias do `ExecutionGuard`, portões de decisão exclusiva do Dono e modelo de esteira autônoma segura.
 
+## Fase 16 — Fábrica Autônoma de Software (100% Gratuita) *(concluída em feature/fase-16-autonomous-factory)*
+- [x] F16-01 Adapter de IA Google Gemini (`GeminiAgentRunner`) com suporte a Free Tier (1.500 req/dia), rate limiter determinístico de 15 RPM, injeção de `GEMINI_API_KEY` via `secret_ref` e testes de unidade com mocks de transporte HTTP.
+- [x] F16-02 Gerenciador de Sandbox e Workspace Efêmero (`LocalSandboxManager`) para escrita física de arquivos multi-file, isolamento de diretório, comandos de build e proteção contra path traversal.
+- [x] F16-03 Engenharia de Prompts Especializados e Structured Outputs para os papéis do Grafo (Requisitos com histórias BDD, Arquiteto com schemas, Dev gerando código completo, QA validando testes).
+- [x] F16-04 Conector de Publicação e Prévia com versionamento Git local atômico e geração de link de homologação estático para o Portão 3 (`GET /v1/cards/{id}/preview` e `GET /v1/cards/{id}/workspace`).
+- [x] F16-05 Comutação do runner no composition root (`cmd/geevheit-api/main.go`), cobertura total de testes (`go test -race ./...`) e validação de ponta a ponta sem custo.
+
+
+
 
