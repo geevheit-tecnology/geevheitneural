@@ -4,14 +4,19 @@
 > Agentes de código: **leia este arquivo antes de começar qualquer tarefa.**
 
 ## Estado atual
-- **Sprint:** 03 — Expansão Comercial e Motor de Negócio (Fases 11 e 12 concluídas).
-- **Status do Projeto:** Fases 0 a 12 e Deploy em Produção **100% OPERACIONAIS NA NUVEM**.
+- **Sprint:** 03 — Expansão Comercial e Fábrica Autônoma (Jarvis Ativo).
+- **Status do Projeto:** Jarvis, Fábrica de IA e Captação de Pedidos **100% OPERACIONAIS EM PRODUÇÃO**.
+- **Marcos Recentes:**
+  - Domínio oficial de produção ativo: `https://geevheit.vercel.app`.
+  - Chat Interativo do Jarvis com alternador de voz (🔊/🔇) e histórico persistente.
+  - Conexão do Google Gemini Flash para esteira autônoma com custo R$ 0,00 de tokens.
+  - Criação da Landing Page de alta conversão do produto real: TransportSim 360 (`https://geevheit.vercel.app/transportsim`) com simulador rodoviário e modal de matrícula conectado à API `/v1/intake`.
+  - Integração oficial do site da Software House (`https://geevheith-site.vercel.app`) para gravar orçamentos e novos projetos diretamente no banco Supabase.
 - **Qualidade e Conformidade:**
   - Backend Go 100% verde (`go test -race ./...`).
-  - Frontend Next.js estático 100% verde na Vercel (`https://web-lake-eight-gwn3vopv94.vercel.app`).
-  - Banco de Dados Supabase Nuvem com RLS forçada e Goose v7.
-  - Invariantes mantidas: Dinheiro sempre em centavos (`bigint`/`int64`), RLS em todas as tabelas, portões exclusivos do dono, zero quebra de regressão.
-- **Última atualização:** 2026-10-21.
+  - Frontend Next.js estático 100% verde na Vercel (`https://geevheit.vercel.app`).
+  - Banco de Dados Supabase Nuvem com RLS forçada e Goose v10.
+- **Última atualização:** 2026-10-27.
 
 ## Respostas do dono (2026-10-18)
 1. **Protótipo:** salvo em [`docs/prototype/central-prototipo.html`](./prototype/central-prototipo.html). É a referência de telas, textos e tokens de cor (claro e escuro).
