@@ -203,25 +203,37 @@ export function HomeHubTab({
           </div>
         </div>
 
-        {/* Banner do Link Oficial de Pedidos */}
-        <div className="mt-3.5 pt-3 border-t border-[var(--line)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-[var(--mute)]">
-          <div className="flex items-center gap-2">
+        {/* Banner dos Links Oficiais da Geevheit */}
+        <div className="mt-3.5 pt-3 border-t border-[var(--line)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>
-              <strong>Link público de captação de clientes:</strong>{" "}
-              <code className="text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                https://geevheit.vercel.app/intake
+            <span className="text-[var(--mute)]">
+              <strong>Site Oficial da Software House:</strong>{" "}
+              <a
+                href="https://geevheith-site.vercel.app"
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+              >
+                geevheith-site.vercel.app ↗
+              </a>
+            </span>
+            <span className="text-[var(--line)] hidden sm:inline">|</span>
+            <span className="text-[var(--mute)]">
+              <strong>Captação Direta:</strong>{" "}
+              <code className="text-[var(--acc)] font-mono bg-[var(--accs)] px-1.5 py-0.5 rounded">
+                geevheit.vercel.app/intake
               </code>
             </span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <a
-              href="/intake"
+              href="https://geevheith-site.vercel.app/#orcamento"
               target="_blank"
               rel="noreferrer"
               className="text-[var(--acc)] font-semibold hover:underline flex items-center gap-1"
             >
-              <span>Testar formulário</span>
+              <span>Abrir formulário no site</span>
               <span>↗</span>
             </a>
           </div>

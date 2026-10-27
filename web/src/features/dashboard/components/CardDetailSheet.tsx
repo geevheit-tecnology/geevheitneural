@@ -214,9 +214,37 @@ export function CardDetailSheet({
         <h3 className="text-lg font-bold text-[var(--ink)] m-0 mb-1 leading-snug">
           {card.title}
         </h3>
-        <div className="text-xs text-[var(--mute)] mb-4">
+        <div className="text-xs text-[var(--mute)] mb-3">
           {card.client_name} · {card.app_name !== "Novo" ? card.app_name : "Novo Projeto"}
         </div>
+
+        {/* Acesso rápido à página/app no ar se for o TransportSim ou site oficial */}
+        {card.title.toLowerCase().includes("transportsim") && (
+          <div className="mb-4">
+            <a
+              href="/transportsim"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 p-3 bg-[#0F3822] text-white text-xs font-bold rounded-xl no-underline hover:opacity-90 shadow-md"
+            >
+              <span>🚚 Acessar Página de Vendas no Ar (TransportSim 360)</span>
+              <span>↗</span>
+            </a>
+          </div>
+        )}
+        {card.title.toLowerCase().includes("geevheith-site") && (
+          <div className="mb-4">
+            <a
+              href="https://geevheith-site.vercel.app"
+              target="_blank"
+              rel="noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 p-3 bg-indigo-600 text-white text-xs font-bold rounded-xl no-underline hover:opacity-90 shadow-md"
+            >
+              <span>🌐 Abrir Site Oficial Geevheit</span>
+              <span>↗</span>
+            </a>
+          </div>
+        )}
 
         {/* Linhas de Valores Financeiros */}
         <div className="bg-[var(--bg)]/50 border border-[var(--line)] rounded-xl p-3 space-y-2 mb-4 text-sm">

@@ -112,8 +112,23 @@ export function MeusAppsTab({ apps, onCreateApp, onDeleteApp, isProcessing }: Me
                 </div>
               </div>
 
+              {app.domain && (
+                <div className="mt-2.5 pt-2.5 border-t border-[var(--line)] flex justify-between items-center text-xs">
+                  <span className="text-[var(--mute)] truncate max-w-[180px]">{app.domain}</span>
+                  <a
+                    href={app.domain}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--acc)] text-white font-bold rounded-xl no-underline hover:opacity-90 shadow-sm"
+                  >
+                    <span>Abrir no Ar</span>
+                    <span>↗</span>
+                  </a>
+                </div>
+              )}
+
               {isNegative && (
-                <div className="bg-[var(--warns)] text-[var(--warn)] rounded-xl p-2.5 text-xs font-semibold leading-relaxed">
+                <div className="bg-[var(--warns)] text-[var(--warn)] rounded-xl p-2.5 text-xs font-semibold leading-relaxed mt-2.5">
                   ⚠️ Custa mais do que rende. Candidato a migrar ou encerrar.
                 </div>
               )}

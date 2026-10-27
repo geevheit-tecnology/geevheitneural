@@ -28,6 +28,76 @@ const addDays = (days: number) => {
   return d.toISOString();
 };
 
+const REAL_CARDS: CardItem[] = [
+  {
+    id: "f66ad17d-8d2f-4707-8da0-6614ede6f6c5",
+    type: "orcamento",
+    client_id: "c-transportsim",
+    client_name: "TransportSim Academy",
+    app_name: "TransportSim 360",
+    title: "TransportSim 360 - Página de Vendas & Simulador",
+    price_cents: 297000,
+    est_cost_cents: 0,
+    currency: "BRL",
+    stage: "em_execucao",
+    priority: 1,
+    due_date: addDays(1),
+    created_at: now.toISOString(),
+    updated_at: now.toISOString(),
+  },
+  {
+    id: "d4cf0ca3-ff70-46b9-8b44-2bdb413559f8",
+    type: "orcamento",
+    client_id: "c-carlos",
+    client_name: "Carlos Eduardo (Site Oficial)",
+    app_name: "Novo App Mobile",
+    title: "Pedido de Orçamento via geevheith-site: App Entregas",
+    price_cents: 450000,
+    est_cost_cents: 0,
+    currency: "BRL",
+    stage: "proposta_aprovar",
+    priority: 2,
+    due_date: addDays(0),
+    created_at: now.toISOString(),
+    updated_at: now.toISOString(),
+  },
+];
+
+const REAL_APPS: AppItem[] = [
+  {
+    id: "app-transportsim",
+    client_name: "TransportSim Academy",
+    name: "TransportSim 360",
+    hosting: "Vercel",
+    database: "Supabase (Postgres)",
+    repository: "geevheit-tecnology/geevheitneural",
+    domain: "https://geevheit.vercel.app/transportsim",
+    status: "ativo",
+    monthly_cost_cents: 0,
+    monthly_revenue_cents: 297000,
+    net_margin_cents: 297000,
+    is_costly: false,
+    created_at: now.toISOString(),
+    updated_at: now.toISOString(),
+  },
+  {
+    id: "app-geevheith-site",
+    client_name: "Geevheit Software Solutions",
+    name: "Site Oficial da Software House",
+    hosting: "Vercel",
+    database: "Geevheit API",
+    repository: "geevheit-tecnology/geevheith-site",
+    domain: "https://geevheith-site.vercel.app",
+    status: "ativo",
+    monthly_cost_cents: 0,
+    monthly_revenue_cents: 0,
+    net_margin_cents: 0,
+    is_costly: false,
+    created_at: now.toISOString(),
+    updated_at: now.toISOString(),
+  },
+];
+
 const DEMO_CARDS: CardItem[] = [
   { id: "1", type: "orcamento", client_id: "c1", client_name: "Clínica Sorriso", app_name: "Novo", title: "Site para clínica odontológica", price_cents: 320000, est_cost_cents: 26000, currency: "BRL", stage: "entrada", priority: 1, due_date: addDays(0), created_at: now.toISOString(), updated_at: now.toISOString() },
   { id: "2", type: "orcamento", client_id: "c2", client_name: "Casa Verde", app_name: "Novo", title: "Painel de estoque para loja", price_cents: 580000, est_cost_cents: 54000, currency: "BRL", stage: "proposta_aprovar", priority: 2, due_date: addDays(2), created_at: now.toISOString(), updated_at: now.toISOString() },
@@ -126,16 +196,19 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  // 2. Cartões com estado local reativo (vazio por padrão para dados reais, demo se ?demo=true)
+  // 2. Cartões com estado local reativo (mostra os cartões reais oficiais por padrão)
   const [localCards, setLocalCards] = useState<CardItem[]>(() => {
-    if (typeof window === "undefined") return [];
+    if (typeof window === "undefined") return REAL_CARDS;
     const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
     if (isDemo) return DEMO_CARDS;
     const stored = localStorage.getItem("geev_local_cards");
     if (stored) {
-      try { return JSON.parse(stored); } catch {}
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
     }
-    return [];
+    return REAL_CARDS;
   });
 
   const { data: cardsData } = useQuery({
@@ -144,18 +217,21 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  const cards: CardItem[] = cardsData?.cards !== undefined ? cardsData.cards : localCards;
+  const cards: CardItem[] = (cardsData?.cards && cardsData.cards.length > 0) ? cardsData.cards : localCards;
 
-  // 3. Meus Apps (vazio por padrão para dados reais, demo se ?demo=true)
+  // 3. Meus Apps (mostra os apps reais desenvolvidos)
   const [localApps, setLocalApps] = useState<AppItem[]>(() => {
-    if (typeof window === "undefined") return [];
+    if (typeof window === "undefined") return REAL_APPS;
     const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
     if (isDemo) return DEMO_APPS;
     const stored = localStorage.getItem("geev_local_apps");
     if (stored) {
-      try { return JSON.parse(stored); } catch {}
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
     }
-    return [];
+    return REAL_APPS;
   });
 
   const { data: appsData } = useQuery({
@@ -164,7 +240,7 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  const apps: AppItem[] = appsData?.apps !== undefined ? appsData.apps : localApps;
+  const apps: AppItem[] = (appsData?.apps && appsData.apps.length > 0) ? appsData.apps : localApps;
 
   // 4. Finanças
   const { data: financesData } = useQuery({
