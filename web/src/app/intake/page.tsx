@@ -14,7 +14,7 @@ export default function IntakePage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8085";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
