@@ -50,7 +50,22 @@ export function MeusAppsTab({ apps, onCreateApp, onDeleteApp, isProcessing }: Me
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {apps.map((app) => {
+        {apps.length === 0 ? (
+          <div className="col-span-full text-center py-12 bg-[var(--surf)] border border-dashed border-[var(--line)] rounded-2xl p-6">
+            <span className="text-3xl mb-2 block">📱</span>
+            <h4 className="text-sm font-bold text-[var(--ink)] m-0 mb-1">Nenhum aplicativo cadastrado</h4>
+            <p className="text-xs text-[var(--mute)] max-w-sm mx-auto mb-4">
+              Cadastre seus apps para monitorar onde rodam, custos e margem líquida.
+            </p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-[var(--acc)] text-white text-xs font-bold py-2 px-4 rounded-xl border-0 cursor-pointer hover:opacity-90"
+            >
+              + Cadastrar Primeiro App
+            </button>
+          </div>
+        ) : (
+          apps.map((app) => {
           const margin = app.monthly_revenue_cents - app.monthly_cost_cents;
           const isNegative = margin < 0;
 
@@ -104,7 +119,8 @@ export function MeusAppsTab({ apps, onCreateApp, onDeleteApp, isProcessing }: Me
               )}
             </div>
           );
-        })}
+        })
+      )}
       </div>
 
       {/* Modal de Cadastro de App */}

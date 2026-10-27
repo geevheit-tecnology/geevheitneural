@@ -13,6 +13,7 @@ import { CommandLine } from "@/features/dashboard/components/CommandLine";
 import { HojeTab } from "@/features/dashboard/components/HojeTab";
 import { HomeHubTab } from "@/features/dashboard/components/HomeHubTab";
 import { NewBoardModal } from "@/features/dashboard/components/NewBoardModal";
+import { NewCardModal } from "@/features/dashboard/components/NewCardModal";
 import { QuadroTab } from "@/features/dashboard/components/QuadroTab";
 import { MeusAppsTab } from "@/features/dashboard/components/MeusAppsTab";
 import { FinancasTab } from "@/features/dashboard/components/FinancasTab";
@@ -26,7 +27,7 @@ const addDays = (days: number) => {
   return d.toISOString();
 };
 
-const INITIAL_CARDS: CardItem[] = [
+const DEMO_CARDS: CardItem[] = [
   { id: "1", type: "orcamento", client_id: "c1", client_name: "Clínica Sorriso", app_name: "Novo", title: "Site para clínica odontológica", price_cents: 320000, est_cost_cents: 26000, currency: "BRL", stage: "entrada", priority: 1, due_date: addDays(0), created_at: now.toISOString(), updated_at: now.toISOString() },
   { id: "2", type: "orcamento", client_id: "c2", client_name: "Casa Verde", app_name: "Novo", title: "Painel de estoque para loja", price_cents: 580000, est_cost_cents: 54000, currency: "BRL", stage: "proposta_aprovar", priority: 2, due_date: addDays(2), created_at: now.toISOString(), updated_at: now.toISOString() },
   { id: "3", type: "bug", client_id: "c3", client_name: "Padaria Central", app_name: "pedidos-app", title: "Erro 500 ao salvar pedido", price_cents: 0, est_cost_cents: 3000, currency: "BRL", stage: "entrada", priority: 3, due_date: addDays(-1), created_at: now.toISOString(), updated_at: now.toISOString() },
@@ -38,7 +39,7 @@ const INITIAL_CARDS: CardItem[] = [
   { id: "9", type: "suporte", client_id: "c3", client_name: "Padaria Central", app_name: "site-padaria", title: "Ajuste de logo no rodapé", price_cents: 0, est_cost_cents: 500, currency: "BRL", stage: "entregue", priority: 0, due_date: addDays(6), created_at: now.toISOString(), updated_at: now.toISOString() },
 ];
 
-const INITIAL_APPS: AppItem[] = [
+const DEMO_APPS: AppItem[] = [
   { id: "a1", client_name: "Padaria Central", name: "pedidos-app", hosting: "Render", database: "Neon", repository: "", domain: "", status: "ativo", monthly_cost_cents: 3800, monthly_revenue_cents: 18000, net_margin_cents: 14200, is_costly: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
   { id: "a2", client_name: "Padaria Central", name: "site-padaria", hosting: "Netlify", database: "—", repository: "", domain: "", status: "ativo", monthly_cost_cents: 0, monthly_revenue_cents: 9000, net_margin_cents: 9000, is_costly: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
   { id: "a3", client_name: "Oficina Torque", name: "os-oficina", hosting: "Vercel", database: "Neon", repository: "", domain: "", status: "ativo", monthly_cost_cents: 4500, monthly_revenue_cents: 30000, net_margin_cents: 25500, is_costly: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
@@ -64,8 +65,10 @@ export default function HomePage() {
     prompt: string;
   } | null>(null);
 
-  // Modal de Criação de Novo Quadro (spec01)
+  // Modais de Criação (spec01)
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
+  const [isNewCardModalOpen, setIsNewCardModalOpen] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -74,7 +77,8 @@ export default function HomePage() {
 
   useEffect(() => {
     const wasLoggedOut = typeof window !== "undefined" && sessionStorage.getItem("geevheit_logged_out") === "true";
-    const forceDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "true";
+    const forceDemo = typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true");
+    setIsDemoMode(!!forceDemo);
 
     if (forceDemo) {
       if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
@@ -87,7 +91,7 @@ export default function HomePage() {
       if (session) {
         setSession(session);
       } else if (!wasLoggedOut) {
-        // Modo preview / demonstração do Dono ativo por padrão
+        // Modo Dono ativo
         setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
       }
       setLoadingAuth(false);
@@ -120,24 +124,45 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  // 2. Cartões com estado local reativo
-  const [localCards, setLocalCards] = useState<CardItem[]>(INITIAL_CARDS);
+  // 2. Cartões com estado local reativo (vazio por padrão para dados reais, demo se ?demo=true)
+  const [localCards, setLocalCards] = useState<CardItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
+    if (isDemo) return DEMO_CARDS;
+    const stored = localStorage.getItem("geev_local_cards");
+    if (stored) {
+      try { return JSON.parse(stored); } catch {}
+    }
+    return [];
+  });
+
   const { data: cardsData } = useQuery({
     queryKey: ["cards"],
     queryFn: () => api.listCards().catch(() => null),
     enabled: !!session,
   });
 
-  const cards: CardItem[] = cardsData?.cards && cardsData.cards.length > 0 ? cardsData.cards : localCards;
+  const cards: CardItem[] = cardsData?.cards !== undefined ? cardsData.cards : localCards;
 
-  // 3. Meus Apps
+  // 3. Meus Apps (vazio por padrão para dados reais, demo se ?demo=true)
+  const [localApps, setLocalApps] = useState<AppItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
+    if (isDemo) return DEMO_APPS;
+    const stored = localStorage.getItem("geev_local_apps");
+    if (stored) {
+      try { return JSON.parse(stored); } catch {}
+    }
+    return [];
+  });
+
   const { data: appsData } = useQuery({
     queryKey: ["apps"],
     queryFn: () => api.listApps().catch(() => null),
     enabled: !!session,
   });
 
-  const apps: AppItem[] = appsData?.apps && appsData.apps.length > 0 ? appsData.apps : INITIAL_APPS;
+  const apps: AppItem[] = appsData?.apps !== undefined ? appsData.apps : localApps;
 
   // 4. Finanças
   const { data: financesData } = useQuery({
@@ -150,14 +175,18 @@ export default function HomePage() {
     total_revenue_cents: apps.reduce((acc, a) => acc + a.monthly_revenue_cents, 0),
     total_cost_cents: apps.reduce((acc, a) => acc + a.monthly_cost_cents, 0),
     net_profit_cents: apps.reduce((acc, a) => acc + (a.monthly_revenue_cents - a.monthly_cost_cents), 0),
-    costs_by_service: [
+    costs_by_service: isDemoMode ? [
       { service_name: "Docker (VPS)", cost_cents: 9600 },
       { service_name: "Render", cost_cents: 10800 },
       { service_name: "Firebase", cost_cents: 5200 },
       { service_name: "Vercel", cost_cents: 4500 },
-    ],
+    ] : [],
     recent_entries: [],
-    suggestion: "São 4 serviços diferentes. Consolidar em 2 ou 3 reduz custo e contas para vigiar.",
+    suggestion: apps.length === 0
+      ? "Nenhum aplicativo ou custo lançado ainda. Cadastre seus apps ou demandas para acompanhar a margem."
+      : isDemoMode
+      ? "São 4 serviços diferentes. Consolidar em 2 ou 3 reduz custo e contas para vigiar."
+      : "Custos e faturamento calculados a partir dos seus apps ativos.",
   };
 
   // 5. Conectores
@@ -244,8 +273,53 @@ export default function HomePage() {
     },
   });
 
+  const handleCreateCard = (cardData: Omit<CardItem, "id" | "created_at" | "updated_at">) => {
+    const newCard: CardItem = {
+      ...cardData,
+      id: `card_${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setLocalCards((prev) => {
+      const updated = [newCard, ...prev];
+      try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    showToast("✨ Nova demanda cadastrada com sucesso!");
+    queryClient.invalidateQueries({ queryKey: ["cards"] });
+    queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+  };
+
   const createAppMutation = useMutation({
-    mutationFn: (data: Parameters<typeof api.createApp>[0]) => api.createApp(data),
+    mutationFn: async (data: Parameters<typeof api.createApp>[0]) => {
+      try {
+        return await api.createApp(data);
+      } catch (err) {
+        // Fallback local se API offline
+        const newApp: AppItem = {
+          id: `app_${Date.now()}`,
+          client_name: "Minha Software House",
+          name: data.name,
+          hosting: data.hosting || "Render",
+          database: data.database || "Supabase",
+          repository: data.repository || "",
+          domain: data.domain || "",
+          status: "ativo",
+          monthly_cost_cents: 0,
+          monthly_revenue_cents: 0,
+          net_margin_cents: 0,
+          is_costly: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setLocalApps((prev) => {
+          const updated = [newApp, ...prev];
+          try { localStorage.setItem("geev_local_apps", JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        return { success: true };
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["apps"] });
       showToast("App cadastrado com sucesso!");
@@ -253,7 +327,18 @@ export default function HomePage() {
   });
 
   const deleteAppMutation = useMutation({
-    mutationFn: (id: string) => api.deleteApp(id),
+    mutationFn: async (id: string) => {
+      try {
+        return await api.deleteApp(id);
+      } catch (err) {
+        setLocalApps((prev) => {
+          const updated = prev.filter((a) => a.id !== id);
+          try { localStorage.setItem("geev_local_apps", JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        return { success: true };
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["apps"] });
       showToast("App removido.");
@@ -449,6 +534,29 @@ export default function HomePage() {
       {/* Banner de Sistema Pausado */}
       <PausedBanner isPaused={isPaused} onResume={() => resumeMutation.mutate()} />
 
+      {/* Banner de Modo Demonstração */}
+      {isDemoMode && (
+        <div className="bg-[var(--warns)]/80 border-b border-[var(--warn)]/40 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 text-[var(--ink)]">
+          <div className="flex items-center gap-1.5">
+            <span>🎭</span>
+            <span><b>Modo Demonstração:</b> exibindo dados simulados.</span>
+          </div>
+          <button
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("geev_demo_mode");
+                localStorage.removeItem("geev_local_cards");
+                localStorage.removeItem("geev_local_apps");
+                window.location.href = window.location.pathname;
+              }
+            }}
+            className="text-xs bg-[var(--surf)] border border-[var(--line)] px-2.5 py-1 rounded-lg font-semibold hover:border-[var(--acc)] cursor-pointer"
+          >
+            Limpar e Começar com Meus Dados
+          </button>
+        </div>
+      )}
+
       {/* Conteúdo Principal com scroll livre */}
       <main className="flex-1 px-4 max-w-[1100px] w-full mx-auto pb-36 pt-1">
         {activeTab === "hoje" && (
@@ -460,6 +568,7 @@ export default function HomePage() {
             onOpenCard={handleOpenCard}
             onQuickApprove={handleQuickApprove}
             onOpenNewBoardModal={() => setIsNewBoardModalOpen(true)}
+            onOpenNewCardModal={() => setIsNewCardModalOpen(true)}
             onNavigateToTab={(tab) => setActiveTab(tab)}
             isProcessingDecision={decideMutation.isPending}
           />
@@ -557,6 +666,14 @@ export default function HomePage() {
         onClose={() => setIsNewBoardModalOpen(false)}
         onCreateBoard={(data) => createAppMutation.mutate(data)}
         isProcessing={createAppMutation.isPending}
+      />
+
+      {/* Modal de Criação de Nova Demanda/Cartão Real */}
+      <NewCardModal
+        isOpen={isNewCardModalOpen}
+        onClose={() => setIsNewCardModalOpen(false)}
+        apps={apps}
+        onCreateCard={handleCreateCard}
       />
 
       {/* Toast Flutuante */}

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { CardItem, AppItem, FinancesOverview } from "@/shared/api-client/endpoints";
 import { AgendaView } from "./AgendaView";
 import { HojeTab } from "./HojeTab";
+import { AgentsCockpit } from "./AgentsCockpit";
 
 interface HomeHubTabProps {
   cards: CardItem[];
@@ -13,6 +14,7 @@ interface HomeHubTabProps {
   onOpenCard: (cardId: string) => void;
   onQuickApprove: (cardId: string) => void;
   onOpenNewBoardModal: () => void;
+  onOpenNewCardModal?: () => void;
   onNavigateToTab: (tab: "quadro" | "apps" | "fin" | "con") => void;
   isProcessingDecision?: boolean;
 }
@@ -25,6 +27,7 @@ export function HomeHubTab({
   onOpenCard,
   onQuickApprove,
   onOpenNewBoardModal,
+  onOpenNewCardModal,
   onNavigateToTab,
   isProcessingDecision = false,
 }: HomeHubTabProps) {
@@ -32,7 +35,7 @@ export function HomeHubTab({
   const [selectedStageFilter, setSelectedStageFilter] = useState<string | null>(null);
   const [boardViewMode, setBoardViewMode] = useState<"grid" | "list">("grid");
   const [boardSortBy, setBoardSortBy] = useState<"recent" | "name" | "margin">("recent");
-  const [hubViewMode, setHubViewMode] = useState<"hub" | "agenda" | "decisoes">("hub");
+  const [hubViewMode, setHubViewMode] = useState<"hub" | "agenda" | "decisoes" | "agentes">("hub");
 
   // Saudação de acordo com o horário local
   const greeting = useMemo(() => {
@@ -148,19 +151,29 @@ export function HomeHubTab({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               id="btn-hub-new-board"
               onClick={onOpenNewBoardModal}
-              className="bg-[var(--acc)] text-white font-bold text-xs sm:text-sm py-2.5 px-4 rounded-xl border-0 cursor-pointer shadow hover:opacity-90 transition-all flex items-center gap-1.5"
+              className="bg-[var(--acc)] text-white font-bold text-xs sm:text-sm py-2 px-3.5 rounded-xl border-0 cursor-pointer shadow hover:opacity-90 transition-all flex items-center gap-1.5"
             >
               <span>+</span>
               <span>Novo Quadro</span>
             </button>
+            {onOpenNewCardModal && (
+              <button
+                id="btn-hub-new-card"
+                onClick={onOpenNewCardModal}
+                className="bg-[var(--surf)] border border-[var(--acc)] text-[var(--acc)] font-bold text-xs sm:text-sm py-2 px-3.5 rounded-xl cursor-pointer hover:bg-[var(--accs)] transition-all flex items-center gap-1.5"
+              >
+                <span>✨</span>
+                <span>Nova Demanda</span>
+              </button>
+            )}
             <button
               id="btn-hub-open-kanban"
               onClick={() => onNavigateToTab("quadro")}
-              className="bg-[var(--accs)] text-[var(--ink)] font-semibold text-xs sm:text-sm py-2.5 px-3.5 rounded-xl border border-[var(--line)] cursor-pointer hover:bg-[var(--line)]/30 transition-all"
+              className="bg-[var(--accs)] text-[var(--ink)] font-semibold text-xs sm:text-sm py-2 px-3 rounded-xl border border-[var(--line)] cursor-pointer hover:bg-[var(--line)]/30 transition-all"
             >
               Ver Kanban
             </button>
@@ -208,6 +221,19 @@ export function HomeHubTab({
           <span>⚡</span>
           <span>3 Decisões</span>
         </button>
+
+        <button
+          id="hub-tab-agentes"
+          onClick={() => setHubViewMode("agentes")}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer border-0 flex items-center justify-center gap-1.5 ${
+            hubViewMode === "agentes"
+              ? "bg-[var(--acc)] text-white shadow-sm"
+              : "bg-transparent text-[var(--mute)] hover:text-[var(--ink)]"
+          }`}
+        >
+          <span>🤖</span>
+          <span>Fábrica de IA</span>
+        </button>
       </div>
 
       {hubViewMode === "agenda" ? (
@@ -219,6 +245,8 @@ export function HomeHubTab({
           onQuickApprove={onQuickApprove}
           isProcessing={isProcessingDecision}
         />
+      ) : hubViewMode === "agentes" ? (
+        <AgentsCockpit cards={cards} isPaused={isPaused} onOpenCard={onOpenCard} />
       ) : (
         <>
           {/* Busca Global */}
@@ -274,22 +302,30 @@ export function HomeHubTab({
           </div>
         </div>
 
-        <div className="bg-[var(--surf)] border border-[var(--line)] rounded-xl p-3 shadow-xs">
-          <div className="text-[11px] font-medium text-[var(--mute)]">Agentes de IA</div>
+        <div
+          id="kpi-agents-btn"
+          onClick={() => setHubViewMode("agentes")}
+          className="bg-[var(--surf)] border border-[var(--line)] rounded-xl p-3 shadow-xs cursor-pointer hover:border-[var(--acc)] hover:bg-[var(--accs)]/10 transition-colors"
+        >
+          <div className="text-[11px] font-medium text-[var(--mute)] flex items-center justify-between">
+            <span>Agentes de IA</span>
+            <span className="text-[10px] text-[var(--acc)] font-bold">Cockpit →</span>
+          </div>
           <div className="text-lg sm:text-xl font-bold text-[var(--acc)] mt-0.5">5 preparados</div>
-          <div className="text-[10px] text-[var(--mute)] mt-0.5">Desligados por segurança</div>
+          <div className="text-[10px] text-[var(--mute)] mt-0.5">Prontos sob seu comando</div>
         </div>
       </section>
 
       {/* b) Continuar de Onde Parei */}
-      <section id="hub-resume-section">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <h3 className="text-sm font-bold text-[var(--ink)] m-0 flex items-center gap-1.5">
-            <span>⏱️</span>
-            <span>Continuar de onde parei</span>
-          </h3>
-          <span className="text-xs text-[var(--mute)]">Quadros recentes</span>
-        </div>
+      {recentBoards.length > 0 && (
+        <section id="hub-resume-section">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h3 className="text-sm font-bold text-[var(--ink)] m-0 flex items-center gap-1.5">
+              <span>⏱️</span>
+              <span>Continuar de onde parei</span>
+            </h3>
+            <span className="text-xs text-[var(--mute)]">Quadros recentes</span>
+          </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {recentBoards.map((app) => {
@@ -329,6 +365,7 @@ export function HomeHubTab({
           })}
         </div>
       </section>
+      )}
 
       {/* c) Painel de Produção (Etiquetas Reais) */}
       <section id="hub-production-labels-section" className="bg-[var(--surf)] border border-[var(--line)] rounded-2xl p-4 sm:p-5 shadow-sm">
@@ -526,8 +563,32 @@ export function HomeHubTab({
           </div>
         </div>
 
-        {/* Visualização em Grade */}
-        {boardViewMode === "grid" ? (
+        {/* Visualização em Grade ou Estado Vazio */}
+        {sortedAndFilteredApps.length === 0 ? (
+          <div className="text-center py-10 bg-[var(--bg)]/40 rounded-2xl border border-dashed border-[var(--line)] p-6">
+            <span className="text-3xl mb-2 block">📋</span>
+            <h4 className="text-sm font-bold text-[var(--ink)] m-0 mb-1">Nenhum quadro ou app em produção</h4>
+            <p className="text-xs text-[var(--mute)] max-w-sm mx-auto mb-4">
+              Comece cadastrando seu primeiro projeto ou aplicativo para organizar o fluxo de trabalho.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                onClick={onOpenNewBoardModal}
+                className="bg-[var(--acc)] text-white text-xs font-bold py-2 px-4 rounded-xl border-0 cursor-pointer hover:opacity-90 transition-opacity"
+              >
+                + Criar Primeiro Quadro
+              </button>
+              {onOpenNewCardModal && (
+                <button
+                  onClick={onOpenNewCardModal}
+                  className="bg-[var(--surf)] border border-[var(--acc)] text-[var(--acc)] text-xs font-bold py-2 px-4 rounded-xl cursor-pointer hover:bg-[var(--accs)] transition-colors"
+                >
+                  + Nova Demanda
+                </button>
+              )}
+            </div>
+          </div>
+        ) : boardViewMode === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {sortedAndFilteredApps.map((app) => {
               const margin = app.monthly_revenue_cents - app.monthly_cost_cents;
