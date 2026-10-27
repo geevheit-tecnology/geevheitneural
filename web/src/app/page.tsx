@@ -14,6 +14,7 @@ import { HojeTab } from "@/features/dashboard/components/HojeTab";
 import { HomeHubTab } from "@/features/dashboard/components/HomeHubTab";
 import { NewBoardModal } from "@/features/dashboard/components/NewBoardModal";
 import { NewCardModal } from "@/features/dashboard/components/NewCardModal";
+import { JarvisChatDrawer } from "@/features/dashboard/components/JarvisChatDrawer";
 import { QuadroTab } from "@/features/dashboard/components/QuadroTab";
 import { MeusAppsTab } from "@/features/dashboard/components/MeusAppsTab";
 import { FinancasTab } from "@/features/dashboard/components/FinancasTab";
@@ -68,6 +69,7 @@ export default function HomePage() {
   // Modais de Criação (spec01)
   const [isNewBoardModalOpen, setIsNewBoardModalOpen] = useState(false);
   const [isNewCardModalOpen, setIsNewCardModalOpen] = useState(false);
+  const [isChatDrawerOpen, setIsChatDrawerOpen] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   const queryClient = useQueryClient();
@@ -609,6 +611,7 @@ export default function HomePage() {
         onShowToast={showToast}
         moneySummary={`${formattedWaiting} parados esperando você · ${decisionsCount} decisões`}
         onExecuteCommand={(text) => processCommandMutation.mutate(text)}
+        onOpenChat={() => setIsChatDrawerOpen(true)}
       />
 
       {/* Navegação Inferior */}
@@ -674,6 +677,25 @@ export default function HomePage() {
         onClose={() => setIsNewCardModalOpen(false)}
         apps={apps}
         onCreateCard={handleCreateCard}
+      />
+
+      {/* Gaveta de Chat Interativo com Jarvis */}
+      <JarvisChatDrawer
+        isOpen={isChatDrawerOpen}
+        onClose={() => setIsChatDrawerOpen(false)}
+        cards={cards}
+        apps={apps}
+        finances={finances}
+        isPaused={isPaused}
+        onApproveCard={handleQuickApprove}
+        onTogglePause={() => {
+          if (isPaused) resumeMutation.mutate();
+          else pauseMutation.mutate();
+        }}
+        onOpenNewCardModal={() => {
+          setIsChatDrawerOpen(false);
+          setIsNewCardModalOpen(true);
+        }}
       />
 
       {/* Toast Flutuante */}

@@ -10,6 +10,7 @@ interface CommandLineProps {
   onShowToast: (msg: string) => void;
   moneySummary: string;
   onExecuteCommand?: (text: string) => void;
+  onOpenChat?: () => void;
 }
 
 export function CommandLine({
@@ -19,6 +20,7 @@ export function CommandLine({
   onShowToast,
   moneySummary,
   onExecuteCommand,
+  onOpenChat,
 }: CommandLineProps) {
   const [inputVal, setInputVal] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -158,10 +160,21 @@ export function CommandLine({
       className="fixed left-0 right-0 z-40 bg-[var(--bg)] border-t border-[var(--line)] p-2 px-3 flex gap-2"
       style={{ bottom: "calc(54px + env(safe-area-inset-bottom, 0px))" }}
     >
+      {onOpenChat && (
+        <button
+          type="button"
+          id="btn-open-jarvis-drawer"
+          onClick={onOpenChat}
+          title="Abrir Chat com o Jarvis"
+          className="w-9 h-9 rounded-full bg-[var(--accs)] text-[var(--acc)] text-base flex items-center justify-center border border-[var(--line)] cursor-pointer hover:scale-105 transition-transform flex-none shadow-xs"
+        >
+          🧠
+        </button>
+      )}
       <input
         id="cmd-input"
         type="text"
-        placeholder="Dite uma ordem. Ex.: aprovar Casa Verde"
+        placeholder="Dite uma ordem. Ex.: aprovar proposta"
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
         className="flex-1 min-w-0 text-xs sm:text-sm py-2 px-3.5 rounded-full border border-[var(--line)] bg-[var(--surf)] text-[var(--ink)] outline-none focus:border-[var(--acc)]"
