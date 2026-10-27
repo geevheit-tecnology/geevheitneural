@@ -8,6 +8,62 @@ export default function TransportSimPage() {
   const [activeTab, setActiveTab] = useState<"visao" | "financeiro" | "carga">("visao");
   const [selectedPlan, setSelectedPlan] = useState<"completo" | "pro">("completo");
 
+  // Estado do Modal de Pedido / Matrícula
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState("Matrícula Formação Completa 360°");
+  const [clientName, setClientName] = useState("");
+  const [contact, setContact] = useState("");
+  const [company, setCompany] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const openOrderModal = (title: string) => {
+    setModalTitle(title);
+    setIsModalOpen(true);
+    setSubmitted(false);
+    setErrorMessage(null);
+  };
+
+  const handleOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientName.trim() || !contact.trim()) {
+      setErrorMessage("Por favor, preencha seu nome e seu WhatsApp ou e-mail.");
+      return;
+    }
+
+    setSubmitting(true);
+    setErrorMessage(null);
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
+    const payload = {
+      client_name: clientName.trim(),
+      contact: contact.trim(),
+      type: "orcamento",
+      description: `Pedido de Matrícula: ${modalTitle}. Empresa/Cidade: ${company.trim() || "Pessoa Física"}. Origem: TransportSim 360 Landing Page.`,
+      website: "" // honeypot vazio
+    };
+
+    try {
+      const res = await fetch(`${apiUrl}/v1/intake`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        const text = await res.text();
+        setErrorMessage(text || "Erro ao registrar pedido. Tente novamente.");
+      }
+    } catch {
+      setErrorMessage("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Animação sutil do caminhão no mapa
   useEffect(() => {
     const interval = setInterval(() => {
@@ -65,22 +121,25 @@ export default function TransportSimPage() {
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Link href="#preco" style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 18px",
-            backgroundColor: "#FFF",
-            color: "#0F3822",
-            border: "1px solid #D5DEC9",
-            borderRadius: "10px",
-            fontSize: "14px",
-            fontWeight: 600,
-            textDecoration: "none",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-          }}>
+          <button
+            onClick={() => openOrderModal("Acesso à Plataforma / Demonstração")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              backgroundColor: "#FFF",
+              color: "#0F3822",
+              border: "1px solid #D5DEC9",
+              borderRadius: "10px",
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+            }}
+          >
             Acessar plataforma ➔
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -134,22 +193,26 @@ export default function TransportSimPage() {
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
-              <a href="#preco" style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "16px 28px",
-                backgroundColor: "#0F3822",
-                color: "#FFFFFF",
-                borderRadius: "12px",
-                fontSize: "16px",
-                fontWeight: 700,
-                textDecoration: "none",
-                boxShadow: "0 4px 14px rgba(15, 56, 34, 0.25)",
-                transition: "transform 0.2s"
-              }}>
+              <button
+                onClick={() => openOrderModal("Matrícula Formação Completa 360°")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "16px 28px",
+                  backgroundColor: "#0F3822",
+                  color: "#FFFFFF",
+                  borderRadius: "12px",
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  border: "none",
+                  boxShadow: "0 4px 14px rgba(15, 56, 34, 0.25)",
+                  transition: "transform 0.2s"
+                }}
+              >
                 Começar meu treinamento ➔
-              </a>
+              </button>
 
               <a href="#simulador" style={{
                 display: "inline-flex",
@@ -558,7 +621,7 @@ export default function TransportSimPage() {
               </ul>
 
               <button
-                onClick={() => alert("Parabéns! Redirecionando para o checkout seguro do TransportSim 360...")}
+                onClick={() => openOrderModal("Matrícula Formação Completa 360° (R$ 497,00)")}
                 style={{
                   width: "100%",
                   padding: "16px",
@@ -602,7 +665,7 @@ export default function TransportSimPage() {
               </ul>
 
               <button
-                onClick={() => alert("Abrindo canal corporativo no WhatsApp...")}
+                onClick={() => openOrderModal("Proposta Corporativa para Frotas")}
                 style={{
                   width: "100%",
                   padding: "16px",
@@ -615,7 +678,7 @@ export default function TransportSimPage() {
                   cursor: "pointer"
                 }}
               >
-                Falar com consultor corporativo
+                Falar com consultor corporativo ➔
               </button>
             </div>
           </div>
@@ -631,6 +694,210 @@ export default function TransportSimPage() {
         <p>© 2026 TransportSim 360. Todos os direitos reservados. Plataforma desenvolvida e mantida por Geevheit Neural Center.</p>
         <p style={{ marginTop: "8px" }}>Tecnologia de ponta para operadores, motoristas e transportadoras de todo o Brasil.</p>
       </footer>
+
+      {/* 8. MODAL INTERATIVO DE PEDIDO / MATRÍCULA (LIGADO À API /v1/intake) */}
+      {isModalOpen && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(11, 38, 23, 0.75)",
+          backdropFilter: "blur(6px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "16px",
+          zIndex: 9999
+        }}>
+          <div style={{
+            backgroundColor: "#FFFFFF",
+            borderRadius: "24px",
+            maxWidth: "480px",
+            width: "100%",
+            padding: "32px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            position: "relative"
+          }}>
+            {/* Botão Fechar */}
+            <button
+              onClick={() => setIsModalOpen(false)}
+              style={{
+                position: "absolute",
+                top: "20px",
+                right: "20px",
+                background: "none",
+                border: "none",
+                fontSize: "20px",
+                color: "#6B7280",
+                cursor: "pointer",
+                padding: "4px"
+              }}
+            >
+              ✕
+            </button>
+
+            {submitted ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <div style={{
+                  width: "64px",
+                  height: "64px",
+                  borderRadius: "50%",
+                  backgroundColor: "#EBF3E6",
+                  color: "#588135",
+                  fontSize: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px"
+                }}>
+                  ✓
+                </div>
+                <h3 style={{ fontSize: "22px", fontWeight: 800, color: "#0F3822", marginBottom: "8px" }}>
+                  Pedido Recebido com Sucesso!
+                </h3>
+                <p style={{ fontSize: "14px", color: "#4B5563", lineHeight: 1.6, marginBottom: "24px" }}>
+                  Sua solicitação foi registrada no sistema. Nossa equipe entrará em contato via WhatsApp/E-mail com os detalhes de acesso e pagamento.
+                </p>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  style={{
+                    padding: "12px 28px",
+                    backgroundColor: "#0F3822",
+                    color: "#FFFFFF",
+                    border: "none",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Concluir
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleOrderSubmit}>
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  backgroundColor: "#EBF3E6",
+                  color: "#3A601E",
+                  padding: "4px 10px",
+                  borderRadius: "20px",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  marginBottom: "12px"
+                }}>
+                  <span>🚚 Pedido Oficial</span>
+                </div>
+
+                <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#0F3822", marginBottom: "4px" }}>
+                  {modalTitle}
+                </h3>
+                <p style={{ fontSize: "13px", color: "#6B7280", marginBottom: "20px" }}>
+                  Preencha os dados abaixo para receber o link de acesso imediato:
+                </p>
+
+                {errorMessage && (
+                  <div style={{
+                    backgroundColor: "#FEF2F2",
+                    color: "#991B1B",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    marginBottom: "16px",
+                    border: "1px solid #FCA5A5"
+                  }}>
+                    {errorMessage}
+                  </div>
+                )}
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                    Seu Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Carlos Silva"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "1px solid #D1D5DB",
+                      fontSize: "14px",
+                      outline: "none",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                    WhatsApp ou E-mail *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: (11) 98765-4321 ou carlos@email.com"
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "1px solid #D1D5DB",
+                      fontSize: "14px",
+                      outline: "none",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "24px" }}>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "6px" }}>
+                    Empresa ou Cidade (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Transportadora Santos / São Paulo"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: "10px",
+                      border: "1px solid #D1D5DB",
+                      fontSize: "14px",
+                      outline: "none",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    width: "100%",
+                    padding: "14px",
+                    backgroundColor: submitting ? "#9CA3AF" : "#0F3822",
+                    color: "#FFFFFF",
+                    border: "none",
+                    borderRadius: "12px",
+                    fontSize: "15px",
+                    fontWeight: 800,
+                    cursor: submitting ? "not-allowed" : "pointer",
+                    boxShadow: "0 4px 12px rgba(15, 56, 34, 0.2)"
+                  }}
+                >
+                  {submitting ? "Registrando pedido..." : "Confirmar Solicitação / Matrícula ➔"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

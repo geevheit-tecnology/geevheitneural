@@ -134,6 +134,19 @@ export function HomeHubTab({
     return pendingGateCards.reduce((acc, c) => acc + c.price_cents, 0);
   }, [pendingGateCards]);
 
+  const [copiedIntake, setCopiedIntake] = useState(false);
+
+  const handleCopyIntakeLink = () => {
+    const link = "https://geevheit.vercel.app/intake";
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(link);
+      setCopiedIntake(true);
+      setTimeout(() => setCopiedIntake(false), 3000);
+    } else {
+      window.open("/intake", "_blank");
+    }
+  };
+
   return (
     <div id="home-hub" className="space-y-5 pb-8 animate-fadeIn">
       {/* a) Cabeçalho do Hub de Quadros */}
@@ -152,6 +165,16 @@ export function HomeHubTab({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              id="btn-copy-intake"
+              onClick={handleCopyIntakeLink}
+              title="Copiar link para clientes solicitarem novos pedidos"
+              className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs sm:text-sm py-2 px-3.5 rounded-xl cursor-pointer hover:bg-emerald-500/20 transition-all flex items-center gap-1.5"
+            >
+              <span>📥</span>
+              <span>{copiedIntake ? "✓ Link Copiado!" : "Receber Pedidos"}</span>
+            </button>
+
             <button
               id="btn-hub-new-board"
               onClick={onOpenNewBoardModal}
@@ -177,6 +200,30 @@ export function HomeHubTab({
             >
               Ver Kanban
             </button>
+          </div>
+        </div>
+
+        {/* Banner do Link Oficial de Pedidos */}
+        <div className="mt-3.5 pt-3 border-t border-[var(--line)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-[var(--mute)]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>
+              <strong>Link público de captação de clientes:</strong>{" "}
+              <code className="text-emerald-600 dark:text-emerald-400 font-mono bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                https://geevheit.vercel.app/intake
+              </code>
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <a
+              href="/intake"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[var(--acc)] font-semibold hover:underline flex items-center gap-1"
+            >
+              <span>Testar formulário</span>
+              <span>↗</span>
+            </a>
           </div>
         </div>
       </section>
