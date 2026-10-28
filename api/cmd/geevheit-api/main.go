@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -146,15 +147,21 @@ func main() {
 
 	var agentRunner pipeline.AgentRunner = agents.NewMockAgentRunner()
 	geminiKey := os.Getenv("GEMINI_API_KEY")
-	runnerType := os.Getenv("AGENT_RUNNER_TYPE")
-	if runnerType == "gemini" || (runnerType == "" && geminiKey != "") {
-		if geminiKey != "" {
-			logger.Info("autonomous_factory_runner_enabled", slog.String("provider", "google_gemini_free_tier"))
-			agentRunner = agents.NewGeminiAgentRunner(agents.GeminiConfig{
-				APIKey: geminiKey,
-				Model:  os.Getenv("GEMINI_MODEL"),
-			})
-		}
+	groqKey := os.Getenv("GROQ_API_KEY")
+	runnerType := strings.ToLower(os.Getenv("AGENT_RUNNER_TYPE"))
+
+	if (runnerType == "groq" || runnerType == "") && groqKey != "" {
+		logger.Info("autonomous_factory_runner_enabled", slog.String("provider", "groq_ultra_fast_free_tier"), slog.String("model", os.Getenv("GROQ_MODEL")))
+		agentRunner = agents.NewGroqAgentRunner(agents.GroqConfig{
+			APIKey: groqKey,
+			Model:  os.Getenv("GROQ_MODEL"),
+		})
+	} else if (runnerType == "gemini" || runnerType == "") && geminiKey != "" {
+		logger.Info("autonomous_factory_runner_enabled", slog.String("provider", "google_gemini_free_tier"))
+		agentRunner = agents.NewGeminiAgentRunner(agents.GeminiConfig{
+			APIKey: geminiKey,
+			Model:  os.Getenv("GEMINI_MODEL"),
+		})
 	}
 	guard := system.NewExecutionGuard()
 

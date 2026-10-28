@@ -93,6 +93,7 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 | 14 (spec02) | Concluída (2026-10-23) | Gestão de Mensalidades (MRR) e Recorrência: modelo de assinaturas e faturas, cálculo de MRR sem float, rotina diária idempotente e painel com alertas em Finanças (branch feature/fase-14-mrr). |
 | 15 (spec02) | Concluída (2026-10-23) | Notificações Operacionais & Webhooks de Saída: mensageria com MultiNotifier (Telegram, WhatsApp, E-mail), webhooks com assinatura HMAC-SHA256 e proteção anti-SSRF, histórico imutável de entregas, gestão de preferências na aba Conexões e especificação detalhada do Grafo de Agentes em docs/WEBHOOKS_AND_ORCHESTRATION.md (branch feature/fase-15-notifications-webhooks). |
 | 16 (prompt.md) | Concluída (2026-10-23) | Fábrica Autônoma 100% Gratuita: GeminiAgentRunner (Free Tier 1.500 req/dia e rate limiter de 15 RPM), LocalSandboxManager (isolamento de diretório efêmero e anti-path traversal), LocalPublisher (versionamento Git local atômico) e rotas HTTP de prévia ao vivo (/v1/cards/{id}/preview) sem custos adicionais (branch feature/fase-16-autonomous-factory). |
+| 17 (Melhorias) | Concluída (2026-10-27) | Motor Groq de Alta Velocidade (GroqAgentRunner em Go com gpt-oss-120b/qwen3.8-27b, 0,19s por inferência), Assistente Jarvis/Jake com alternância de voz masculina/feminina, tratamento exclusivo "Senhor", painel de voz no drawer e política estrita de blindagem a custo zero (Zero Risk Billing). |
 
 
 

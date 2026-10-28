@@ -2,6 +2,25 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Fase 17] - Motor Groq LPU, Assistente Jarvis/Jake e Blindagem Custo Zero — 2026-10-27
+
+### Adicionado
+- **Motor Groq de Inferência Ultrarrápida (`GroqAgentRunner`):**
+  - Implementação completa em Go conectando à API Groq Cloud (chips LPU com tempo de resposta de ~0,19s).
+  - Suporte ao modelo open-source de 120 bilhões de parâmetros (`openai/gpt-oss-120b`) e `qwen/qwen3.8-27b`.
+  - Formatação estruturada em JSON (`response_format: {"type": "json_object"}`) e sanitização de markdown fences.
+  - Suíte de testes unitários com mock HTTP e validação `-race` (`groq_runner_test.go`).
+- **Assistente Operacional com Alternância de Personas (Jarvis & Jake):**
+  - Seletor dinâmico de personas no cabeçalho do chat:
+    - 🧠 **Jarvis (Masculino):** Tom grave (pitch 0.85), avatar teal e voz masculina.
+    - ✨ **Jake (Feminina):** Tom suave (pitch 1.15), avatar violeta/rosa e voz feminina.
+  - Painel de voz integrado para ajustes de velocidade (rate), tom (pitch), teste instantâneo de áudio e escolha de vozes instaladas no sistema operacional.
+  - Formalização executiva: tratamento exclusivo e respeitoso como **"Senhor"** em todas as mensagens e respostas por voz.
+- **Blindagem e Política de Custo Zero (Zero Risk Billing):**
+  - Configuração estrita para uso exclusivo de provedores com planos Always Free ou sem cartão de crédito (Google Gemini Free Tier, Groq Free Tier, ViaCEP pública e Firebase Spark).
+
+---
+
 ## [Sprint 03 - Fase 16] - Fábrica Autônoma de Software 100% Gratuita (Free Tier) — 2026-10-23
 
 ### Adicionado
