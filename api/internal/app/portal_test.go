@@ -97,6 +97,7 @@ func (r *mockCardRepoPortal) Update(ctx context.Context, c *card.Card) error {
 	return nil
 }
 func (r *mockCardRepoPortal) Create(ctx context.Context, c *app.CardListItemDTO) error { return nil }
+func (r *mockCardRepoPortal) Delete(ctx context.Context, id string) error               { return nil }
 
 type mockClientRepoPortal struct{}
 

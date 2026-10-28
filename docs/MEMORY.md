@@ -12,11 +12,12 @@
   - Conexão do Google Gemini Flash para esteira autônoma com custo R$ 0,00 de tokens.
   - Criação da Landing Page de alta conversão do produto real: TransportSim 360 (`https://geevheit.vercel.app/transportsim`) com simulador rodoviário e modal de matrícula conectado à API `/v1/intake`.
   - Integração oficial do site da Software House (`https://geevheith-site.vercel.app`) para gravar orçamentos e novos projetos diretamente no banco Supabase.
+  - **Exclusão Definitiva e Limpeza de Dados Legados:** Adicionada funcionalidade para deletar demandas/cartões permanentemente (via botão no detalhe do cartão, comandos de voz/texto "excluir/deletar [cliente]" e rota `DELETE /v1/cards/{id}`), botão de zerar dados legados no Hub, além de correção do fallback local e persistência imediata no `localStorage` para evitar que itens excluídos ou recusados voltem ao recarregar a tela.
 - **Qualidade e Conformidade:**
   - Backend Go 100% verde (`go test -race ./...`).
   - Frontend Next.js estático 100% verde na Vercel (`https://geevheit.vercel.app`).
-  - Banco de Dados Supabase Nuvem com RLS forçada e Goose v10.
-- **Última atualização:** 2026-10-27.
+  - Banco de Dados Supabase Nuvem com RLS forçada e Goose v11 (`00011_allow_card_deletion.sql`).
+- **Última atualização:** 2026-10-28.
 
 ## Respostas do dono (2026-10-18)
 1. **Protótipo:** salvo em [`docs/prototype/central-prototipo.html`](./prototype/central-prototipo.html). É a referência de telas, textos e tokens de cor (claro e escuro).

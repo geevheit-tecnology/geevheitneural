@@ -136,6 +136,11 @@ export const api = {
       body: JSON.stringify({ decision, note: note || "" }),
     }),
 
+  deleteCard: (id: string) =>
+    apiClient<{ success: boolean; id: string }>(`/v1/cards/${id}`, {
+      method: "DELETE",
+    }),
+
   pauseSystem: (reason?: string) =>
     apiClient<{ success: boolean; paused: boolean }>("/v1/system/pause", {
       method: "POST",

@@ -18,6 +18,7 @@ type ActionType string
 
 const (
 	ActionTypeRejectCard  ActionType = "reject_card"
+	ActionTypeDeleteCard  ActionType = "delete_card"
 	ActionTypePauseSystem ActionType = "pause_system"
 )
 

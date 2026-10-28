@@ -144,6 +144,32 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 			},
 		}, nil
 
+	case command.IntentDelete:
+		match, err := uc.resolveTargetCard(ctx, parsed.Target)
+		if err != nil {
+			return nil, err
+		}
+
+		prompt := fmt.Sprintf("Tem certeza que deseja EXCLUIR DEFINITIVAMENTE a demanda '%s' de %s? Esta ação não pode ser desfeita.", match.Title, match.ClientName)
+		act, err := uc.confirmSvc.IssueToken(command.ActionTypeDeleteCard, match.CardID, prompt, map[string]any{
+			"raw_command": in.Text,
+			"client_name": match.ClientName,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("emitir token de confirmação: %w", err)
+		}
+
+		return &CommandResult{
+			Intent:               string(parsed.Intent),
+			Message:              prompt,
+			RequiresConfirmation: true,
+			ConfirmationToken:    act.Token,
+			ConfirmationPrompt:   prompt,
+			Data: map[string]any{
+				"card_id": match.CardID,
+			},
+		}, nil
+
 	case command.IntentPauseSystem:
 		// Ação destrutiva de emergência: exige confirmação se não tiver confirmação explícita
 		prompt := "Tem certeza que deseja parar o sistema? Todos os agentes e conexões serão bloqueados de agir."
@@ -207,17 +233,20 @@ type ConfirmActionUseCase struct {
 	confirmSvc   *command.ConfirmationService
 	decideGateUC *DecideGateUseCase
 	pauseUC      *PauseSystemUseCase
+	deleteCardUC *DeleteCardUseCase
 }
 
 func NewConfirmActionUseCase(
 	confirmSvc *command.ConfirmationService,
 	decideGateUC *DecideGateUseCase,
 	pauseUC *PauseSystemUseCase,
+	deleteCardUC *DeleteCardUseCase,
 ) *ConfirmActionUseCase {
 	return &ConfirmActionUseCase{
 		confirmSvc:   confirmSvc,
 		decideGateUC: decideGateUC,
 		pauseUC:      pauseUC,
+		deleteCardUC: deleteCardUC,
 	}
 }
 
@@ -228,6 +257,15 @@ func (uc *ConfirmActionUseCase) Execute(ctx context.Context, owner system.OwnerP
 	}
 
 	switch act.Type {
+	case command.ActionTypeDeleteCard:
+		if uc.deleteCardUC != nil {
+			err := uc.deleteCardUC.Execute(ctx, act.TargetID)
+			if err != nil {
+				return "", err
+			}
+		}
+		return "Demanda excluída permanentemente com sucesso.", nil
+
 	case command.ActionTypeRejectCard:
 		err := uc.decideGateUC.Execute(ctx, DecideGateInput{
 			Owner:    owner,

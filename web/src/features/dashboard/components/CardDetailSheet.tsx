@@ -11,6 +11,7 @@ interface CardDetailSheetProps {
   onApprove: (cardId: string) => void;
   onAskInfo: (cardId: string) => void;
   onReject: (cardId: string) => void;
+  onDelete?: (cardId: string) => void;
   onBuild?: (cardId: string) => void;
   isProcessing: boolean;
 }
@@ -22,9 +23,11 @@ export function CardDetailSheet({
   onApprove,
   onAskInfo,
   onReject,
+  onDelete,
   onBuild,
   isProcessing,
 }: CardDetailSheetProps) {
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [riskAccepted, setRiskAccepted] = React.useState(false);
   const [pipelineData, setPipelineData] = React.useState<{
     active_role: string;
@@ -568,9 +571,55 @@ export function CardDetailSheet({
             <span>📄</span> {loadingProposal ? "Abrindo proposta..." : "Visualizar Proposta Comercial & Contrato"}
           </button>
 
+          {/* Exclusão Permanente da Demanda */}
+          {onDelete && (
+            confirmDelete ? (
+              <div className="p-3 rounded-xl border border-red-500/50 bg-red-500/10 space-y-2 animate-fadeIn">
+                <div className="text-xs font-semibold text-red-600 dark:text-red-400 text-center">
+                  ⚠️ Tem certeza que deseja excluir esta demanda definitivamente?
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    id="sheet-confirm-delete-btn"
+                    disabled={isProcessing}
+                    onClick={() => {
+                      onDelete(card.id);
+                      setConfirmDelete(false);
+                    }}
+                    className="py-2 px-3 rounded-lg font-bold text-xs bg-red-600 hover:bg-red-700 text-white border-0 cursor-pointer transition-colors shadow-sm"
+                  >
+                    Sim, Excluir
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    className="py-2 px-3 rounded-lg font-semibold text-xs border border-[var(--line)] bg-[var(--surf)] text-[var(--ink)] hover:bg-[var(--line)]/20 cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                id="sheet-delete-card-btn"
+                disabled={isProcessing}
+                onClick={() => setConfirmDelete(true)}
+                className="w-full py-2.5 px-3 rounded-xl font-bold text-xs border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 cursor-pointer flex items-center justify-center gap-2 transition-colors shadow-sm"
+              >
+                <span>🗑️</span>
+                <span>Excluir Demanda Permanentemente</span>
+              </button>
+            )
+          )}
+
           <button
             id="sheet-close-btn"
-            onClick={onClose}
+            onClick={() => {
+              setConfirmDelete(false);
+              onClose();
+            }}
             className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs border border-[var(--line)] bg-transparent text-[var(--mute)] cursor-pointer hover:text-[var(--ink)]"
           >
             Fechar

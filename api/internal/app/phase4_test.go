@@ -147,6 +147,11 @@ func (r *mockCardRepoPhase4) Create(ctx context.Context, c *app.CardListItemDTO)
 	}
 	return nil
 }
+func (r *mockCardRepoPhase4) Delete(ctx context.Context, id string) error {
+	delete(r.m.cards, id)
+	delete(r.m.enriched, id)
+	return nil
+}
 
 type mockUoWPhase4 struct{ m *mockPhase4Repos }
 

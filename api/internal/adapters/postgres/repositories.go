@@ -232,6 +232,10 @@ func (r *CardRepository) Create(ctx context.Context, c *app.CardListItemDTO) err
 	})
 }
 
+func (r *CardRepository) Delete(ctx context.Context, id string) error {
+	return r.q.DeleteCard(ctx, textToUUID(id))
+}
+
 type ApprovalRepository struct {
 	q *sqlcgen.Queries
 }

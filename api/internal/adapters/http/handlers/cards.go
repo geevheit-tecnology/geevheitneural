@@ -39,3 +39,24 @@ func HandleGetCardDetails(uc *app.GetCardDetailsUseCase) http.HandlerFunc {
 		middleware.WriteJSON(w, http.StatusOK, details)
 	}
 }
+
+func HandleDeleteCard(uc *app.DeleteCardUseCase) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cardID := r.PathValue("id")
+		if cardID == "" {
+			middleware.WriteError(w, http.StatusBadRequest, "invalid_card_id", "id do cartão é obrigatório")
+			return
+		}
+
+		if err := uc.Execute(r.Context(), cardID); err != nil {
+			middleware.WriteError(w, http.StatusInternalServerError, "delete_card_failed", err.Error())
+			return
+		}
+
+		middleware.WriteJSON(w, http.StatusOK, map[string]any{
+			"success": true,
+			"id":      cardID,
+			"message": "Cartão excluído com sucesso",
+		})
+	}
+}

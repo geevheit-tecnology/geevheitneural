@@ -16,6 +16,7 @@ interface HomeHubTabProps {
   onOpenNewBoardModal: () => void;
   onOpenNewCardModal?: () => void;
   onNavigateToTab: (tab: "quadro" | "apps" | "fin" | "con") => void;
+  onClearLegacyData?: () => void;
   isProcessingDecision?: boolean;
 }
 
@@ -29,6 +30,7 @@ export function HomeHubTab({
   onOpenNewBoardModal,
   onOpenNewCardModal,
   onNavigateToTab,
+  onClearLegacyData,
   isProcessingDecision = false,
 }: HomeHubTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -200,6 +202,17 @@ export function HomeHubTab({
             >
               Ver Kanban
             </button>
+            {onClearLegacyData && (
+              <button
+                id="btn-hub-clear-legacy"
+                onClick={onClearLegacyData}
+                title="Excluir dados legados e zerar o painel"
+                className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 font-bold text-xs sm:text-sm py-2 px-3 rounded-xl cursor-pointer hover:bg-red-500/20 transition-all flex items-center gap-1.5"
+              >
+                <span>🧹</span>
+                <span>Limpar Dados Legados</span>
+              </button>
+            )}
           </div>
         </div>
 

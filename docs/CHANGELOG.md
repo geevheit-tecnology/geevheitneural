@@ -2,6 +2,26 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 03 - Melhoria] - Exclusão Definitiva de Demandas e Limpeza de Dados Legados — 2026-10-28
+
+### Adicionado
+- **Exclusão Definitiva de Cartões/Demandas (`DELETE /v1/cards/{id}`):**
+  - Caso de uso `DeleteCardUseCase` e handler HTTP `HandleDeleteCard` no backend Go.
+  - Método `Delete(ctx, id)` adicionado na porta `CardRepository` e repositório Postgres.
+  - Migration Goose `00011_allow_card_deletion.sql` para permitir remoção em cascata controlada pelo dono mantendo a imutabilidade estrita do `audit_log`.
+  - Suporte a comandos de texto e voz com intenção de exclusão (`excluir`, `deletar`, `remover`, `apagar`) com token de confirmação de uso único.
+- **Interface e Experiência do Dono:**
+  - Botão **"🗑️ Excluir Demanda Permanentemente"** com confirmação de segurança dentro da gaveta de detalhe do cartão (`CardDetailSheet.tsx`).
+  - Botão **"🧹 Limpar Dados Legados"** no cabeçalho do Hub (`HomeHubTab.tsx`) para zerar dados legados/demonstração com 1 clique e confirmação.
+
+### Corrigido
+- **Persistência de Decisões e Prevenção de Retorno de Dados Legados:**
+  - Salvamento imediato de qualquer decisão (aprovação ou recusa) no `localStorage` (`geev_local_cards`).
+  - Flag `geev_cleared_legacy = true` para respeitar painel zerado sem forçar re-injeção de `REAL_CARDS` ou `DEMO_CARDS` ao atualizar a página.
+  - Ajuste de fallback para priorizar dados retornados da API mesmo quando a lista estiver vazia (`[]`).
+
+---
+
 ## [Sprint 03 - Fase 17] - Motor Groq LPU, Assistente Jarvis/Jake e Blindagem Custo Zero — 2026-10-27
 
 ### Adicionado

@@ -19,6 +19,7 @@ const (
 	IntentFinances     Intent = "finances"
 	IntentApprove      Intent = "approve"
 	IntentReject       Intent = "reject"
+	IntentDelete       Intent = "delete"
 	IntentPauseSystem  Intent = "pause_system"
 	IntentResumeSystem Intent = "resume_system"
 	IntentUnknown      Intent = "unknown"
@@ -89,6 +90,14 @@ func ParseCommand(raw string) (*ParsedCommand, error) {
 		cmd.Intent = IntentReject
 		cmd.Destructive = true
 		cmd.Target = extractTarget(normalized, "recusar", "rejeitar", "cancelar")
+		return cmd, nil
+	}
+
+	// 5.1 Excluir / Deletar demanda (destrutivo)
+	if strings.HasPrefix(normalized, "excluir") || strings.HasPrefix(normalized, "deletar") || strings.HasPrefix(normalized, "remover") || strings.HasPrefix(normalized, "apagar") {
+		cmd.Intent = IntentDelete
+		cmd.Destructive = true
+		cmd.Target = extractTarget(normalized, "excluir", "deletar", "remover", "apagar")
 		return cmd, nil
 	}
 

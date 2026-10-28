@@ -101,3 +101,7 @@ SET tests = EXCLUDED.tests,
     source = EXCLUDED.source,
     updated_at = EXCLUDED.updated_at
 RETURNING id, owner_id, card_id, tests, secrets_scan, outdated_deps, lgpd_points, source, created_at, updated_at;
+
+-- name: DeleteCard :exec
+DELETE FROM geev.cards
+WHERE id = $1;

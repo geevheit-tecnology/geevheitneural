@@ -473,3 +473,13 @@ func (q *Queries) UpsertRiskReport(ctx context.Context, arg UpsertRiskReportPara
 	)
 	return i, err
 }
+
+const deleteCard = `-- name: DeleteCard :exec
+DELETE FROM geev.cards
+WHERE id = $1
+`
+
+func (q *Queries) DeleteCard(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCard, id)
+	return err
+}

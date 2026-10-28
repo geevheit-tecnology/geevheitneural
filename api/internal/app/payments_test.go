@@ -213,6 +213,9 @@ func (r *mockCardRepoPayment) Update(ctx context.Context, c *card.Card) error {
 func (r *mockCardRepoPayment) Create(ctx context.Context, c *app.CardListItemDTO) error {
 	return nil
 }
+func (r *mockCardRepoPayment) Delete(ctx context.Context, id string) error {
+	return nil
+}
 
 type mockCardEventRepoPayment struct{}
 

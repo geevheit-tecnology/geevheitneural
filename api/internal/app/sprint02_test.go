@@ -110,6 +110,9 @@ func (r *mockCardRepoSprint02) GetRiskReport(ctx context.Context, cardID string)
 func (r *mockCardRepoSprint02) Create(ctx context.Context, c *app.CardListItemDTO) error {
 	return nil
 }
+func (r *mockCardRepoSprint02) Delete(ctx context.Context, id string) error {
+	return nil
+}
 
 type mockPipelineRepoSprint02 struct{ m *mockSprint02Repos }
 

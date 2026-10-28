@@ -248,6 +248,7 @@ type CardRepository interface {
 	GetRiskReport(ctx context.Context, cardID string) (*RiskReportDTO, error)
 	Update(ctx context.Context, c *card.Card) error
 	Create(ctx context.Context, c *CardListItemDTO) error
+	Delete(ctx context.Context, id string) error
 }
 
 type AppRepository interface {

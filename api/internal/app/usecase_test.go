@@ -84,6 +84,11 @@ func (f *fakeCardRepo) Create(_ context.Context, _ *app.CardListItemDTO) error {
 	return nil
 }
 
+func (f *fakeCardRepo) Delete(_ context.Context, id string) error {
+	delete(f.cards, id)
+	return nil
+}
+
 type fakeApprovalRepo struct {
 	approvals []*approval.Approval
 }
@@ -455,6 +460,28 @@ func TestPhase2UseCases(t *testing.T) {
 		}
 		if res.Suggestion != "São 5 serviços diferentes. Consolidar em 2 ou 3 reduz custo e contas para vigiar." {
 			t.Errorf("sugestão inesperada: %s", res.Suggestion)
+		}
+	})
+
+	t.Run("DeleteCardUseCase removes card and publishes events", func(t *testing.T) {
+		ctx := context.Background()
+		c, _ := card.New("card-del-1", "owner-1", "client-1", card.TypeOrcamento, "Card Para Deletar", money.NewBRL(10000), money.NewBRL(0), now)
+		cardRepo := &fakeCardRepo{
+			cards: map[string]*card.Card{"card-del-1": c},
+		}
+		pub := &fakePublisher{}
+
+		uc := app.NewDeleteCardUseCase(cardRepo, pub)
+		if err := uc.Execute(ctx, "card-del-1"); err != nil {
+			t.Fatalf("falha ao excluir cartão: %v", err)
+		}
+
+		if _, exists := cardRepo.cards["card-del-1"]; exists {
+			t.Errorf("esperava que o cartão fosse removido do repositório")
+		}
+
+		if len(pub.published) < 2 {
+			t.Errorf("esperava eventos publicados, obteve %d", len(pub.published))
 		}
 	})
 }

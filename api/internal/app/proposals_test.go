@@ -49,6 +49,11 @@ func (m *mockProposalCardRepo) Create(ctx context.Context, c *app.CardListItemDT
 	m.enriched[c.ID] = c
 	return nil
 }
+func (m *mockProposalCardRepo) Delete(ctx context.Context, id string) error {
+	delete(m.cards, id)
+	delete(m.enriched, id)
+	return nil
+}
 
 type mockProposalSpecRepo struct{}
 

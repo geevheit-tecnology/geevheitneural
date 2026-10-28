@@ -199,15 +199,18 @@ export default function HomePage() {
   // 2. Cartões com estado local reativo (mostra os cartões reais oficiais por padrão)
   const [localCards, setLocalCards] = useState<CardItem[]>(() => {
     if (typeof window === "undefined") return REAL_CARDS;
-    const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
-    if (isDemo) return DEMO_CARDS;
+    const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
     const stored = localStorage.getItem("geev_local_cards");
-    if (stored) {
+    if (stored !== null) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
+    if (isCleared) return [];
+
+    const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
+    if (isDemo) return DEMO_CARDS;
     return REAL_CARDS;
   });
 
@@ -217,20 +220,23 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  const cards: CardItem[] = (cardsData?.cards && cardsData.cards.length > 0) ? cardsData.cards : localCards;
+  const cards: CardItem[] = cardsData?.cards !== undefined ? cardsData.cards : localCards;
 
   // 3. Meus Apps (mostra os apps reais desenvolvidos)
   const [localApps, setLocalApps] = useState<AppItem[]>(() => {
     if (typeof window === "undefined") return REAL_APPS;
-    const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
-    if (isDemo) return DEMO_APPS;
+    const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
     const stored = localStorage.getItem("geev_local_apps");
-    if (stored) {
+    if (stored !== null) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch {}
     }
+    if (isCleared) return [];
+
+    const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
+    if (isDemo) return DEMO_APPS;
     return REAL_APPS;
   });
 
@@ -240,7 +246,7 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  const apps: AppItem[] = (appsData?.apps && appsData.apps.length > 0) ? appsData.apps : localApps;
+  const apps: AppItem[] = appsData?.apps !== undefined ? appsData.apps : localApps;
 
   // 4. Finanças
   const { data: financesData } = useQuery({
@@ -310,8 +316,8 @@ export default function HomePage() {
       }
     },
     onSuccess: (_, vars) => {
-      setLocalCards((prev) =>
-        prev.map((c) => {
+      setLocalCards((prev) => {
+        const updated = prev.map((c) => {
           if (c.id !== vars.id) return c;
           let nextStage = c.stage;
           if (vars.decision === "aprovado") {
@@ -322,8 +328,10 @@ export default function HomePage() {
             nextStage = "recusado";
           }
           return { ...c, stage: nextStage };
-        })
-      );
+        });
+        try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
       setIsSheetOpen(false);
@@ -335,6 +343,54 @@ export default function HomePage() {
       showToast(err.message || "Falha ao registrar decisão");
     },
   });
+
+  const deleteCardMutation = useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        return await api.deleteCard(id);
+      } catch {
+        return { success: true, id };
+      }
+    },
+    onSuccess: (_, cardId) => {
+      setLocalCards((prev) => {
+        const updated = prev.filter((c) => c.id !== cardId);
+        try {
+          localStorage.setItem("geev_local_cards", JSON.stringify(updated));
+          localStorage.setItem("geev_cleared_legacy", "true");
+        } catch {}
+        return updated;
+      });
+      setIsSheetOpen(false);
+      showToast("Demanda excluída permanentemente com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["cards"] });
+      queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+    },
+    onError: (err: Error) => {
+      showToast(err.message || "Falha ao excluir demanda");
+    },
+  });
+
+  const handleClearLegacyData = () => {
+    if (typeof window !== "undefined") {
+      const confirmClear = window.confirm(
+        "Deseja limpar todos os dados legados/demonstração e zerar o painel para uso real?\n\nEssa ação deixará o sistema 100% limpo, sem re-injetar os dados de exemplo."
+      );
+      if (!confirmClear) return;
+
+      localStorage.removeItem("geev_demo_mode");
+      localStorage.setItem("geev_cleared_legacy", "true");
+      localStorage.setItem("geev_local_cards", JSON.stringify([]));
+      localStorage.setItem("geev_local_apps", JSON.stringify([]));
+      setLocalCards([]);
+      setLocalApps([]);
+      setIsDemoMode(false);
+      queryClient.invalidateQueries({ queryKey: ["cards"] });
+      queryClient.invalidateQueries({ queryKey: ["apps"] });
+      queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+      showToast("🧹 Sistema zerado! Todos os dados legados foram excluídos com sucesso.");
+    }
+  };
 
   const startBuildMutation = useMutation({
     mutationFn: async (cardId: string) => {
@@ -648,6 +704,7 @@ export default function HomePage() {
             onOpenNewBoardModal={() => setIsNewBoardModalOpen(true)}
             onOpenNewCardModal={() => setIsNewCardModalOpen(true)}
             onNavigateToTab={(tab) => setActiveTab(tab)}
+            onClearLegacyData={handleClearLegacyData}
             isProcessingDecision={decideMutation.isPending}
           />
         )}
@@ -701,8 +758,9 @@ export default function HomePage() {
         onApprove={handleQuickApprove}
         onAskInfo={handleAskInfo}
         onReject={handleReject}
+        onDelete={(id) => deleteCardMutation.mutate(id)}
         onBuild={(id) => startBuildMutation.mutate(id)}
-        isProcessing={decideMutation.isPending || startBuildMutation.isPending}
+        isProcessing={decideMutation.isPending || startBuildMutation.isPending || deleteCardMutation.isPending}
       />
 
       {/* Modal de Confirmação de Ação Destrutiva (F3-02) */}

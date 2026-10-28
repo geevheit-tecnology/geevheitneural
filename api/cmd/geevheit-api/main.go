@@ -97,6 +97,7 @@ func main() {
 
 	listCardsUC := app.NewListCardsUseCase(cardRepo)
 	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo)
+	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher)
 
 	listAppsUC := app.NewListAppsUseCase(appRepo)
 	createAppUC := app.NewCreateAppUseCase(appRepo, publisher)
@@ -113,7 +114,7 @@ func main() {
 	// Fase 3: Comandos com confirmação de ações destrutivas e Ficha de Risco
 	confirmSvc := command.NewConfirmationService(5 * time.Minute)
 	processCmdUC := app.NewProcessCommandUseCase(cardRepo, moneyReader, financeRepo, decideGateUC, pauseSystemUC, resumeSystemUC, confirmSvc)
-	confirmActionUC := app.NewConfirmActionUseCase(confirmSvc, decideGateUC, pauseSystemUC)
+	confirmActionUC := app.NewConfirmActionUseCase(confirmSvc, decideGateUC, pauseSystemUC, deleteCardUC)
 	commandHandlers := handlers.NewCommandHandlers(processCmdUC, confirmActionUC)
 
 	getRiskUC := app.NewGetRiskReportUseCase(cardRepo)
@@ -276,6 +277,7 @@ func main() {
 	// Cartões (Hoje e Quadro Kanban)
 	mux.Handle("GET /v1/cards", requireAuth(handlers.HandleListCards(listCardsUC)))
 	mux.Handle("GET /v1/cards/{id}", requireAuth(handlers.HandleGetCardDetails(getCardDetailsUC)))
+	mux.Handle("DELETE /v1/cards/{id}", requireAuth(handlers.HandleDeleteCard(deleteCardUC)))
 
 	// Portal do Cliente (Fase 13)
 	mux.Handle("POST /v1/cards/{id}/portal-link", requireAuth(http.HandlerFunc(portalHandler.GeneratePortalLink)))
