@@ -48,6 +48,30 @@ func TestParseCommand(t *testing.T) {
 			destructive:    false,
 		},
 		{
+			input:          "construir Casa Verde",
+			expectedIntent: command.IntentBuild,
+			expectedTarget: "casa verde",
+			destructive:    false,
+		},
+		{
+			input:          "Jarvis, construir aplicativo de transporte",
+			expectedIntent: command.IntentBuild,
+			expectedTarget: "aplicativo de transporte",
+			destructive:    false,
+		},
+		{
+			input:          "criar projeto Plataforma E-commerce",
+			expectedIntent: command.IntentCreate,
+			expectedTarget: "plataforma e-commerce",
+			destructive:    false,
+		},
+		{
+			input:          "Jake, criar demanda Sistema de Gestão para Clínica Alpha",
+			expectedIntent: command.IntentCreate,
+			expectedTarget: "sistema de gestao para clinica alpha",
+			destructive:    false,
+		},
+		{
 			input:          "recusar Casa Verde",
 			expectedIntent: command.IntentReject,
 			expectedTarget: "casa verde",

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CardItem, AppItem } from "@/shared/api-client/endpoints";
+import { api, CardItem, AppItem } from "@/shared/api-client/endpoints";
 
 interface NewCardModalProps {
   isOpen: boolean;
@@ -25,8 +25,45 @@ export function NewCardModal({
   const [costReais, setCostReais] = useState("");
   const [appName, setAppName] = useState("Novo");
   const [stage, setStage] = useState("entrada");
+  const [productType, setProductType] = useState("saas_b2b");
+  const [complexity, setComplexity] = useState("medium");
+  const [estimating, setEstimating] = useState(false);
+  const [estimateFeedback, setEstimateFeedback] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleSuggestEstimate = async () => {
+    setEstimating(true);
+    setEstimateFeedback(null);
+    try {
+      const res = await api.estimatePrice({
+        title: title || "Novo Projeto",
+        description: title,
+        product_type: productType,
+        complexity,
+      });
+      setPriceReais((res.suggested_price_cents / 100).toFixed(2).replace(".", ","));
+      setCostReais((res.est_cost_cents / 100).toFixed(2).replace(".", ","));
+      setEstimateFeedback(
+        `Playbook: ${res.playbook} · Prazo sugerido: ${res.estimated_days} dias · Stack: ${res.recommended_stack.join(", ")}`
+      );
+    } catch {
+      const baseMap: Record<string, [number, number, number, string]> = {
+        saas_b2b: [8000, 1200, 14, "Go 1.22 + PostgreSQL RLS + Next.js"],
+        mobile_app: [5500, 800, 10, "Next.js PWA 360px + Go REST API"],
+        landing_page: [1500, 200, 3, "Next.js Static + TailwindCSS"],
+      };
+      const [basePrice, baseCost, baseDays, stack] = baseMap[productType] || baseMap.saas_b2b;
+      const mult = complexity === "high" ? 1.5 : complexity === "low" ? 0.8 : 1.0;
+      setPriceReais(Math.round(basePrice * mult).toFixed(2).replace(".", ","));
+      setCostReais(Math.round(baseCost * mult).toFixed(2).replace(".", ","));
+      setEstimateFeedback(
+        `Playbook: ${productType} · Prazo sugerido: ${Math.max(2, Math.round(baseDays * mult))} dias · Stack: ${stack}`
+      );
+    } finally {
+      setEstimating(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +176,50 @@ export function NewCardModal({
                 <option value="financeiro">Financeiro</option>
               </select>
             </div>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-[var(--bg)]/60 border border-[var(--line)] space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <select
+                id="select-estimate-product-type"
+                value={productType}
+                onChange={(e) => setProductType(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-[var(--line)] bg-[var(--surf)] text-[var(--ink)]"
+              >
+                <option value="saas_b2b">Playbook: SaaS B2B Multi-tenant</option>
+                <option value="mobile_app">Playbook: App Mobile / PWA</option>
+                <option value="landing_page">Playbook: Landing Page Conversão</option>
+              </select>
+              <select
+                id="select-estimate-complexity"
+                value={complexity}
+                onChange={(e) => setComplexity(e.target.value)}
+                className="px-2 py-1.5 text-xs rounded-lg border border-[var(--line)] bg-[var(--surf)] text-[var(--ink)]"
+              >
+                <option value="low">Complexidade Baixa</option>
+                <option value="medium">Complexidade Média</option>
+                <option value="high">Complexidade Alta</option>
+              </select>
+            </div>
+            <button
+              type="button"
+              id="btn-suggest-price-estimate"
+              disabled={estimating}
+              onClick={handleSuggestEstimate}
+              className="w-full py-2 px-3 rounded-lg font-bold text-xs border border-[var(--acc)]/40 bg-[var(--accs)] text-[var(--acc)] cursor-pointer hover:opacity-90 flex items-center justify-center gap-1.5"
+            >
+              <span>💡</span>
+              <span>
+                {estimating
+                  ? "Calculando estimativa..."
+                  : "Sugerir Valor, Prazo e Margem (Motor de Preço IA - Fase 10)"}
+              </span>
+            </button>
+            {estimateFeedback && (
+              <div className="text-[11px] text-[var(--ok)] font-medium leading-snug">
+                ✓ {estimateFeedback}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">

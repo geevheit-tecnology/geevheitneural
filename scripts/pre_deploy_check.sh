@@ -22,6 +22,7 @@ echo "✅ Todos os testes da API Go passaram com sucesso!"
 
 echo "3. Executando build e verificação do frontend Next.js..."
 cd "$ROOT_DIR/web"
+unset VSCODE_ESM_ENTRYPOINT ELECTRON_RUN_AS_NODE
 npm run build
 echo "✅ Build estático do frontend concluído sem erros!"
 

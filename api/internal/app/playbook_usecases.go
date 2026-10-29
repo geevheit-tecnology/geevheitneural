@@ -52,6 +52,45 @@ func (uc *ListModulesUseCase) Execute(ctx context.Context) ([]ModuleDTO, error) 
 	return list, nil
 }
 
+type CreatePlaybookUseCase struct {
+	uow UnitOfWork
+}
+
+func NewCreatePlaybookUseCase(uow UnitOfWork) *CreatePlaybookUseCase {
+	return &CreatePlaybookUseCase{uow: uow}
+}
+
+func (uc *CreatePlaybookUseCase) Execute(ctx context.Context, p PlaybookDTO) (*PlaybookDTO, error) {
+	if p.AutonomyLevel < 1 || p.AutonomyLevel > 3 {
+		p.AutonomyLevel = 2
+	}
+	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		return tx.Playbooks.UpsertPlaybook(ctx, &p)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+type CreateModuleUseCase struct {
+	uow UnitOfWork
+}
+
+func NewCreateModuleUseCase(uow UnitOfWork) *CreateModuleUseCase {
+	return &CreateModuleUseCase{uow: uow}
+}
+
+func (uc *CreateModuleUseCase) Execute(ctx context.Context, m ModuleDTO) (*ModuleDTO, error) {
+	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		return tx.Playbooks.UpsertModule(ctx, &m)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
 // SeedPlaybooksAndModules inicializa os playbooks e módulos reutilizáveis da fábrica autônoma
 func SeedPlaybooksAndModules(ctx context.Context, uow UnitOfWork) error {
 	return uow.RunInTx(ctx, func(tx Repositories) error {

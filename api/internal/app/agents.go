@@ -242,3 +242,72 @@ func (uc *AgentUseCases) SubmitDelivery(ctx context.Context, principal system.Ag
 
 	return nil
 }
+
+// ListOwnerAgents lista os 7 agentes da fábrica autônoma para o dono (F6-03).
+func (uc *AgentUseCases) ListOwnerAgents(ctx context.Context) ([]AgentDTO, error) {
+	var list []AgentDTO
+	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		items, err := tx.Agents.List(ctx)
+		if err == nil && len(items) > 0 {
+			list = items
+			return nil
+		}
+
+		// Se o banco ainda não tiver os 7 agentes semeados, inicializa os 7 papéis do sprit02 desligados por padrão
+		defaultRoles := []struct {
+			role  string
+			scope string
+			limit int64
+		}{
+			{"requisitos", "read_write_specs_bdd", 2000},
+			{"arquiteto", "read_write_architecture_schema", 3000},
+			{"dev", "read_write_sandbox_code", 8000},
+			{"qa", "read_write_tests_e2e", 3000},
+			{"seguranca", "read_only_security_audit", 3000},
+			{"publicador", "deploy_staging_preview_only", 2000},
+			{"suporte", "read_logs_open_bug_cards", 2000},
+		}
+
+		for _, dr := range defaultRoles {
+			created, errCreate := tx.Agents.Create(ctx, dr.role, dr.scope, dr.limit, hashToken("agent-token-"+dr.role))
+			if errCreate == nil && created != nil {
+				list = append(list, *created)
+			} else {
+				list = append(list, AgentDTO{
+					ID:                uuid.NewMD5(uuid.Nil, []byte("agent-"+dr.role)).String(),
+					Role:              dr.role,
+					Active:            false,
+					SpendLimitCents:   dr.limit,
+					SpendCurrentCents: 0,
+					Scope:             dr.scope,
+					CreatedAt:         time.Now(),
+					UpdatedAt:         time.Now(),
+				})
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// ToggleOwnerAgent liga ou desliga um agente individualmente e registra no audit_log (F6-03).
+func (uc *AgentUseCases) ToggleOwnerAgent(ctx context.Context, agentID string, active bool) error {
+	return uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		if err := tx.Agents.Toggle(ctx, agentID, active); err != nil {
+			return err
+		}
+		return tx.Audit.Record(ctx, AuditLogDTO{
+			ID:         uuid.New().String(),
+			OwnerID:    "00000000-0000-0000-0000-000000000001",
+			Action:     "owner.agent_toggled",
+			ActorType:  "owner",
+			TargetType: "agent",
+			TargetID:   &agentID,
+			Meta:       map[string]any{"active": active},
+			At:         time.Now(),
+		})
+	})
+}

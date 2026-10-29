@@ -40,10 +40,10 @@ export interface CardDetails {
   risk_report?: {
     id: string;
     card_id: string;
-    tests: Array<[string, string, string]>;
-    secrets_scan: Array<[string, string, string]>;
-    outdated_deps: Array<[string, string, string]>;
-    lgpd_points: Array<[string, string, string]>;
+    tests: Array<[string, string, string] | { label?: string; status?: string; level?: string }>;
+    secrets_scan: Array<[string, string, string] | { label?: string; status?: string; level?: string }>;
+    outdated_deps: Array<[string, string, string] | { label?: string; status?: string; level?: string }>;
+    lgpd_points: Array<[string, string, string] | { label?: string; status?: string; level?: string }>;
   };
   is_gate: boolean;
   actions: string[];
@@ -127,6 +127,22 @@ export const api = {
   getMoneyWaiting: () => apiClient<MoneyWaitingResponse>("/v1/money-waiting"),
   
   listCards: () => apiClient<{ cards: CardItem[]; count: number }>("/v1/cards"),
+
+  createCard: (data: {
+    id?: string;
+    title: string;
+    client_name: string;
+    app_name?: string;
+    type?: string;
+    price_cents: number;
+    est_cost_cents?: number;
+    stage?: string;
+    priority?: number;
+  }) =>
+    apiClient<CardItem>("/v1/cards", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   
   getCardDetails: (id: string) => apiClient<CardDetails>(`/v1/cards/${id}`),
   
@@ -204,7 +220,11 @@ export const api = {
     }),
 
   // Sprint 02: Fábrica Autônoma, Pipelines, Playbooks e Escopo
-  startBuild: (cardId: string, spendLimitCents: number = 10000) =>
+  startBuild: (
+    cardId: string,
+    spendLimitCents: number = 10000,
+    meta?: { title?: string; client_name?: string; price_cents?: number }
+  ) =>
     apiClient<{
       id: string;
       card_id: string;
@@ -216,7 +236,80 @@ export const api = {
       current_task: string;
     }>(`/v1/cards/${cardId}/pipeline/start`, {
       method: "POST",
-      body: JSON.stringify({ spend_limit_cents: spendLimitCents }),
+      body: JSON.stringify({
+        spend_limit_cents: spendLimitCents,
+        ...(meta || {}),
+      }),
+    }),
+
+  getCardSpecification: (cardId: string) =>
+    apiClient<{
+      card_id: string;
+      card_title: string;
+      user_stories: Array<{
+        title: string;
+        given: string;
+        when: string;
+        then: string;
+        passed: boolean;
+      }>;
+      tests_code?: string;
+      tests_passed: boolean;
+      client_approved: boolean;
+      payment_signal_cents: number;
+      payment_signal_paid: boolean;
+      public_token?: string;
+    }>(`/v1/cards/${cardId}/specification`),
+
+  getCardPreviewInfo: (cardId: string) =>
+    apiClient<{
+      card_id: string;
+      preview_url: string;
+      status: string;
+      expires_at?: string;
+      rollback_plan?: Record<string, unknown>;
+    }>(`/v1/cards/${cardId}/preview-info`),
+
+  executeCardRollback: (cardId: string, reason?: string) =>
+    apiClient<{
+      card_id: string;
+      preview_url: string;
+      status: string;
+      rollback_plan?: Record<string, unknown>;
+    }>(`/v1/cards/${cardId}/rollback`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason || "Reversão acionada pelo dono" }),
+    }),
+
+  getCardWorkspace: (cardId: string) =>
+    apiClient<{
+      card_id: string;
+      files: Array<{ path: string; content: string }>;
+      count: number;
+    }>(`/v1/cards/${cardId}/workspace`),
+
+  getCardMemory: (cardId: string) =>
+    apiClient<{
+      memories: Array<{
+        id: string;
+        card_id: string;
+        client_id: string;
+        key: string;
+        category: string;
+        content: string;
+        created_at: string;
+      }>;
+    }>(`/v1/cards/${cardId}/memory`),
+
+  addCardMemory: (cardId: string, data: { category: string; content: string; key?: string }) =>
+    apiClient<{
+      id: string;
+      card_id: string;
+      category: string;
+      content: string;
+    }>(`/v1/cards/${cardId}/memory`, {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 
   getPipeline: (cardId: string) =>
@@ -253,6 +346,82 @@ export const api = {
         is_reviewed: boolean;
       }>;
     }>("/v1/modules"),
+
+  createPlaybook: (data: {
+    product_type: string;
+    title: string;
+    description: string;
+    stack: Record<string, unknown>;
+    checklist: string[];
+    autonomy_level: number;
+  }) =>
+    apiClient("/v1/playbooks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  createModule: (data: {
+    name: string;
+    category: string;
+    description: string;
+    code_templates: Record<string, unknown>;
+    is_reviewed: boolean;
+  }) =>
+    apiClient("/v1/modules", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  runFactoryEvals: () =>
+    apiClient<{
+      executed_at: string;
+      overall_score: number;
+      all_passed: boolean;
+      cases: Array<{
+        id: string;
+        scenario: string;
+        role: string;
+        routed_model: string;
+        quality_score: number;
+        security_score: number;
+        latency_ms: number;
+        cost_cents: number;
+        passed: boolean;
+      }>;
+    }>("/v1/factory/evals/run", {
+      method: "POST",
+    }),
+
+  listOwnerAgents: () =>
+    apiClient<{
+      agents: Array<{
+        id: string;
+        role: string;
+        active: boolean;
+        spend_limit_cents: number;
+        spend_current_cents: number;
+        scope: string;
+      }>;
+    }>("/v1/agents"),
+
+  toggleOwnerAgent: (id: string, active: boolean) =>
+    apiClient<{ success: boolean; id: string; active: boolean }>(`/v1/agents/${id}/toggle`, {
+      method: "POST",
+      body: JSON.stringify({ active }),
+    }),
+
+  monitorAppHealth: (
+    appId: string,
+    data: { app_name: string; error_summary: string; severity: string }
+  ) =>
+    apiClient<{
+      success: boolean;
+      bug_card: CardItem;
+      message: string;
+    }>(`/v1/apps/${appId}/monitor`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   getFactoryScoreboard: () =>
     apiClient<{

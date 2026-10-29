@@ -34,6 +34,35 @@ export function QuadroTab({ cards, onOpenCard }: QuadroTabProps) {
     });
   };
 
+  const getStageAgentMeta = (card: CardItem) => {
+    switch (card.stage) {
+      case "entrada":
+        return { role: "requisitos", action: "Aguardando triagem BDD", aiCostCents: 0 };
+      case "proposta_aprovar":
+        return { role: "requisitos", action: "Escopo BDD + Orçamento pronto", aiCostCents: 8 };
+      case "aguardando_cliente":
+        return { role: "requisitos", action: "Link /escopo enviado ao cliente", aiCostCents: 8 };
+      case "prompt_aprovar":
+        return { role: "arquiteto", action: "Playbook + Arquitetura definidos", aiCostCents: 20 };
+      case "em_execucao":
+        return { role: "dev + qa", action: "Construindo & testando em sandbox", aiCostCents: 42 };
+      case "entrega_aprovar":
+        return { role: "publicador", action: "Prévia ao vivo + Ficha de Risco pronta", aiCostCents: 68 };
+      case "entregue":
+        return { role: "suporte", action: "Monitoramento pós-entrega ativo", aiCostCents: 75 };
+      default:
+        return null;
+    }
+  };
+
+  const isSensitiveCard = (card: CardItem) => {
+    if (card.type === "financeiro") return true;
+    const lower = (card.title || "").toLowerCase();
+    return ["pagamento", "pix", "financeir", "autentica", "login", "2fa", "lgpd", "cobrança", "cobranca"].some(
+      (kw) => lower.includes(kw)
+    );
+  };
+
   return (
     <div id="tab-quadro">
       <div
@@ -90,6 +119,30 @@ export function QuadroTab({ cards, onOpenCard }: QuadroTabProps) {
                           {card.client_name}
                           {card.app_name !== "Novo" ? ` · ${card.app_name}` : ""}
                         </small>
+
+                        {/* Fase 6 (sprit02): Estado visível do agente atuante, o que fez e custo de IA */}
+                        {(() => {
+                          const agentMeta = getStageAgentMeta(card);
+                          if (!agentMeta) return null;
+                          return (
+                            <div className="mb-2 p-1.5 rounded-lg bg-[var(--bg)]/70 border border-[var(--line)] text-[10px]">
+                              <div className="flex items-center justify-between font-bold text-[var(--ink)]">
+                                <span className="uppercase text-[var(--acc)]">🤖 {agentMeta.role}</span>
+                                <span className="text-[var(--mute)] font-mono">
+                                  IA: R$ {(agentMeta.aiCostCents / 100).toFixed(2).replace(".", ",")}
+                                </span>
+                              </div>
+                              <div className="text-[var(--mute)] truncate mt-0.5">{agentMeta.action}</div>
+                            </div>
+                          );
+                        })()}
+
+                        {isSensitiveCard(card) && (
+                          <div className="mb-2 text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 inline-block">
+                            🛡️ revisão_humana_obrigatória
+                          </div>
+                        )}
+
                         <div className="flex items-center justify-between text-xs">
                           <span
                             className="text-[11px] px-2 py-0.5 rounded-full font-semibold"

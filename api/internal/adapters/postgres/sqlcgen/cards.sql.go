@@ -475,6 +475,9 @@ func (q *Queries) UpsertRiskReport(ctx context.Context, arg UpsertRiskReportPara
 }
 
 const deleteCard = `-- name: DeleteCard :exec
+WITH allow_delete AS (
+    SELECT set_config('geev.allow_card_delete', 'on', true)
+)
 DELETE FROM geev.cards
 WHERE id = $1
 `

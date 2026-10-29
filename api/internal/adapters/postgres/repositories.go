@@ -192,6 +192,46 @@ func (r *CardRepository) GetRiskReport(ctx context.Context, cardID string) (*app
 	}, nil
 }
 
+func (r *CardRepository) SaveRiskReport(ctx context.Context, report *app.RiskReportDTO) error {
+	now := time.Now()
+	id := report.ID
+	if id == "" {
+		if existing, err := r.GetRiskReport(ctx, report.CardID); err == nil && existing != nil && existing.ID != "" {
+			id = existing.ID
+		} else {
+			id = uuid.NewString()
+		}
+	}
+
+	testsBytes, _ := json.Marshal(report.Tests)
+	secretsBytes, _ := json.Marshal(report.SecretsScan)
+	depsBytes, _ := json.Marshal(report.OutdatedDeps)
+	lgpdBytes, _ := json.Marshal(report.LgpdPoints)
+	src := report.Source
+	if src == "" {
+		src = "factory_pipeline"
+	}
+
+	row, err := r.q.UpsertRiskReport(ctx, sqlcgen.UpsertRiskReportParams{
+		ID:           textToUUID(id),
+		OwnerID:      textToUUID("a0000000-0000-0000-0000-000000000001"),
+		CardID:       textToUUID(report.CardID),
+		Tests:        testsBytes,
+		SecretsScan:  secretsBytes,
+		OutdatedDeps: depsBytes,
+		LgpdPoints:   lgpdBytes,
+		Source:       src,
+		CreatedAt:    timeToTimestamptz(now),
+		UpdatedAt:    timeToTimestamptz(now),
+	})
+	if err != nil {
+		return fmt.Errorf("falha ao salvar ficha de risco: %w", err)
+	}
+	report.ID = uuidToText(row.ID)
+	report.UpdatedAt = timestamptzToTime(row.UpdatedAt)
+	return nil
+}
+
 func (r *CardRepository) Update(ctx context.Context, c *card.Card) error {
 	return r.q.UpdateCard(ctx, sqlcgen.UpdateCardParams{
 		ID:           textToUUID(c.ID),

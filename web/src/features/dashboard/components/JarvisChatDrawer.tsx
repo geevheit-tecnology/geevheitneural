@@ -20,6 +20,7 @@ interface JarvisChatDrawerProps {
   onApproveCard: (cardId: string) => void;
   onTogglePause: () => void;
   onOpenNewCardModal: () => void;
+  onExecuteCommand?: (text: string) => Promise<string | void>;
 }
 
 export type AssistantPersona = "jarvis" | "jake";
@@ -34,6 +35,7 @@ export function JarvisChatDrawer({
   onApproveCard,
   onTogglePause,
   onOpenNewCardModal,
+  onExecuteCommand,
 }: JarvisChatDrawerProps) {
   // 1. Configuração de Persona (Jarvis = Masculino | Jake = Feminina)
   const [persona, setPersona] = useState<AssistantPersona>(() => {
@@ -337,7 +339,7 @@ export function JarvisChatDrawer({
     return `Compreendido. Sua ordem "${userPrompt}" foi registrada no histórico. Como líder da central, o senhor pode me pedir resumos de faturamento, consultar agentes, pausar o sistema ou aprovar portões pelo nome.`;
   };
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!text.trim()) return;
 
     const userMsg: ChatMessage = {
@@ -350,6 +352,53 @@ export function JarvisChatDrawer({
     setMessages((prev) => [...prev, userMsg]);
     setInputVal("");
 
+    const q = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // 1. Respostas conversacionais imediatas de identidade
+    if (/quem e voce|seu nome/.test(q)) {
+      const assistantName = persona === "jake" ? "Jake" : "Jarvis";
+      const reply = `Sou ${assistantName}, a inteligência operacional da GeevheitNeural. Você pode alternar entre Jarvis (voz masculina) e Jake (voz feminina) clicando no ícone de engrenagem no cabeçalho.`;
+      const assistantMsg: ChatMessage = {
+        id: `ast_${Date.now()}`,
+        sender: "jarvis",
+        text: reply,
+        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+      speakText(reply);
+      return;
+    }
+
+    // 2. Execução de comandos reais através da API da central
+    if (onExecuteCommand) {
+      try {
+        const cmdResult = await onExecuteCommand(text);
+        if (cmdResult && typeof cmdResult === "string") {
+          const assistantMsg: ChatMessage = {
+            id: `ast_${Date.now()}`,
+            sender: "jarvis",
+            text: cmdResult,
+            timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+          speakText(cmdResult);
+          return;
+        }
+      } catch (err: unknown) {
+        const errorMsg = (err as Error)?.message || "Não foi possível executar a ordem solicitada.";
+        const assistantMsg: ChatMessage = {
+          id: `ast_${Date.now()}`,
+          sender: "jarvis",
+          text: `Aviso operacional: ${errorMsg}`,
+          timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        speakText(`Aviso operacional: ${errorMsg}`);
+        return;
+      }
+    }
+
+    // 3. Fallback inteligente local
     setTimeout(() => {
       const reply = processAssistantResponse(text);
       const assistantMsg: ChatMessage = {

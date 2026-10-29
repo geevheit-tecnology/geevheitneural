@@ -388,6 +388,25 @@ type PreviewDTO struct {
 	RollbackPlan map[string]any `json:"rollback_plan"`
 }
 
+type ProjectMemoryDTO struct {
+	ID        string    `json:"id"`
+	CardID    string    `json:"card_id"`
+	ClientID  string    `json:"client_id"`
+	Key       string    `json:"key"`
+	Category  string    `json:"category"` // requisito, decisao, pendencia, nota
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ProjectMemoryRepository interface {
+	Upsert(ctx context.Context, mem *ProjectMemoryDTO) error
+	ListByCardID(ctx context.Context, cardID string) ([]ProjectMemoryDTO, error)
+}
+
+type RiskReportWriter interface {
+	SaveRiskReport(ctx context.Context, report *RiskReportDTO) error
+}
+
 type FactoryScoreboardDTO struct {
 	AvgLeadTimeHours     float64 `json:"avg_lead_time_hours"`
 	TotalAICostCents     int64   `json:"total_ai_cost_cents"`
@@ -548,6 +567,7 @@ type Repositories struct {
 	Specifications SpecificationRepository
 	Playbooks      PlaybookRepository
 	Previews       PreviewRepository
+	ProjectMemory  ProjectMemoryRepository
 	FactoryMetrics FactoryMetricsRepository
 	PaymentOrders  PaymentOrderRepository
 	PortalTokens   PortalTokenRepository

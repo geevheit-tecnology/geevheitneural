@@ -17,6 +17,7 @@ interface HomeHubTabProps {
   onOpenNewCardModal?: () => void;
   onNavigateToTab: (tab: "quadro" | "apps" | "fin" | "con") => void;
   onClearLegacyData?: () => void;
+  onCardCreated?: (card: CardItem) => void;
   isProcessingDecision?: boolean;
 }
 
@@ -31,6 +32,7 @@ export function HomeHubTab({
   onOpenNewCardModal,
   onNavigateToTab,
   onClearLegacyData,
+  onCardCreated,
   isProcessingDecision = false,
 }: HomeHubTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -318,7 +320,12 @@ export function HomeHubTab({
           isProcessing={isProcessingDecision}
         />
       ) : hubViewMode === "agentes" ? (
-        <AgentsCockpit cards={cards} isPaused={isPaused} onOpenCard={onOpenCard} />
+        <AgentsCockpit
+          cards={cards}
+          isPaused={isPaused}
+          onOpenCard={onOpenCard}
+          onCardCreated={onCardCreated}
+        />
       ) : (
         <>
           {/* Busca Global */}

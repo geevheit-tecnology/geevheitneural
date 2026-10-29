@@ -174,7 +174,7 @@ export function CommandLine({
       <input
         id="cmd-input"
         type="text"
-        placeholder="Dite uma ordem. Ex.: aprovar proposta"
+        placeholder="Dite uma ordem. Ex.: aprovar proposta ou construir projeto"
         value={inputVal}
         onChange={(e) => setInputVal(e.target.value)}
         className="flex-1 min-w-0 text-xs sm:text-sm py-2 px-3.5 rounded-full border border-[var(--line)] bg-[var(--surf)] text-[var(--ink)] outline-none focus:border-[var(--acc)]"

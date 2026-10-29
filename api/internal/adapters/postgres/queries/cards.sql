@@ -103,5 +103,8 @@ SET tests = EXCLUDED.tests,
 RETURNING id, owner_id, card_id, tests, secrets_scan, outdated_deps, lgpd_points, source, created_at, updated_at;
 
 -- name: DeleteCard :exec
+WITH allow_delete AS (
+    SELECT set_config('geev.allow_card_delete', 'on', true)
+)
 DELETE FROM geev.cards
 WHERE id = $1;

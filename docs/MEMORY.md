@@ -13,11 +13,27 @@
   - Criação da Landing Page de alta conversão do produto real: TransportSim 360 (`https://geevheit.vercel.app/transportsim`) com simulador rodoviário e modal de matrícula conectado à API `/v1/intake`.
   - Integração oficial do site da Software House (`https://geevheith-site.vercel.app`) para gravar orçamentos e novos projetos diretamente no banco Supabase.
   - **Exclusão Definitiva e Limpeza de Dados Legados:** Adicionada funcionalidade para deletar demandas/cartões permanentemente (via botão no detalhe do cartão, comandos de voz/texto "excluir/deletar [cliente]" e rota `DELETE /v1/cards/{id}`), botão de zerar dados legados no Hub, além de correção do fallback local e persistência imediata no `localStorage` para evitar que itens excluídos ou recusados voltem ao recarregar a tela.
+  - **Homologação 100% Ponta a Ponta do `sprit02` (Fases 6 a 10) e Prontidão para Deploy (2026-10-29):**
+    - Comando `"construir [projeto/cliente]"` integrado no parser Go (`IntentBuild`), `ProcessCommandUseCase`, `CommandLine` e `page.tsx`.
+    - Pipeline de 7 agentes (`Requisitos → Arquiteto → Dev → QA → Segurança → Publicador → Suporte`) com roteamento de modelos (`economy/fast` vs `critical/reasoning`), teto de gasto (`spend_limit_cents`), descarte de sandbox na pausa de emergência e marcação automática `revisão_humana_obrigatória` em domínios sensíveis (pagamentos, auth, LGPD).
+    - `CardDetailSheet` completa com Especificação Executável BDD (`/escopo?token=...`), Prévia ao Vivo (`/preview`), visualizador de código do workspace, Plano de Reversão Automático (`POST /v1/cards/{id}/rollback`), Memória Viva do Projeto (`GET/POST /v1/cards/{id}/memory`) e Ficha de Risco automática compatível com formato de tupla e objeto.
+    - `AgentsCockpit` ("Fábrica de IA") com os 7 papéis, chave Ligar/Desligar individual (`POST /v1/agents/{id}/toggle`), Placar da Fábrica (`scoreboard`), Biblioteca de Playbooks e Módulos Reutilizáveis com Nível de Autonomia (1 a 3) e promoção de padrões (`POST /v1/modules`), Suíte de Evals (`POST /v1/factory/evals/run`) e Monitoramento Pós-Entrega do Agente de Suporte (`POST /v1/apps/{id}/monitor`).
+    - Motor de Preço, Prazo e Margem Assistido integrado ao modal `NewCardModal`.
+  - **Ativação Real de Ordens via Jarvis / Jake & Endurecimento de Segurança (2026-10-29):**
+    - Identificada e corrigida a causa raiz de ordens do Jarvis/Jake não entrarem em produção: a gaveta de chat (`JarvisChatDrawer.tsx`) apenas retornava strings locais de simulação e não chamava a API da central.
+    - Conectado `JarvisChatDrawer` ao `onExecuteCommand` (`api.processCommand`), com suporte a síntese de voz (TTS) do resultado real e invalidação em tempo real do cache do Kanban e métricas.
+    - Adicionado suporte a prefixos de assistente no parser determinístico Go (`parser.go`), permitindo frases como *"Jarvis, criar projeto X"* ou *"Jake, construir sistema Y"*.
+    - Criada a intenção `IntentCreate` para registro automático de demandas por comando de voz/texto.
+    - O comando `IntentBuild` agora cria a demanda automaticamente sob demanda se ela ainda não existir, iniciando a esteira dos 7 agentes de IA na mesma hora.
+    - **Endurecimento de Segurança no Aceite de Escopo:** Eliminada a previsibilidade do link de escopo gerando tokens aleatórios criptograficamente seguros (32 bytes `sc_...`) salvos apenas como hash SHA-256 no Postgres.
+    - Acoplamento do sinal de entrada à liquidação por PIX via `ProcessPixWebhookUseCase`.
+    - Remoção de fallback local silencioso em `/escopo`, garantindo resposta de erro explícita caso o link seja inválido.
+    - **Solução Definitiva para Retorno de Dados Excluídos:** Corrigida a query `DeleteCard` do PostgreSQL para habilitar `set_config('geev.allow_card_delete', 'on', true)` no cascade, e adicionada lista negra imutável de IDs no frontend (`geev_deleted_card_ids` / `geev_deleted_app_ids`) via `useMemo`. Quando o dono clica em excluir ou em "Limpar Dados Legados", os itens são eliminados e nunca mais voltam ao atualizar a página.
 - **Qualidade e Conformidade:**
   - Backend Go 100% verde (`go test -race ./...`).
-  - Frontend Next.js estático 100% verde na Vercel (`https://geevheit.vercel.app`).
+  - Frontend Next.js estático 100% verde (`npm run build` / `out/`).
   - Banco de Dados Supabase Nuvem com RLS forçada e Goose v11 (`00011_allow_card_deletion.sql`).
-- **Última atualização:** 2026-10-28.
+- **Última atualização:** 2026-10-29.
 
 ## Respostas do dono (2026-10-18)
 1. **Protótipo:** salvo em [`docs/prototype/central-prototipo.html`](./prototype/central-prototipo.html). É a referência de telas, textos e tokens de cor (claro e escuro).

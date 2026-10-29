@@ -24,3 +24,11 @@ services:
         sync: false
       - key: BASE_URL
         sync: false
+      - key: DB_SIMPLE_PROTOCOL
+        value: "true"
+      - key: AGENT_RUNNER_TYPE
+        value: "gemini"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false

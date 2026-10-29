@@ -70,6 +70,10 @@ func (uc *SaveRiskReportUseCase) Execute(ctx context.Context, cmd SaveRiskReport
 		Source:       cmd.Source,
 	}
 
+	if writer, ok := uc.cardRepo.(RiskReportWriter); ok {
+		_ = writer.SaveRiskReport(ctx, dto)
+	}
+
 	if uc.publisher != nil {
 		_ = uc.publisher.Publish(ctx, TopicCardsChanged, cmd.CardID)
 	}

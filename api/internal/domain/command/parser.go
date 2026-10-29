@@ -20,6 +20,8 @@ const (
 	IntentApprove      Intent = "approve"
 	IntentReject       Intent = "reject"
 	IntentDelete       Intent = "delete"
+	IntentBuild        Intent = "build"
+	IntentCreate       Intent = "create"
 	IntentPauseSystem  Intent = "pause_system"
 	IntentResumeSystem Intent = "resume_system"
 	IntentUnknown      Intent = "unknown"
@@ -50,6 +52,17 @@ func NormalizeText(s string) string {
 // ParseCommand interpreta o texto em linguagem natural sem depender de IA externa (ADR-001).
 func ParseCommand(raw string) (*ParsedCommand, error) {
 	normalized := NormalizeText(raw)
+	if normalized == "" {
+		return nil, ErrEmptyCommand
+	}
+
+	// Remove saudações/invocações direcionadas a assistentes (Jarvis/Jake)
+	for _, prefix := range []string{"jarvis,", "jarvis:", "jarvis", "jake,", "jake:", "jake"} {
+		if strings.HasPrefix(normalized, prefix) {
+			normalized = strings.TrimSpace(strings.TrimPrefix(normalized, prefix))
+			break
+		}
+	}
 	if normalized == "" {
 		return nil, ErrEmptyCommand
 	}
@@ -105,6 +118,32 @@ func ParseCommand(raw string) (*ParsedCommand, error) {
 	if strings.HasPrefix(normalized, "aprovar") || strings.HasPrefix(normalized, "aceitar") || strings.HasPrefix(normalized, "liberar") || strings.HasPrefix(normalized, "entregar") {
 		cmd.Intent = IntentApprove
 		cmd.Target = extractTarget(normalized, "aprovar", "aceitar", "liberar", "entregar")
+		return cmd, nil
+	}
+
+	// 7. Construir / Pipeline da Fábrica Autônoma (Fase 6 - sprit02)
+	if strings.HasPrefix(normalized, "construir") || strings.HasPrefix(normalized, "desenvolver") || strings.HasPrefix(normalized, "compilar") || strings.HasPrefix(normalized, "executar") {
+		cmd.Intent = IntentBuild
+		target := extractTarget(normalized, "construir", "desenvolver", "compilar", "executar")
+		target = strings.TrimPrefix(target, "este projeto ")
+		target = strings.TrimPrefix(target, "projeto ")
+		target = strings.TrimPrefix(target, "demanda ")
+		target = strings.TrimPrefix(target, "app ")
+		cmd.Target = strings.TrimSpace(target)
+		return cmd, nil
+	}
+
+	// 8. Criar / Cadastrar Nova Demanda ou Projeto
+	if strings.HasPrefix(normalized, "criar") || strings.HasPrefix(normalized, "cadastrar") || strings.HasPrefix(normalized, "novo projeto") || strings.HasPrefix(normalized, "nova demanda") || strings.HasPrefix(normalized, "novo app") || strings.HasPrefix(normalized, "fazer") {
+		cmd.Intent = IntentCreate
+		target := extractTarget(normalized, "criar", "cadastrar", "novo projeto", "nova demanda", "novo app", "fazer")
+		target = strings.TrimPrefix(target, "um projeto ")
+		target = strings.TrimPrefix(target, "uma demanda ")
+		target = strings.TrimPrefix(target, "um app ")
+		target = strings.TrimPrefix(target, "projeto ")
+		target = strings.TrimPrefix(target, "demanda ")
+		target = strings.TrimPrefix(target, "app ")
+		cmd.Target = strings.TrimSpace(target)
 		return cmd, nil
 	}
 

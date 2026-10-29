@@ -436,3 +436,55 @@ func (r *FactoryMetricsRepository) GetScoreboard(ctx context.Context) (*app.Fact
 		TotalDefects:         row.TotalDefects,
 	}, nil
 }
+
+// ProjectMemoryRepository implementa app.ProjectMemoryRepository
+type ProjectMemoryRepository struct {
+	q *sqlcgen.Queries
+}
+
+func NewProjectMemoryRepository(q *sqlcgen.Queries) *ProjectMemoryRepository {
+	return &ProjectMemoryRepository{q: q}
+}
+
+func (r *ProjectMemoryRepository) Upsert(ctx context.Context, mem *app.ProjectMemoryDTO) error {
+	now := time.Now()
+	id := mem.ID
+	if id == "" {
+		id = uuid.NewString()
+		mem.ID = id
+	}
+	cat := mem.Category
+	if cat == "" {
+		cat = "nota"
+	}
+	return r.q.UpsertProjectMemory(ctx, sqlcgen.UpsertProjectMemoryParams{
+		ID:        textToUUID(id),
+		OwnerID:   textToUUID(DefaultOwnerID),
+		CardID:    textToUUID(mem.CardID),
+		ClientID:  textToUUID(mem.ClientID),
+		Key:       mem.Key,
+		Category:  cat,
+		Content:   mem.Content,
+		CreatedAt: timeToTimestamptz(now),
+	})
+}
+
+func (r *ProjectMemoryRepository) ListByCardID(ctx context.Context, cardID string) ([]app.ProjectMemoryDTO, error) {
+	rows, err := r.q.ListProjectMemoryByCardID(ctx, textToUUID(cardID))
+	if err != nil {
+		return nil, fmt.Errorf("falha ao listar memória do projeto: %w", err)
+	}
+	out := make([]app.ProjectMemoryDTO, len(rows))
+	for i, row := range rows {
+		out[i] = app.ProjectMemoryDTO{
+			ID:        uuidToText(row.ID),
+			CardID:    uuidToText(row.CardID),
+			ClientID:  uuidToText(row.ClientID),
+			Key:       row.Key,
+			Category:  row.Category,
+			Content:   row.Content,
+			CreatedAt: timestamptzToTime(row.CreatedAt),
+		}
+	}
+	return out, nil
+}

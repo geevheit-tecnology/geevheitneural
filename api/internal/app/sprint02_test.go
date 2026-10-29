@@ -10,6 +10,9 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/adapters/agents"
 	"github.com/geevheit/neuralcenter/api/internal/app"
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
+	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
+	"github.com/geevheit/neuralcenter/api/internal/domain/command"
+	"github.com/geevheit/neuralcenter/api/internal/domain/money"
 	"github.com/geevheit/neuralcenter/api/internal/domain/pipeline"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
 	"github.com/google/uuid"
@@ -51,6 +54,8 @@ func (u *mockSprint02UOW) RunInTx(ctx context.Context, fn func(tx app.Repositori
 	repos := app.Repositories{
 		SystemState:    &mockSystemStateRepoSprint02{m: u.m},
 		Cards:          &mockCardRepoSprint02{m: u.m},
+		Clients:        &mockClientRepoSprint02{},
+		Finances:       &mockFinanceRepoSprint02{},
 		Pipelines:      &mockPipelineRepoSprint02{m: u.m},
 		Specifications: &mockSpecRepoSprint02{m: u.m},
 		Playbooks:      &mockPlaybookRepoSprint02{m: u.m},
@@ -60,6 +65,39 @@ func (u *mockSprint02UOW) RunInTx(ctx context.Context, fn func(tx app.Repositori
 		Audit:          &mockAuditRepoSprint02{m: u.m},
 	}
 	return fn(repos)
+}
+
+type mockClientRepoSprint02 struct{}
+
+func (r *mockClientRepoSprint02) FindByName(ctx context.Context, name string) (*app.ClientDTO, error) {
+	return nil, nil
+}
+func (r *mockClientRepoSprint02) GetByID(ctx context.Context, id string) (*app.ClientDTO, error) {
+	return &app.ClientDTO{ID: id, Name: "Cliente"}, nil
+}
+func (r *mockClientRepoSprint02) Create(ctx context.Context, name, contactRef string) (*app.ClientDTO, error) {
+	return &app.ClientDTO{ID: uuid.NewString(), Name: name, ContactRef: contactRef}, nil
+}
+func (r *mockClientRepoSprint02) Delete(ctx context.Context, id string) error {
+	return nil
+}
+func (r *mockClientRepoSprint02) Export(ctx context.Context, id string) (*app.ClientExportDTO, error) {
+	return nil, nil
+}
+
+type mockMoneyReaderSprint02 struct{}
+
+func (r *mockMoneyReaderSprint02) GetMoneyWaiting(ctx context.Context) (int64, int, error) {
+	return 0, 0, nil
+}
+
+type mockFinanceRepoSprint02 struct{}
+
+func (r *mockFinanceRepoSprint02) GetOverview(ctx context.Context) (*app.FinancesOverviewDTO, error) {
+	return &app.FinancesOverviewDTO{}, nil
+}
+func (r *mockFinanceRepoSprint02) CreateEntry(ctx context.Context, cmd app.CreateLedgerEntryCommand) (*app.LedgerEntryDTO, error) {
+	return &app.LedgerEntryDTO{}, nil
 }
 
 type mockSystemStateRepoSprint02 struct{ m *mockSprint02Repos }
@@ -108,6 +146,19 @@ func (r *mockCardRepoSprint02) GetRiskReport(ctx context.Context, cardID string)
 	return nil, nil
 }
 func (r *mockCardRepoSprint02) Create(ctx context.Context, c *app.CardListItemDTO) error {
+	r.m.mu.Lock()
+	defer r.m.mu.Unlock()
+	r.m.cards[c.ID] = &card.Card{
+		ID:        c.ID,
+		ClientID:  c.ClientID,
+		Type:      card.Type(c.Type),
+		Title:     c.Title,
+		Price:     money.Money{Cents: c.PriceCents, Currency: "BRL"},
+		EstCost:   money.Money{Cents: c.EstCostCents, Currency: "BRL"},
+		Stage:     card.Stage(c.Stage),
+		CreatedAt: c.CreatedAt,
+		UpdatedAt: c.UpdatedAt,
+	}
 	return nil
 }
 func (r *mockCardRepoSprint02) Delete(ctx context.Context, id string) error {
@@ -443,6 +494,81 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 		}
 		if est.SuggestedPriceCents <= 0 || est.EstimatedDays <= 0 {
 			t.Errorf("estimativa inválida: preço=%d dias=%d", est.SuggestedPriceCents, est.EstimatedDays)
+		}
+	})
+
+	t.Run("Comando Jarvis/Jake cria demanda e inicia produção autônoma", func(t *testing.T) {
+		clk := clock.SystemClock{}
+		cardRepo := &mockCardRepoSprint02{m: m}
+		moneyReader := &mockMoneyReaderSprint02{}
+		finRepo := &mockFinanceRepoSprint02{}
+		createCardUC := app.NewCreateCardUseCase(uow, pub)
+		confirmSvc := command.NewConfirmationService(5 * time.Minute)
+		decideGateUC := app.NewDecideGateUseCase(uow, pub, clk)
+		pauseUC := app.NewPauseSystemUseCase(uow, pub, clk)
+		resumeUC := app.NewResumeSystemUseCase(uow, pub, clk)
+
+		processCmdUC := app.NewProcessCommandUseCase(cardRepo, moneyReader, finRepo, decideGateUC, pauseUC, resumeUC, confirmSvc)
+		processCmdUC.WithStartBuild(startBuildUC)
+		processCmdUC.WithCreateCard(createCardUC)
+
+		// 1. Comando de criação assistido por Jarvis
+		resCreate, err := processCmdUC.Execute(context.Background(), app.ProcessCommandInput{
+			Owner: owner,
+			Text:  "Jarvis, criar projeto Aplicativo de Logística para Transportadora Sul",
+		})
+		if err != nil {
+			t.Fatalf("erro ao executar comando de criação com Jarvis: %v", err)
+		}
+		if resCreate.Intent != "create" {
+			t.Errorf("esperava intent create, obteve %s", resCreate.Intent)
+		}
+
+		// 2. Comando de construção direta na fábrica autônoma
+		resBuild, err := processCmdUC.Execute(context.Background(), app.ProcessCommandInput{
+			Owner: owner,
+			Text:  "Jake, construir Sistema de Delivery Express para Pizzaria Napoli",
+		})
+		if err != nil {
+			t.Fatalf("erro ao executar comando de construção com Jake: %v", err)
+		}
+		if resBuild.Intent != "build" {
+			t.Errorf("esperava intent build, obteve %s", resBuild.Intent)
+		}
+	})
+
+	t.Run("Segurança de Token de Escopo Criptográfico e Pagamento de Sinal", func(t *testing.T) {
+		cardID := uuid.NewString()
+		m.setCard(&card.Card{ID: cardID, Title: "Projeto Seguro LGPD", Price: money.Money{Cents: 300000, Currency: "BRL"}})
+
+		getSpecUC := app.NewGetCardSpecificationUseCase(uow)
+		view, err := getSpecUC.Execute(context.Background(), cardID)
+		if err != nil {
+			t.Fatalf("erro ao obter especificação: %v", err)
+		}
+		if view.PublicToken == "" || view.PublicToken == "scope-"+cardID {
+			t.Errorf("esperava token criptográfico seguro não previsível, obteve %s", view.PublicToken)
+		}
+
+		// Cliente acessa com o token criptográfico seguro
+		getPublicScopeUC := app.NewGetPublicScopeUseCase(uow)
+		publicView, err := getPublicScopeUC.Execute(context.Background(), view.PublicToken)
+		if err != nil {
+			t.Fatalf("erro ao resolver escopo com token criptográfico: %v", err)
+		}
+		if publicView.CardID != cardID {
+			t.Errorf("card id divergente no escopo público: %s", publicView.CardID)
+		}
+
+		// Cliente aprova escopo
+		approveScopeUC := app.NewApprovePublicScopeUseCase(uow, pub)
+		if err := approveScopeUC.Execute(context.Background(), view.PublicToken); err != nil {
+			t.Fatalf("falha ao aprovar escopo público: %v", err)
+		}
+
+		// Token errado deve ser rejeitado com erro
+		if err := approveScopeUC.Execute(context.Background(), "token_falso_e_invalido"); err == nil {
+			t.Fatalf("esperava erro ao tentar aprovar com token falso")
 		}
 	})
 }

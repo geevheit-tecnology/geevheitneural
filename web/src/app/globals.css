@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  --font-instrument: "Instrument Sans", system-ui, -apple-system, sans-serif;
   --bg: #eef1f4;
   --surf: #ffffff;
   --ink: #14202b;

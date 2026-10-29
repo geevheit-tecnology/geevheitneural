@@ -211,6 +211,15 @@ func (uc *ProcessPixWebhookUseCase) Execute(ctx context.Context, txid string, pa
 			At: now,
 		})
 
+		// 4. Se houver especificação de escopo com sinal pendente, liquida o sinal automaticamente
+		if tx.Specifications != nil {
+			spec, errSpec := tx.Specifications.GetByCardID(ctx, order.CardID)
+			if errSpec == nil && spec != nil {
+				spec.PaymentSignalPaid = true
+				_ = tx.Specifications.Upsert(ctx, spec, "")
+			}
+		}
+
 		result = order
 		return nil
 	})

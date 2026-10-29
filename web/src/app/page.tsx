@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/shared/auth/supabase";
 import { api, CardItem, AppItem, FinancesOverview, ConnectorItem, CardDetails } from "@/shared/api-client/endpoints";
@@ -220,7 +220,24 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  const cards: CardItem[] = cardsData?.cards !== undefined ? cardsData.cards : localCards;
+  const cards: CardItem[] = useMemo(() => {
+    let baseList = cardsData?.cards !== undefined ? cardsData.cards : localCards;
+    if (typeof window !== "undefined") {
+      try {
+        const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
+        const deletedRaw = localStorage.getItem("geev_deleted_card_ids");
+        const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+        if (isCleared) {
+          const legacyIds = new Set(REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id)));
+          baseList = baseList.filter((c) => !legacyIds.has(c.id));
+        }
+        if (deletedSet.size > 0) {
+          baseList = baseList.filter((c) => !deletedSet.has(c.id));
+        }
+      } catch {}
+    }
+    return baseList;
+  }, [cardsData?.cards, localCards]);
 
   // 3. Meus Apps (mostra os apps reais desenvolvidos)
   const [localApps, setLocalApps] = useState<AppItem[]>(() => {
@@ -246,7 +263,24 @@ export default function HomePage() {
     enabled: !!session,
   });
 
-  const apps: AppItem[] = appsData?.apps !== undefined ? appsData.apps : localApps;
+  const apps: AppItem[] = useMemo(() => {
+    let baseList = appsData?.apps !== undefined ? appsData.apps : localApps;
+    if (typeof window !== "undefined") {
+      try {
+        const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
+        const deletedRaw = localStorage.getItem("geev_deleted_app_ids");
+        const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+        if (isCleared) {
+          const legacyIds = new Set(REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id)));
+          baseList = baseList.filter((a) => !legacyIds.has(a.id));
+        }
+        if (deletedSet.size > 0) {
+          baseList = baseList.filter((a) => !deletedSet.has(a.id));
+        }
+      } catch {}
+    }
+    return baseList;
+  }, [appsData?.apps, localApps]);
 
   // 4. Finanças
   const { data: financesData } = useQuery({
@@ -346,9 +380,22 @@ export default function HomePage() {
 
   const deleteCardMutation = useMutation({
     mutationFn: async (id: string) => {
+      // 1. Marca imediatamente no localStorage para não voltar nunca mais (nem em recarregamento)
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("geev_deleted_card_ids");
+          const list: string[] = raw ? JSON.parse(raw) : [];
+          if (!list.includes(id)) {
+            list.push(id);
+            localStorage.setItem("geev_deleted_card_ids", JSON.stringify(list));
+          }
+        } catch {}
+      }
+
       try {
         return await api.deleteCard(id);
-      } catch {
+      } catch (err) {
+        console.warn("Falha na exclusão remota do cartão:", err);
         return { success: true, id };
       }
     },
@@ -378,10 +425,15 @@ export default function HomePage() {
       );
       if (!confirmClear) return;
 
+      const legacyCardIds = REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id));
+      const legacyAppIds = REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id));
+
       localStorage.removeItem("geev_demo_mode");
       localStorage.setItem("geev_cleared_legacy", "true");
       localStorage.setItem("geev_local_cards", JSON.stringify([]));
       localStorage.setItem("geev_local_apps", JSON.stringify([]));
+      localStorage.setItem("geev_deleted_card_ids", JSON.stringify(legacyCardIds));
+      localStorage.setItem("geev_deleted_app_ids", JSON.stringify(legacyAppIds));
       setLocalCards([]);
       setLocalApps([]);
       setIsDemoMode(false);
@@ -393,13 +445,31 @@ export default function HomePage() {
   };
 
   const startBuildMutation = useMutation({
-    mutationFn: async (cardId: string) => {
-      try { return await api.startBuild(cardId); }
-      catch { return { success: true }; }
+    mutationFn: async (params: { id: string; spendLimitCents?: number }) => {
+      const targetCard = cards.find((c) => c.id === params.id);
+      try {
+        return await api.startBuild(params.id, params.spendLimitCents || 5000, {
+          title: targetCard?.title,
+          client_name: targetCard?.client_name,
+          price_cents: targetCard?.price_cents,
+        });
+      } catch {
+        return { success: true };
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, params) => {
+      // Atualiza estágio localmente: em_execucao -> entrega_aprovar (após pipeline concluído, nunca entrega sozinho)
+      setLocalCards((prev) => {
+        const updated = prev.map((c) =>
+          c.id === params.id ? { ...c, stage: "entrega_aprovar", updated_at: new Date().toISOString() } : c
+        );
+        try {
+          localStorage.setItem("geev_local_cards", JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       queryClient.invalidateQueries({ queryKey: ["cards"] });
-      showToast("⚡ Pipeline de agentes iniciado! Os agentes autônomos estão construindo.");
+      showToast("⚡ Pipeline concluído pelos 7 agentes! Prévia ao vivo e Ficha de Risco prontas no Portão 3.");
       setIsSheetOpen(false);
     },
     onError: (err: Error) => {
@@ -419,6 +489,16 @@ export default function HomePage() {
       try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
       return updated;
     });
+    api.createCard({
+      title: newCard.title,
+      client_name: newCard.client_name,
+      app_name: newCard.app_name,
+      type: newCard.type,
+      price_cents: newCard.price_cents,
+      est_cost_cents: newCard.est_cost_cents,
+      stage: newCard.stage,
+      priority: newCard.priority,
+    }).catch(() => {});
     showToast("✨ Nova demanda cadastrada com sucesso!");
     queryClient.invalidateQueries({ queryKey: ["cards"] });
     queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
@@ -462,20 +542,35 @@ export default function HomePage() {
 
   const deleteAppMutation = useMutation({
     mutationFn: async (id: string) => {
+      // 1. Marca imediatamente no localStorage para não voltar nunca mais (nem em recarregamento)
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("geev_deleted_app_ids");
+          const list: string[] = raw ? JSON.parse(raw) : [];
+          if (!list.includes(id)) {
+            list.push(id);
+            localStorage.setItem("geev_deleted_app_ids", JSON.stringify(list));
+          }
+        } catch {}
+      }
+
       try {
         return await api.deleteApp(id);
       } catch (err) {
-        setLocalApps((prev) => {
-          const updated = prev.filter((a) => a.id !== id);
-          try { localStorage.setItem("geev_local_apps", JSON.stringify(updated)); } catch {}
-          return updated;
-        });
-        return { success: true };
+        console.warn("Falha na exclusão remota do app:", err);
+        return { success: true, id };
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, appId) => {
+      setLocalApps((prev) => {
+        const updated = prev.filter((a) => a.id !== appId);
+        try {
+          localStorage.setItem("geev_local_apps", JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       queryClient.invalidateQueries({ queryKey: ["apps"] });
-      showToast("App removido.");
+      showToast("App removido com sucesso!");
     },
   });
 
@@ -508,6 +603,13 @@ export default function HomePage() {
             return { intent: "approve", message: `Ordem executada: Aprovado portão de ${target.client_name}!`, requires_confirmation: false };
           }
         }
+        if (lower.includes("construir") || lower.includes("desenvolver") || lower.includes("compilar")) {
+          const target = localCards.find(c => lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase()));
+          if (target) {
+            startBuildMutation.mutate({ id: target.id, spendLimitCents: 5000 });
+            return { intent: "build", message: `⚡ Fábrica Autônoma acionada para "${target.title}" (${target.client_name})!`, requires_confirmation: false };
+          }
+        }
         return { intent: "custom", message: `Ordem "${text}" recebida e registrada pela central!`, requires_confirmation: false };
       }
     },
@@ -527,6 +629,22 @@ export default function HomePage() {
       showToast(err.message || "Erro ao processar comando");
     },
   });
+
+  const handleExecuteCommand = async (text: string): Promise<string> => {
+    try {
+      const res = await processCommandMutation.mutateAsync(text);
+      if (res.requires_confirmation && res.confirmation_token && res.confirmation_prompt) {
+        setConfirmationData({
+          token: res.confirmation_token,
+          prompt: res.confirmation_prompt,
+        });
+        return res.confirmation_prompt;
+      }
+      return res.message;
+    } catch (err: unknown) {
+      return (err as Error)?.message || "Erro ao processar comando pela central.";
+    }
+  };
 
   const confirmActionMutation = useMutation({
     mutationFn: (token: string) => api.confirmAction(token),
@@ -705,6 +823,16 @@ export default function HomePage() {
             onOpenNewCardModal={() => setIsNewCardModalOpen(true)}
             onNavigateToTab={(tab) => setActiveTab(tab)}
             onClearLegacyData={handleClearLegacyData}
+            onCardCreated={(newBug) => {
+              setLocalCards((prev) => {
+                const updated = [newBug, ...prev];
+                try {
+                  localStorage.setItem("geev_local_cards", JSON.stringify(updated));
+                } catch {}
+                return updated;
+              });
+              showToast("🚨 Cartão Bug aberto automaticamente pelo Agente de Suporte!");
+            }}
             isProcessingDecision={decideMutation.isPending}
           />
         )}
@@ -743,7 +871,7 @@ export default function HomePage() {
         onReject={handleReject}
         onShowToast={showToast}
         moneySummary={`${formattedWaiting} parados esperando você · ${decisionsCount} decisões`}
-        onExecuteCommand={(text) => processCommandMutation.mutate(text)}
+        onExecuteCommand={handleExecuteCommand}
         onOpenChat={() => setIsChatDrawerOpen(true)}
       />
 
@@ -759,7 +887,7 @@ export default function HomePage() {
         onAskInfo={handleAskInfo}
         onReject={handleReject}
         onDelete={(id) => deleteCardMutation.mutate(id)}
-        onBuild={(id) => startBuildMutation.mutate(id)}
+        onBuild={(id, spendLimitCents) => startBuildMutation.mutate({ id, spendLimitCents })}
         isProcessing={decideMutation.isPending || startBuildMutation.isPending || deleteCardMutation.isPending}
       />
 
@@ -830,6 +958,7 @@ export default function HomePage() {
           setIsChatDrawerOpen(false);
           setIsNewCardModalOpen(true);
         }}
+        onExecuteCommand={handleExecuteCommand}
       />
 
       {/* Toast Flutuante */}

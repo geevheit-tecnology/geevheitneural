@@ -9,7 +9,10 @@ import (
 )
 
 type StartBuildRequest struct {
-	SpendLimitCents int64 `json:"spend_limit_cents"`
+	SpendLimitCents int64  `json:"spend_limit_cents"`
+	Title           string `json:"title,omitempty"`
+	ClientName      string `json:"client_name,omitempty"`
+	PriceCents      int64  `json:"price_cents,omitempty"`
 }
 
 func HandleStartBuild(uc *app.StartBuildUseCase) http.HandlerFunc {
@@ -32,6 +35,9 @@ func HandleStartBuild(uc *app.StartBuildUseCase) http.HandlerFunc {
 		p, err := uc.Execute(r.Context(), owner, app.StartBuildCommand{
 			CardID:          cardID,
 			SpendLimitCents: req.SpendLimitCents,
+			Title:           req.Title,
+			ClientName:      req.ClientName,
+			PriceCents:      req.PriceCents,
 		})
 		if err != nil {
 			middleware.WriteError(w, http.StatusInternalServerError, "start_build_failed", err.Error())

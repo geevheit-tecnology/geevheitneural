@@ -2,6 +2,45 @@
 
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
+## [Sprint 02/03 - Homologação Completa para Deploy] - Integração Ponta a Ponta `sprit02` (Fases 6 a 10) — 2026-10-29
+
+### Adicionado
+- **Exclusão Definitiva Real & Prevenção de Retorno de Dados em Recarregamento:**
+  - Identificada a causa raiz de cartões e apps excluídos retornarem ao recarregar a tela: a query de exclusão no Postgres era bloqueada pelo trigger de imutabilidade das tabelas filhas em cascata (`card_events` e `approvals`), e o fallback re-injetava os itens.
+  - Ajustada a query `DeleteCard` (`cards.sql`) para ativar a permissão de exclusão da transação (`SET LOCAL geev.allow_card_delete = 'on'`), limpando os registros em cascata no banco sem violar as regras de imutabilidade.
+  - Implementada lista negra permanente de IDs excluídos no `localStorage` (`geev_deleted_card_ids` e `geev_deleted_app_ids`) com filtro em `useMemo` no React, garantindo que nenhum item apagado volte a aparecer após refresh ou refetch da API.
+- **Integração Real do Jarvis / Jake à Linha de Produção:**
+  - Suporte no backend para comandos de linguagem natural prefixados por assistente (`Jarvis, ...` e `Jake, ...`).
+  - Nova intenção `IntentCreate` no parser determinístico Go (`parser.go`), criando cartões automaticamente sob comando sem depender de formulários manuais.
+  - Execução imediata no `IntentBuild`: se o comando solicitar a construção de um projeto ainda não cadastrado, o sistema cria o cartão sob demanda e inicia o pipeline dos 7 agentes automaticamente.
+  - Gaveta de chat do Jarvis/Jake (`JarvisChatDrawer.tsx`) conectada à API real via `onExecuteCommand`, retornando confirmação operacional instantânea e síntese de voz (TTS).
+- **Segurança e Criptografia do Aceite de Escopo (Fase 7):**
+  - Geração de tokens de escopo criptograficamente seguros (32 bytes aleatórios `sc_...`), armazenados unicamente na forma de hash SHA-256 no banco de dados, eliminando previsibilidade e riscos de enumeração de cartões.
+  - Liquidação automática de sinal de pagamento acoplada ao webhook do Pix (`ProcessPixWebhookUseCase`).
+  - Remoção de fallback silencioso na página pública `/escopo`, garantindo exibição de erro explícito caso o link seja inválido ou inexistente.
+- **Fase 6 — Orquestrador, Comando "Construir" e Governança de 7 Agentes:**
+  - Intenção `IntentBuild` (`construir`, `desenvolver`, `compilar`, `executar`) no parser de comandos Go e barra de comandos mobile.
+  - Pipeline completo com os 7 papéis (`Requisitos → Arquiteto → Dev → QA → Segurança → Publicador → Suporte`), chave individual Ligar/Desligar (`GET /v1/agents`, `POST /v1/agents/{id}/toggle`), seletor de teto de gasto (`spend_limit_cents`) e descarte imediato do sandbox em caso de pausa de emergência.
+  - Exibição no Kanban (`QuadroTab`) do agente atuante, ação realizada, custo de IA acumulado e selo `revisão_humana_obrigatória` (Princípio 4).
+- **Fase 7 — Especificação Executável (BDD), Sinal Acoplado e Aditivo de Escopo:**
+  - Endpoints `GET /v1/cards/{id}/specification`, `POST /v1/public/scope/{token}/pay-signal` e `POST /v1/public/scope/{token}/change-request`.
+  - Página `/escopo` com cenários `Dado / Quando / Então`, confirmação de sinal de entrada (30%) e geração automática de cartão de **Aditivo de Escopo** quando o cliente solicita mudanças fora dos cenários aprovados.
+- **Fase 8 — Biblioteca de Playbooks, Módulos Reutilizáveis e Aprendizado Contínuo:**
+  - Endpoints `POST /v1/playbooks` e `POST /v1/modules` permitindo promover padrões genéricos de entregas aprovadas para a biblioteca homologada e configurar o Nível de Autonomia (1 a 3) por playbook.
+- **Fase 9 — Ficha de Risco Automática, Prévia ao Vivo, Rollback, Suporte Pós-Entrega e Memória Viva:**
+  - Persistência real em `SaveRiskReportUseCase` + normalização de tuplas/objetos na UI (`CardDetailSheet`).
+  - Endpoints `GET /v1/cards/{id}/preview-info` e `POST /v1/cards/{id}/rollback` para execução do Plano de Reversão Automático, além de visualizador de código do workspace.
+  - Memória Viva do Projeto (`GET/POST /v1/cards/{id}/memory`) isolada por cliente e cartão.
+  - Monitoramento Pós-Entrega pelo Agente de Suporte (`POST /v1/apps/{id}/monitor`), abrindo automaticamente cartão `bug` com logs e prioridade sugerida.
+- **Fase 10 — Motor de Preço IA, Placar da Fábrica, Roteamento de Modelos e Suíte Evals:**
+  - Botão `"💡 Sugerir Valor, Prazo e Margem"` no `NewCardModal` integrado ao endpoint `POST /v1/factory/estimate`.
+  - Placar da Fábrica (`GET /v1/factory/scoreboard`), Roteamento de Modelos (`economy/fast` vs `critical/reasoning`) e Suíte de Avaliação de Agentes (`POST /v1/factory/evals/run`) integrados ao `AgentsCockpit`.
+- **Prontidão de Build Offline/Cloud & Deploy:**
+  - Carregamento resiliente da fonte `Instrument Sans` sem dependência bloqueante de rede em tempo de build do Next.js (`output: 'export'`).
+  - Atualização de `render.yaml` e `.env.example`.
+
+---
+
 ## [Sprint 03 - Melhoria] - Exclusão Definitiva de Demandas e Limpeza de Dados Legados — 2026-10-28
 
 ### Adicionado

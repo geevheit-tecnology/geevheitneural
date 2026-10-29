@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
@@ -31,6 +32,18 @@ type ProcessCommandUseCase struct {
 	pauseUC      *PauseSystemUseCase
 	resumeUC     *ResumeSystemUseCase
 	confirmSvc   *command.ConfirmationService
+	startBuildUC *StartBuildUseCase
+	createCardUC *CreateCardUseCase
+}
+
+func (uc *ProcessCommandUseCase) WithStartBuild(sb *StartBuildUseCase) *ProcessCommandUseCase {
+	uc.startBuildUC = sb
+	return uc
+}
+
+func (uc *ProcessCommandUseCase) WithCreateCard(cc *CreateCardUseCase) *ProcessCommandUseCase {
+	uc.createCardUC = cc
+	return uc
 }
 
 func NewProcessCommandUseCase(
@@ -115,6 +128,106 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 			Data: map[string]any{
 				"card_id": match.CardID,
 			},
+		}, nil
+
+	case command.IntentBuild:
+		var cardID string
+		var cardTitle string
+		var clientName string
+
+		match, err := uc.resolveTargetCard(ctx, parsed.Target)
+		if err != nil {
+			// Se o cartão não existe previamente, cria automaticamente e inicia o pipeline (sprit02)
+			if uc.createCardUC != nil {
+				title := parsed.Target
+				client := "Cliente Direto"
+				if idx := strings.Index(strings.ToLower(title), " para "); idx != -1 {
+					client = strings.TrimSpace(title[idx+6:])
+					title = strings.TrimSpace(title[:idx])
+				}
+				if title == "" {
+					title = "Novo Projeto da Fábrica"
+				}
+				created, createErr := uc.createCardUC.Execute(ctx, CreateCardCommand{
+					Title:      title,
+					ClientName: client,
+					PriceCents: 350000,
+					Stage:      string(card.StageEmExecucao),
+				})
+				if createErr != nil {
+					return nil, fmt.Errorf("falha ao criar cartão para construção: %w", createErr)
+				}
+				cardID = created.ID
+				cardTitle = created.Title
+				clientName = created.ClientName
+			} else {
+				return nil, err
+			}
+		} else {
+			cardID = match.CardID
+			cardTitle = match.Title
+			clientName = match.ClientName
+		}
+
+		if uc.startBuildUC != nil {
+			_, err := uc.startBuildUC.Execute(ctx, in.Owner, StartBuildCommand{
+				CardID:          cardID,
+				SpendLimitCents: 5000,
+				Title:           cardTitle,
+				ClientName:      clientName,
+				PriceCents:      350000,
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return &CommandResult{
+			Intent:  string(parsed.Intent),
+			Message: fmt.Sprintf("Pipeline da Fábrica Autônoma iniciado para '%s' (%s)! Os 7 agentes estão construindo a solução no sandbox isolado.", cardTitle, clientName),
+			Data: map[string]any{
+				"card_id": cardID,
+			},
+		}, nil
+
+	case command.IntentCreate:
+		title := parsed.Target
+		clientName := "Cliente Direto"
+		if idx := strings.Index(strings.ToLower(title), " para "); idx != -1 {
+			clientName = strings.TrimSpace(title[idx+6:])
+			title = strings.TrimSpace(title[:idx])
+		}
+		if title == "" {
+			title = "Nova Demanda de Software"
+		}
+		if clientName == "" {
+			clientName = "Cliente Direto"
+		}
+
+		if uc.createCardUC != nil {
+			created, err := uc.createCardUC.Execute(ctx, CreateCardCommand{
+				Title:      title,
+				ClientName: clientName,
+				PriceCents: 250000,
+				Stage:      string(card.StagePropostaAprovar),
+			})
+			if err != nil {
+				return nil, fmt.Errorf("falha ao criar demanda: %w", err)
+			}
+			return &CommandResult{
+				Intent:  string(parsed.Intent),
+				Message: fmt.Sprintf("Demanda '%s' criada para %s! Já está disponível na coluna Propostas.", created.Title, created.ClientName),
+				Data: map[string]any{
+					"card_id":     created.ID,
+					"title":       created.Title,
+					"client_name": created.ClientName,
+					"stage":       created.Stage,
+				},
+			}, nil
+		}
+		return &CommandResult{
+			Intent:  string(parsed.Intent),
+			Message: fmt.Sprintf("Demanda '%s' registrada.", title),
 		}, nil
 
 	case command.IntentReject:

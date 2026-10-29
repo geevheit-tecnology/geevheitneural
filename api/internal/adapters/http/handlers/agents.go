@@ -175,3 +175,35 @@ func (h *AgentHandler) SubmitDelivery(w http.ResponseWriter, r *http.Request) {
 		"message": "Entrega submetida com sucesso para aprovação do dono (Portão 3).",
 	})
 }
+
+// ListOwnerAgents - GET /v1/agents
+func (h *AgentHandler) ListOwnerAgents(w http.ResponseWriter, r *http.Request) {
+	agents, err := h.uc.ListOwnerAgents(r.Context())
+	if err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "list_agents_failed", err.Error())
+		return
+	}
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{"agents": agents})
+}
+
+// ToggleOwnerAgent - POST /v1/agents/{id}/toggle
+func (h *AgentHandler) ToggleOwnerAgent(w http.ResponseWriter, r *http.Request) {
+	agentID := r.PathValue("id")
+	if agentID == "" {
+		middleware.WriteError(w, http.StatusBadRequest, "invalid_agent_id", "id do agente é obrigatório")
+		return
+	}
+	var body struct {
+		Active bool `json:"active"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if err := h.uc.ToggleOwnerAgent(r.Context(), agentID, body.Active); err != nil {
+		middleware.WriteError(w, http.StatusInternalServerError, "toggle_agent_failed", err.Error())
+		return
+	}
+	middleware.WriteJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"id":      agentID,
+		"active":  body.Active,
+	})
+}
