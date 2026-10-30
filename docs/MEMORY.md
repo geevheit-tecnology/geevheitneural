@@ -30,6 +30,7 @@
       - Adicionado atalho direto `🧪 Lab` no cabeçalho superior (`Header.tsx`) e opção no menu do dono, garantindo acesso imediato em qualquer viewport.
       - Corrigido travamento de cache do Service Worker no celular (`web/public/sw.js` atualizado para `geevheit-v4-lab`, Network-First irrestrito para páginas HTML navegadas, e `reg.update()` no `layout.tsx` para recarregamento instantâneo em novos deploys).
       - Adicionado botão de contingência "Atualizar App (Limpar Cache)" no menu do dono para expurgo forçado de Service Workers e caches em navegadores móveis.
+      - **Restauração Completa da Estilização do Tailwind CSS (2026-10-30):** Identificada a causa da tela aparecer sem estilo ("sem estilização como era antes"): a mudança anterior para `--webpack` pulava o compilador do Tailwind v4. Foi implementado o pipeline com `@tailwindcss/postcss` e script de pré-compilação do CSS (`compiled.css` de 71 KB), restaurando 100% dos estilos, cores, tipografia, bordas e responsividade em produção na Vercel.
     - **Exibição Imediata e Navegação Automática para o Kanban (2026-10-30):**
       - Eliminada a mensagem passiva "registrou na central". Comandos de criar ou construir agora executam na hora, unificam o estado reativo via `Map` no `useMemo` e alternam a aba ativa para o Quadro Kanban com fechamento automático do chat, trazendo o cartão criado diretamente para o campo visual do dono.
     - **Correção Definitiva de Travamento/Loop e Exclusão Permanente de Dados (2026-10-29):**
