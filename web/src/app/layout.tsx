@@ -57,7 +57,21 @@ export default function RootLayout({
               } catch (e) {}
               if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
                 window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js').catch(() => {});
+                  navigator.serviceWorker.register('/sw.js').then((reg) => {
+                    // Força verificação imediata de nova versão
+                    reg.update().catch(() => {});
+                    reg.addEventListener('updatefound', () => {
+                      const newWorker = reg.installing;
+                      if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // Nova versão pronta: recarrega para carregar o novo build
+                            window.location.reload();
+                          }
+                        });
+                      }
+                    });
+                  }).catch(() => {});
                 });
               }
             `,

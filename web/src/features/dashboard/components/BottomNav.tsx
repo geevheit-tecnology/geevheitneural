@@ -28,7 +28,8 @@ export function BottomNav({ currentTab, onTabChange }: BottomNavProps) {
     },
     {
       key: "lab" as TabKey,
-      label: "Lab IA",
+      label: "Lab",
+      isSpecial: true,
       icon: (
         <>
           <path d="M9 3h6M10 3v5l-4 7a3 3 0 0 0 2.6 4.5h6.8A3 3 0 0 0 18 15l-4-7V3" />
@@ -63,29 +64,43 @@ export function BottomNav({ currentTab, onTabChange }: BottomNavProps) {
   return (
     <nav
       id="bottom-nav"
-      className="fixed left-0 right-0 bottom-0 bg-[var(--surf)] border-t border-[var(--line)] flex px-2 py-1.5 z-40"
+      className="fixed left-0 right-0 bottom-0 bg-[var(--surf)] border-t border-[var(--line)] flex items-center justify-between px-1 py-1 z-40 overflow-x-hidden shadow-lg backdrop-blur-md"
       style={{ paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))" }}
     >
       {tabs.map((tab) => {
         const isActive = currentTab === tab.key;
+        const isLab = tab.key === "lab";
+
+        let activeClasses = "text-[var(--mute)] hover:text-[var(--ink)]";
+        if (isActive) {
+          activeClasses = isLab
+            ? "text-purple-600 dark:text-purple-400 font-bold bg-purple-500/15 border border-purple-500/20"
+            : "text-[var(--acc)] font-semibold bg-[var(--accs)]";
+        } else if (isLab) {
+          activeClasses = "text-purple-600/80 dark:text-purple-400/80 hover:text-purple-600 font-medium";
+        }
+
         return (
           <button
             key={tab.key}
             id={`nav-btn-${tab.key}`}
             onClick={() => onTabChange(tab.key)}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 px-0.5 rounded-xl transition-colors text-xs border-0 bg-transparent cursor-pointer ${
-              isActive
-                ? "text-[var(--acc)] font-semibold bg-[var(--accs)]"
-                : "text-[var(--mute)] hover:text-[var(--ink)]"
-            }`}
+            className={`flex-1 min-w-0 max-w-full flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl transition-all border-0 bg-transparent cursor-pointer select-none ${activeClasses}`}
           >
-            <svg
-              className="w-5 h-5 stroke-current fill-none stroke-[1.8] stroke-round stroke-linejoin"
-              viewBox="0 0 24 24"
-            >
-              {tab.icon}
-            </svg>
-            <span>{tab.label}</span>
+            <div className="relative flex items-center justify-center">
+              <svg
+                className="w-5 h-5 flex-shrink-0 stroke-current fill-none stroke-[1.8] stroke-round stroke-linejoin"
+                viewBox="0 0 24 24"
+              >
+                {tab.icon}
+              </svg>
+              {isLab && !isActive && (
+                <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 rounded-full bg-purple-500" />
+              )}
+            </div>
+            <span className="text-[10px] sm:text-xs tracking-tight truncate max-w-full text-center leading-none mt-0.5 font-medium">
+              {tab.label}
+            </span>
           </button>
         );
       })}

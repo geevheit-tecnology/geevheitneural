@@ -12,6 +12,7 @@ interface HeaderProps {
   userEmail?: string;
   onLogout?: () => void;
   onNavigateHome?: () => void;
+  onNavigateTab?: (tab: "hoje" | "quadro" | "lab" | "apps" | "fin" | "con") => void;
   currentTab?: string;
 }
 
@@ -25,6 +26,7 @@ export function Header({
   userEmail,
   onLogout,
   onNavigateHome,
+  onNavigateTab,
   currentTab,
 }: HeaderProps) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -109,6 +111,23 @@ export function Header({
             {moneyWaitingFormatted} parados esperando você · {pendingDecisionsCount} decisões
           </div>
 
+          {/* Botão de Atalho Rápido para o Laboratório IA */}
+          {onNavigateTab && (
+            <button
+              id="header-lab-btn"
+              onClick={() => onNavigateTab("lab")}
+              title="Abrir Laboratório de IA"
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+                currentTab === "lab"
+                  ? "bg-purple-600 text-white border-purple-500 shadow-sm"
+                  : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/20"
+              }`}
+            >
+              <span className="text-sm">🧪</span>
+              <span className="font-semibold">Lab</span>
+            </button>
+          )}
+
           {/* Alternador de Tema */}
           <button
             id="theme-toggle-btn"
@@ -172,6 +191,41 @@ export function Header({
                     <span>🏠</span> Início (Hub de Quadros)
                   </button>
                 )}
+
+                {onNavigateTab && (
+                  <button
+                    id="dropdown-lab-btn"
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      onNavigateTab("lab");
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 flex items-center gap-2 font-semibold cursor-pointer border-0 bg-transparent transition-colors"
+                  >
+                    <span>🧪</span> Laboratório de IA
+                  </button>
+                )}
+
+                <button
+                  id="dropdown-clear-cache-btn"
+                  onClick={async () => {
+                    try {
+                      if ("caches" in window) {
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map((k) => caches.delete(k)));
+                      }
+                      if ("serviceWorker" in navigator) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        for (const reg of regs) {
+                          await reg.unregister();
+                        }
+                      }
+                    } catch {}
+                    window.location.reload();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-[var(--mute)] hover:text-[var(--ink)] hover:bg-[var(--line)]/30 flex items-center gap-2 font-medium cursor-pointer border-0 bg-transparent transition-colors"
+                >
+                  <span>🔄</span> Atualizar App (Limpar Cache)
+                </button>
 
                 <div className="border-t border-[var(--line)]/60 my-1"></div>
 

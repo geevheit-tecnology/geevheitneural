@@ -1,6 +1,5 @@
-const CACHE_NAME = "geevheit-v2";
+const CACHE_NAME = "geevheit-v4-lab";
 const ASSETS_TO_CACHE = [
-  "/",
   "/manifest.json",
   "/icon.svg"
 ];
@@ -34,20 +33,32 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Estratégia Network-First: busca sempre a versão mais recente na rede e só usa cache se offline
+  // Navegação de páginas HTML: SEMPRE busca na rede primeiro para garantir código atualizado
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/")))
+    );
+    return;
+  }
+
+  // Outros assets (imagens, estilos, scripts): Network-First com fallback de cache
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
+        if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
       })
-      .catch(() => {
-        return caches.match(event.request).then((cached) => {
-          return cached || caches.match("/");
-        });
-      })
+      .catch(() => caches.match(event.request))
   );
 });

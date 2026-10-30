@@ -1094,6 +1094,7 @@ export default function HomePage() {
         userEmail={userEmail}
         onLogout={handleLogout}
         onNavigateHome={() => setActiveTab("hoje")}
+        onNavigateTab={(tab) => setActiveTab(tab)}
         currentTab={activeTab}
       />
 
