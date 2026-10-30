@@ -821,6 +821,12 @@ export function JarvisChatDrawer({
         {/* Sugestões Rápidas de Ordens */}
         <div className="p-2 px-3 border-t border-[var(--line)] bg-[var(--surf)]/50 overflow-x-auto flex gap-1.5 no-scrollbar">
           <button
+            onClick={() => handleSend("Abrir laboratório de IA")}
+            className="text-[11px] whitespace-nowrap bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 rounded-full px-2.5 py-1 text-purple-600 dark:text-purple-400 font-semibold cursor-pointer"
+          >
+            🧪 Laboratório IA
+          </button>
+          <button
             onClick={() => handleSend("Status da software house")}
             className="text-[11px] whitespace-nowrap bg-[var(--bg)] border border-[var(--line)] hover:border-[var(--acc)] rounded-full px-2.5 py-1 text-[var(--ink)] cursor-pointer"
           >

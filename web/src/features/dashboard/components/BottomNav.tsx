@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export type TabKey = "hoje" | "quadro" | "apps" | "fin" | "con";
+export type TabKey = "hoje" | "quadro" | "lab" | "apps" | "fin" | "con";
 
 interface BottomNavProps {
   currentTab: TabKey;
@@ -27,8 +27,18 @@ export function BottomNav({ currentTab, onTabChange }: BottomNavProps) {
       icon: <path d="M4 4h5v16H4zM10 4h5v10h-5zM16 4h4v7h-4z" />,
     },
     {
+      key: "lab" as TabKey,
+      label: "Lab IA",
+      icon: (
+        <>
+          <path d="M9 3h6M10 3v5l-4 7a3 3 0 0 0 2.6 4.5h6.8A3 3 0 0 0 18 15l-4-7V3" />
+          <circle cx="12" cy="14" r="1.5" />
+        </>
+      ),
+    },
+    {
       key: "apps" as TabKey,
-      label: "Meus apps",
+      label: "Apps",
       icon: (
         <>
           <rect x="4" y="4" width="7" height="7" rx="1.5" />

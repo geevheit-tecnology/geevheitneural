@@ -16,6 +16,7 @@ import { NewBoardModal } from "@/features/dashboard/components/NewBoardModal";
 import { NewCardModal } from "@/features/dashboard/components/NewCardModal";
 import { JarvisChatDrawer } from "@/features/dashboard/components/JarvisChatDrawer";
 import { QuadroTab } from "@/features/dashboard/components/QuadroTab";
+import { LabTab } from "@/features/dashboard/components/LabTab";
 import { MeusAppsTab } from "@/features/dashboard/components/MeusAppsTab";
 import { FinancasTab } from "@/features/dashboard/components/FinancasTab";
 import { ConexoesTab } from "@/features/dashboard/components/ConexoesTab";
@@ -855,6 +856,16 @@ export default function HomePage() {
           };
         }
 
+        if (lower.includes("laboratorio") || lower.includes("lab") || lower.includes("maquina") || lower.includes("construcao")) {
+          setActiveTab("lab");
+          setTimeout(() => setIsChatDrawerOpen(false), 800);
+          return {
+            intent: "lab",
+            message: "🧪 Abrindo o Laboratório Neural! Aqui você acompanha os 7 agentes construindo e testando os projetos no sandbox em tempo real.",
+            requires_confirmation: false,
+          };
+        }
+
         if (lower.includes("status") || lower.includes("resumo") || lower.includes("como esta")) {
           return {
             intent: "status",
@@ -921,6 +932,9 @@ export default function HomePage() {
         if (res.intent === "create" || res.intent === "build") {
           setActiveTab("quadro");
           setTimeout(() => setIsChatDrawerOpen(false), 1200);
+        } else if (res.intent === "lab") {
+          setActiveTab("lab");
+          setTimeout(() => setIsChatDrawerOpen(false), 800);
         }
       }
     },
@@ -1019,6 +1033,7 @@ export default function HomePage() {
   const tabTitles: Record<TabKey, string> = {
     hoje: "Início",
     quadro: "Quadro",
+    lab: "Laboratório IA",
     apps: "Meus apps",
     fin: "Finanças",
     con: "Conexões",
@@ -1138,6 +1153,17 @@ export default function HomePage() {
 
         {activeTab === "quadro" && (
           <QuadroTab cards={cards} onOpenCard={handleOpenCard} />
+        )}
+
+        {activeTab === "lab" && (
+          <LabTab
+            cards={cards}
+            isPaused={isPaused}
+            onOpenCard={handleOpenCard}
+            onStartBuild={(id, spendLimitCents) => startBuildMutation.mutate({ id, spendLimitCents })}
+            onApproveCard={handleQuickApprove}
+            onOpenNewCardModal={() => setIsNewCardModalOpen(true)}
+          />
         )}
 
         {activeTab === "apps" && (

@@ -25,6 +25,8 @@
     - Adicionado suporte a prefixos de assistente no parser determinístico Go (`parser.go`), permitindo frases como *"Jarvis, criar projeto X"* ou *"Jake, construir sistema Y"*.
     - Criada a intenção `IntentCreate` para registro automático de demandas por comando de voz/texto.
     - O comando `IntentBuild` agora cria a demanda automaticamente sob demanda se ela ainda não existir, iniciando a esteira dos 7 agentes de IA na mesma hora.
+    - **Laboratório Neural da Fábrica Autônoma (`LabTab`) Criado (2026-10-30):**
+      - Adicionada aba "Lab IA" no BottomNav móvel e HomeHub, permitindo acompanhar os 7 agentes construindo e testando projetos em tempo real no sandbox isolado, com feed estilo chat/terminal de operações, inspetor de código gerado e canal de comando direto com os agentes.
     - **Exibição Imediata e Navegação Automática para o Kanban (2026-10-30):**
       - Eliminada a mensagem passiva "registrou na central". Comandos de criar ou construir agora executam na hora, unificam o estado reativo via `Map` no `useMemo` e alternam a aba ativa para o Quadro Kanban com fechamento automático do chat, trazendo o cartão criado diretamente para o campo visual do dono.
     - **Correção Definitiva de Travamento/Loop e Exclusão Permanente de Dados (2026-10-29):**

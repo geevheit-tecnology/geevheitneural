@@ -23,6 +23,12 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
   - No fallback do `processCommandMutation`, comandos como `"criar"`, `"cadastrar"` ou `"construir"` agora instanciam a demanda real imediatamente no quadro Kanban com persistência e acionam o pipeline dos 7 agentes, eliminando o eco textual `"Ordem 'X' recebida"`.
 
 ### Adicionado
+- **🧪 Laboratório Neural da Fábrica Autônoma (`LabTab`):**
+  - Nova aba dedicada no painel (`lab`) e na barra de navegação móvel (`BottomNav`), com atalho no menu inicial e acionamento por voz/comando no Jarvis (`"abrir laboratório"`).
+  - **Feed Interativo ao Vivo dos 7 Agentes:** Chat estilo sala de operações transmitindo em tempo real as etapas de Requisitos (BDD), Arquiteto (Playbook/Clean Arch), Dev (Go/Next.js no sandbox), QA (testes -race), Segurança (SecOps/RLS), Publicador e Suporte.
+  - **Canal de Comando do Dono:** Caixa de interação no Laboratório permitindo enviar diretrizes aos agentes (ex: *"Dev, adicione login com Google"*, *"QA, valide regressão"*).
+  - **Workspace & Código Fonte Gerado:** Abas de navegação para inspecionar os arquivos criados pelos agentes no sandbox (`main.go`, `schema.sql`, `page.tsx`).
+  - **Telemetria de Construção:** Custo de IA em tempo real (R$ centavos), progresso da pipeline e status dos 7 agentes com motores Groq & Gemini.
 - **Exclusão Definitiva Real & Prevenção de Retorno de Dados em Recarregamento:**
   - Identificada a causa raiz de cartões e apps excluídos retornarem ao recarregar a tela: a query de exclusão no Postgres era bloqueada pelo trigger de imutabilidade das tabelas filhas em cascata (`card_events` e `approvals`), e o fallback re-injetava os itens.
   - Ajustada a query `DeleteCard` (`cards.sql`) para ativar a permissão de exclusão da transação (`SET LOCAL geev.allow_card_delete = 'on'`), limpando os registros em cascata no banco sem violar as regras de imutabilidade.

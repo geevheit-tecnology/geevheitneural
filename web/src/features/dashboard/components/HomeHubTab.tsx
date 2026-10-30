@@ -15,7 +15,7 @@ interface HomeHubTabProps {
   onQuickApprove: (cardId: string) => void;
   onOpenNewBoardModal: () => void;
   onOpenNewCardModal?: () => void;
-  onNavigateToTab: (tab: "quadro" | "apps" | "fin" | "con") => void;
+  onNavigateToTab: (tab: "quadro" | "lab" | "apps" | "fin" | "con") => void;
   onClearLegacyData?: () => void;
   onCardCreated?: (card: CardItem) => void;
   isProcessingDecision?: boolean;
@@ -203,6 +203,14 @@ export function HomeHubTab({
               className="bg-[var(--accs)] text-[var(--ink)] font-semibold text-xs sm:text-sm py-2 px-3 rounded-xl border border-[var(--line)] cursor-pointer hover:bg-[var(--line)]/30 transition-all"
             >
               Ver Kanban
+            </button>
+            <button
+              id="btn-hub-open-lab"
+              onClick={() => onNavigateToTab("lab")}
+              className="bg-gradient-to-r from-purple-500/15 to-indigo-500/15 border border-purple-500/40 text-purple-600 dark:text-purple-400 font-bold text-xs sm:text-sm py-2 px-3 rounded-xl cursor-pointer hover:opacity-90 transition-all flex items-center gap-1.5 shadow-xs"
+            >
+              <span>🧪</span>
+              <span>Laboratório IA</span>
             </button>
             {onClearLegacyData && (
               <button
