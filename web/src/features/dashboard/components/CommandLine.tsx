@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { CardItem } from "@/shared/api-client/endpoints";
 
 interface CommandLineProps {
@@ -24,6 +24,17 @@ export function CommandLine({
 }: CommandLineProps) {
   const [inputVal, setInputVal] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const activeRecognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeRecognitionRef.current) {
+        try {
+          activeRecognitionRef.current.abort();
+        } catch {}
+      }
+    };
+  }, []);
 
   const normalize = (s: string) =>
     s
@@ -92,24 +103,8 @@ export function CommandLine({
       results: { [key: number]: { [key: number]: { transcript: string } } };
     }
     const win = window as unknown as {
-      SpeechRecognition?: new () => {
-        lang: string;
-        interimResults: boolean;
-        onstart: () => void;
-        onresult: (e: SpeechEvent) => void;
-        onerror: () => void;
-        onend: () => void;
-        start: () => void;
-      };
-      webkitSpeechRecognition?: new () => {
-        lang: string;
-        interimResults: boolean;
-        onstart: () => void;
-        onresult: (e: SpeechEvent) => void;
-        onerror: () => void;
-        onend: () => void;
-        start: () => void;
-      };
+      SpeechRecognition?: new () => any;
+      webkitSpeechRecognition?: new () => any;
     };
 
     const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
@@ -119,10 +114,23 @@ export function CommandLine({
       return;
     }
 
+    if (activeRecognitionRef.current) {
+      try {
+        activeRecognitionRef.current.abort();
+      } catch {}
+      activeRecognitionRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
     try {
       const recognition = new SpeechRecognition();
       recognition.lang = "pt-BR";
       recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      activeRecognitionRef.current = recognition;
+
+      let hasHandledResult = false;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -130,24 +138,37 @@ export function CommandLine({
       };
 
       recognition.onresult = (event: SpeechEvent) => {
-        const transcript = event.results[0][0].transcript;
-        setInputVal(transcript);
-        handleCommand(transcript);
-        setInputVal("");
+        if (hasHandledResult) return;
+        hasHandledResult = true;
+
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        try {
+          recognition.stop();
+        } catch {}
+        activeRecognitionRef.current = null;
         setIsListening(false);
+
+        if (transcript && transcript.trim()) {
+          setInputVal(transcript.trim());
+          handleCommand(transcript.trim());
+          setInputVal("");
+        }
       };
 
       recognition.onerror = () => {
+        activeRecognitionRef.current = null;
         setIsListening(false);
         onShowToast("Não entendi a fala. Tente novamente.");
       };
 
       recognition.onend = () => {
+        activeRecognitionRef.current = null;
         setIsListening(false);
       };
 
       recognition.start();
     } catch {
+      activeRecognitionRef.current = null;
       setIsListening(false);
       onShowToast("Microfone inacessível no momento.");
     }

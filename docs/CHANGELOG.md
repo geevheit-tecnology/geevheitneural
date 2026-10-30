@@ -4,6 +4,14 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 
 ## [Sprint 02/03 - Homologação Completa para Deploy] - Integração Ponta a Ponta `sprit02` (Fases 6 a 10) — 2026-10-29
 
+### Corrigido
+- **Eliminação do Loop de Eco de Áudio e Repetição de Mensagens no Mobile:**
+  - Identificada a causa raiz de repetição infinita de mensagens no celular: o Web Speech API não cancelava o microfone durante a fala do assistente (TTS), fazendo com que o microfone captasse a própria voz sintetizada do celular em loop acústico contínuo.
+  - Implementado cancelamento atômico do reconhecimento (`recognition.abort()`) antes de qualquer síntese de voz (`speakText`) e controle com `isSpeakingRef` e `activeRecognitionRef`.
+  - Implementada proteção contra envio de mensagens duplicadas (debounce de 2 segundos) em `handleSend`.
+  - Encerramento forçado do reconhecimento de voz (`recognition.stop()`) no primeiro resultado final, prevenindo disparo múltiplo de eventos de áudio.
+  - No fallback do `processCommandMutation`, comandos como `"criar"`, `"cadastrar"` ou `"construir"` agora instanciam a demanda real imediatamente no quadro Kanban com persistência e acionam o pipeline dos 7 agentes, eliminando o eco textual `"Ordem 'X' recebida"`.
+
 ### Adicionado
 - **Exclusão Definitiva Real & Prevenção de Retorno de Dados em Recarregamento:**
   - Identificada a causa raiz de cartões e apps excluídos retornarem ao recarregar a tela: a query de exclusão no Postgres era bloqueada pelo trigger de imutabilidade das tabelas filhas em cascata (`card_events` e `approvals`), e o fallback re-injetava os itens.

@@ -25,6 +25,10 @@
     - Adicionado suporte a prefixos de assistente no parser determinístico Go (`parser.go`), permitindo frases como *"Jarvis, criar projeto X"* ou *"Jake, construir sistema Y"*.
     - Criada a intenção `IntentCreate` para registro automático de demandas por comando de voz/texto.
     - O comando `IntentBuild` agora cria a demanda automaticamente sob demanda se ela ainda não existir, iniciando a esteira dos 7 agentes de IA na mesma hora.
+    - **Correção Definitiva de Voz e Loop de Repetição no Celular (2026-10-29):**
+      - Identificada a causa de mensagens repetidas e eco no mobile: o Web Speech API mantinha o microfone aberto enquanto a voz do assistente (TTS) saía pelo alto-falante do celular, captando e reenviando o áudio em loop infinito.
+      - Implementado cancelamento atômico do microfone (`recognition.abort()`) antes de falar (`speakText`), controle estrito via `isSpeakingRef` e `activeRecognitionRef`, debounce de 2s contra mensagens repetidas e encerramento imediato no primeiro resultado (`recognition.stop()`).
+      - No fallback do `processCommandMutation`, ordens de "criar" ou "construir" instanciam a demanda real com persistência no quadro Kanban e acionam o pipeline autônomo, sem ecoar o texto do usuário.
     - **Endurecimento de Segurança no Aceite de Escopo:** Eliminada a previsibilidade do link de escopo gerando tokens aleatórios criptograficamente seguros (32 bytes `sc_...`) salvos apenas como hash SHA-256 no Postgres.
     - Acoplamento do sinal de entrada à liquidação por PIX via `ProcessPixWebhookUseCase`.
     - Remoção de fallback local silencioso em `/escopo`, garantindo resposta de erro explícita caso o link seja inválido.

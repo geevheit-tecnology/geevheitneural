@@ -587,30 +587,168 @@ export default function HomePage() {
       try {
         return await api.processCommand(text);
       } catch {
-        const lower = text.toLowerCase();
+        const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
         if (lower.includes("pausar") || lower.includes("parar")) {
           setIsPaused(true);
-          return { intent: "pause", message: "Comando executado: Sistema pausado.", requires_confirmation: false };
+          return { intent: "pause", message: "Comando executado: Sistema pausado pelo ExecutionGuard.", requires_confirmation: false };
         }
+
         if (lower.includes("retomar") || lower.includes("continuar")) {
           setIsPaused(false);
-          return { intent: "resume", message: "Comando executado: Sistema retomado.", requires_confirmation: false };
+          return { intent: "resume", message: "Comando executado: Sistema retomado. Agentes prontos.", requires_confirmation: false };
         }
-        if (lower.includes("aprovar")) {
-          const target = localCards.find(c => lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase()));
+
+        if (lower.includes("aprovar") || lower.includes("aceitar") || lower.includes("liberar")) {
+          const target = localCards.find(c =>
+            lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase())
+          );
           if (target) {
             handleQuickApprove(target.id);
-            return { intent: "approve", message: `Ordem executada: Aprovado portão de ${target.client_name}!`, requires_confirmation: false };
+            return { intent: "approve", message: `Ordem executada: Aprovado portão de ${target.title} (${target.client_name})!`, requires_confirmation: false };
           }
+          const pending = localCards.filter(c => ["proposta_aprovar", "prompt_aprovar", "entrega_aprovar"].includes(c.stage));
+          if (pending.length === 1) {
+            handleQuickApprove(pending[0].id);
+            return { intent: "approve", message: `Ordem executada: Aprovado portão de ${pending[0].title} (${pending[0].client_name})!`, requires_confirmation: false };
+          }
+          if (pending.length > 1) {
+            return { intent: "approve", message: `Existem ${pending.length} portões pendentes. Diga o nome do projeto ou cliente para aprovar.`, requires_confirmation: false };
+          }
+          return { intent: "approve", message: "Nenhum portão pendente de aprovação no momento.", requires_confirmation: false };
         }
-        if (lower.includes("construir") || lower.includes("desenvolver") || lower.includes("compilar")) {
-          const target = localCards.find(c => lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase()));
+
+        // Construir / Desenvolver / Compilar com Fábrica Autônoma
+        if (lower.includes("construir") || lower.includes("desenvolver") || lower.includes("compilar") || lower.includes("executar")) {
+          const target = localCards.find(c =>
+            lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase())
+          );
           if (target) {
             startBuildMutation.mutate({ id: target.id, spendLimitCents: 5000 });
-            return { intent: "build", message: `⚡ Fábrica Autônoma acionada para "${target.title}" (${target.client_name})!`, requires_confirmation: false };
+            return { intent: "build", message: `⚡ Fábrica Autônoma acionada para "${target.title}" (${target.client_name})! Os 7 agentes iniciaram a construção.`, requires_confirmation: false };
           }
+
+          // Se a demanda não existe ainda, cria e inicia a construção imediatamente
+          let rawTitle = text.replace(/^(jarvis|jake)[,:]?\s*/i, "").trim();
+          rawTitle = rawTitle.replace(/^(construir|desenvolver|compilar|executar)\s*/i, "").trim();
+          rawTitle = rawTitle.replace(/^(este projeto|o projeto|projeto|a demanda|demanda|o app|app)\s*/i, "").trim();
+          if (!rawTitle) rawTitle = "Novo Software";
+          const formattedTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+          const newCardId = `card_${Date.now()}`;
+          const newCard: CardItem = {
+            id: newCardId,
+            type: "orcamento",
+            client_id: "c-direto",
+            client_name: "Cliente Direto",
+            app_name: formattedTitle,
+            title: formattedTitle,
+            currency: "BRL",
+            stage: "em_execucao",
+            priority: 1,
+            price_cents: 350000,
+            est_cost_cents: 5000,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setLocalCards((prev) => {
+            const updated = [newCard, ...prev];
+            try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+          api.createCard({
+            title: newCard.title,
+            client_name: newCard.client_name,
+            app_name: newCard.app_name,
+            type: newCard.type,
+            price_cents: newCard.price_cents,
+            est_cost_cents: newCard.est_cost_cents,
+            stage: newCard.stage,
+            priority: newCard.priority,
+          }).catch(() => {});
+          startBuildMutation.mutate({ id: newCardId, spendLimitCents: 5000 });
+          return {
+            intent: "build",
+            message: `⚡ Demanda "${formattedTitle}" criada e Fábrica Autônoma acionada! Os 7 agentes iniciaram a construção no sandbox.`,
+            requires_confirmation: false,
+          };
         }
-        return { intent: "custom", message: `Ordem "${text}" recebida e registrada pela central!`, requires_confirmation: false };
+
+        // Criar / Cadastrar Nova Demanda
+        if (lower.includes("criar") || lower.includes("cadastrar") || lower.includes("novo projeto") || lower.includes("nova demanda") || lower.includes("novo app") || lower.includes("fazer")) {
+          let raw = text.replace(/^(jarvis|jake)[,:]?\s*/i, "").trim();
+          raw = raw.replace(/^(criar|cadastrar|novo projeto|nova demanda|novo app|fazer)\s*/i, "").trim();
+          raw = raw.replace(/^(um projeto|uma demanda|um app|projeto|demanda|app)\s*/i, "").trim();
+
+          let title = raw;
+          let clientName = "Cliente Direto";
+          const paraIdx = raw.toLowerCase().indexOf(" para ");
+          if (paraIdx !== -1) {
+            title = raw.slice(0, paraIdx).trim();
+            clientName = raw.slice(paraIdx + 6).trim() || "Cliente Direto";
+          }
+          if (!title) title = "Nova Demanda de Software";
+          const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+          const formattedClient = clientName.charAt(0).toUpperCase() + clientName.slice(1);
+
+          const newCardId = `card_${Date.now()}`;
+          const newCard: CardItem = {
+            id: newCardId,
+            type: "orcamento",
+            client_id: "c-direto",
+            client_name: formattedClient,
+            app_name: formattedTitle,
+            title: formattedTitle,
+            currency: "BRL",
+            stage: "proposta_aprovar",
+            priority: 2,
+            price_cents: 250000,
+            est_cost_cents: 3000,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setLocalCards((prev) => {
+            const updated = [newCard, ...prev];
+            try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+          api.createCard({
+            title: newCard.title,
+            client_name: newCard.client_name,
+            app_name: newCard.app_name,
+            type: newCard.type,
+            price_cents: newCard.price_cents,
+            est_cost_cents: newCard.est_cost_cents,
+            stage: newCard.stage,
+            priority: newCard.priority,
+          }).catch(() => {});
+          return {
+            intent: "create",
+            message: `Demanda "${formattedTitle}" criada para ${formattedClient}! Já está disponível no seu quadro na coluna Propostas.`,
+            requires_confirmation: false,
+          };
+        }
+
+        if (lower.includes("status") || lower.includes("resumo") || lower.includes("como esta")) {
+          return {
+            intent: "status",
+            message: `Status da Central: ${localCards.length} demandas cadastradas, ${localApps.length} apps em produção. Sistema ${isPaused ? "pausado" : "operando normalmente sob o motor de IA"}.`,
+            requires_confirmation: false,
+          };
+        }
+
+        if (lower.includes("lucro") || lower.includes("faturamento") || lower.includes("financas") || lower.includes("dinheiro")) {
+          return {
+            intent: "finances",
+            message: `Painel Financeiro: Faturamento previsto de R$ ${(finances.total_revenue_cents / 100).toFixed(2)} e margem líquida de R$ ${(finances.net_profit_cents / 100).toFixed(2)}.`,
+            requires_confirmation: false,
+          };
+        }
+
+        return {
+          intent: "custom",
+          message: "Ordem compreendida! Estou à disposição para criar demandas, iniciar a fábrica autônoma, aprovar portões ou relatar faturamento.",
+          requires_confirmation: false,
+        };
       }
     },
     onSuccess: (res) => {

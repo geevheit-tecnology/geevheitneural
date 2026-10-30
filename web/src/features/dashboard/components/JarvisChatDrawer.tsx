@@ -128,6 +128,25 @@ export function JarvisChatDrawer({
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const activeRecognitionRef = useRef<any>(null);
+  const isSpeakingRef = useRef<boolean>(false);
+  const lastHandledTextRef = useRef<{ text: string; time: number }>({ text: "", time: 0 });
+
+  // Cleanup na desmontagem
+  useEffect(() => {
+    return () => {
+      if (activeRecognitionRef.current) {
+        try {
+          activeRecognitionRef.current.abort();
+        } catch {}
+      }
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {}
+      }
+    };
+  }, []);
 
   // Auto-scroll para última mensagem
   useEffect(() => {
@@ -170,17 +189,35 @@ export function JarvisChatDrawer({
     }
   };
 
-  // Função para falar (Text-to-Speech)
+  // Função para falar (Text-to-Speech) com proteção contra eco no microfone
   const speakText = (text: string, customPitch?: number, customRate?: number) => {
     if (!voiceEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) {
       return;
     }
     try {
+      // Aborta imediatamente qualquer reconhecimento de voz ativo para impedir que o microfone ouça o próprio alto-falante
+      if (activeRecognitionRef.current) {
+        try {
+          activeRecognitionRef.current.abort();
+        } catch {}
+        activeRecognitionRef.current = null;
+        setIsListening(false);
+      }
+
       window.speechSynthesis.cancel(); // Para falas anteriores
+      isSpeakingRef.current = true;
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "pt-BR";
       utterance.rate = customRate !== undefined ? customRate : rate;
       utterance.pitch = customPitch !== undefined ? customPitch : pitch;
+
+      utterance.onend = () => {
+        isSpeakingRef.current = false;
+      };
+      utterance.onerror = () => {
+        isSpeakingRef.current = false;
+      };
 
       // Seleção de voz instalada
       if (selectedVoiceURI) {
@@ -203,6 +240,7 @@ export function JarvisChatDrawer({
 
       window.speechSynthesis.speak(utterance);
     } catch (err) {
+      isSpeakingRef.current = false;
       console.warn("Falha na síntese de voz:", err);
     }
   };
@@ -340,19 +378,39 @@ export function JarvisChatDrawer({
   };
 
   const handleSend = async (text: string) => {
-    if (!text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    // Proteção contra duplicação/eco: se o mesmo texto foi enviado a menos de 2 segundos, ignora
+    const now = Date.now();
+    const cleanLower = trimmed.toLowerCase();
+    if (
+      lastHandledTextRef.current.text === cleanLower &&
+      now - lastHandledTextRef.current.time < 2000
+    ) {
+      return;
+    }
+    lastHandledTextRef.current = { text: cleanLower, time: now };
+
+    // Se estiver falando, cala imediatamente
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+      isSpeakingRef.current = false;
+    }
 
     const userMsg: ChatMessage = {
       id: `usr_${Date.now()}`,
       sender: "user",
-      text: text.trim(),
+      text: trimmed,
       timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInputVal("");
 
-    const q = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const q = trimmed.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     // 1. Respostas conversacionais imediatas de identidade
     if (/quem e voce|seu nome/.test(q)) {
@@ -372,7 +430,7 @@ export function JarvisChatDrawer({
     // 2. Execução de comandos reais através da API da central
     if (onExecuteCommand) {
       try {
-        const cmdResult = await onExecuteCommand(text);
+        const cmdResult = await onExecuteCommand(trimmed);
         if (cmdResult && typeof cmdResult === "string") {
           const assistantMsg: ChatMessage = {
             id: `ast_${Date.now()}`,
@@ -400,7 +458,7 @@ export function JarvisChatDrawer({
 
     // 3. Fallback inteligente local
     setTimeout(() => {
-      const reply = processAssistantResponse(text);
+      const reply = processAssistantResponse(trimmed);
       const assistantMsg: ChatMessage = {
         id: `ast_${Date.now()}`,
         sender: "jarvis",
@@ -412,30 +470,14 @@ export function JarvisChatDrawer({
     }, 400);
   };
 
-  // Reconhecimento de Voz nativo
+  // Reconhecimento de Voz nativo com cancelamento de eco
   const handleMicClick = () => {
     interface SpeechEvent {
       results: { [key: number]: { [key: number]: { transcript: string } } };
     }
     const win = window as unknown as {
-      SpeechRecognition?: new () => {
-        lang: string;
-        interimResults: boolean;
-        onstart: () => void;
-        onresult: (e: SpeechEvent) => void;
-        onerror: () => void;
-        onend: () => void;
-        start: () => void;
-      };
-      webkitSpeechRecognition?: new () => {
-        lang: string;
-        interimResults: boolean;
-        onstart: () => void;
-        onresult: (e: SpeechEvent) => void;
-        onerror: () => void;
-        onend: () => void;
-        start: () => void;
-      };
+      SpeechRecognition?: new () => any;
+      webkitSpeechRecognition?: new () => any;
     };
 
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
@@ -444,26 +486,68 @@ export function JarvisChatDrawer({
       return;
     }
 
+    // Se já estiver ouvindo, clicar novamente desliga o microfone
+    if (activeRecognitionRef.current) {
+      try {
+        activeRecognitionRef.current.abort();
+      } catch {}
+      activeRecognitionRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
+    // Se o sintetizador estiver falando, interrompe a fala imediatamente ao ligar o microfone
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+      isSpeakingRef.current = false;
+    }
+
     try {
       const recognition = new SpeechRec();
       recognition.lang = "pt-BR";
       recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      activeRecognitionRef.current = recognition;
+
+      let hasHandledResult = false;
 
       recognition.onstart = () => {
         setIsListening(true);
       };
 
       recognition.onresult = (e: SpeechEvent) => {
-        const transcript = e.results[0][0].transcript;
+        if (hasHandledResult) return;
+        hasHandledResult = true;
+
+        const transcript = e.results?.[0]?.[0]?.transcript;
+
+        // Fecha o microfone imediatamente no primeiro resultado final para evitar captação de eco
+        try {
+          recognition.stop();
+        } catch {}
+        activeRecognitionRef.current = null;
         setIsListening(false);
-        handleSend(transcript);
+
+        if (transcript && transcript.trim()) {
+          handleSend(transcript.trim());
+        }
       };
 
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => {
+        activeRecognitionRef.current = null;
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        activeRecognitionRef.current = null;
+        setIsListening(false);
+      };
 
       recognition.start();
     } catch {
+      activeRecognitionRef.current = null;
       setIsListening(false);
     }
   };
