@@ -29,29 +29,44 @@ export async function apiClient<T>(
 
   const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  // Timeout resiliente de 3.5s para não travar o mobile em cold sleep do Render
+  const controller = new AbortController();
+  const timeoutMs = 3500;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!res.ok) {
-    let errorCode = "unknown_error";
-    let errorMessage = `HTTP Error ${res.status}`;
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-    try {
-      const errBody = await res.json();
-      if (errBody?.error?.code) {
-        errorCode = errBody.error.code;
+    if (!res.ok) {
+      let errorCode = "unknown_error";
+      let errorMessage = `HTTP Error ${res.status}`;
+
+      try {
+        const errBody = await res.json();
+        if (errBody?.error?.code) {
+          errorCode = errBody.error.code;
+        }
+        if (errBody?.error?.message) {
+          errorMessage = errBody.error.message;
+        }
+      } catch {
+        // Falha ao parsear JSON de erro
       }
-      if (errBody?.error?.message) {
-        errorMessage = errBody.error.message;
-      }
-    } catch {
-      // Falha ao parsear JSON de erro
+
+      throw new ApiException(errorCode, errorMessage, res.status);
     }
 
-    throw new ApiException(errorCode, errorMessage, res.status);
+    return res.json();
+  } catch (err: unknown) {
+    clearTimeout(timeoutId);
+    if ((err as Error)?.name === "AbortError") {
+      throw new ApiException("timeout", "A API remota demorou para responder. Usando central local.", 408);
+    }
+    throw err;
   }
-
-  return res.json();
 }

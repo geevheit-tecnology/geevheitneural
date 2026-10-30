@@ -200,18 +200,23 @@ export default function HomePage() {
   const [localCards, setLocalCards] = useState<CardItem[]>(() => {
     if (typeof window === "undefined") return REAL_CARDS;
     const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
+    const deletedRaw = localStorage.getItem("geev_deleted_card_ids");
+    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
     const stored = localStorage.getItem("geev_local_cards");
     if (stored !== null) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((c: CardItem) => !deletedSet.has(c.id));
+        }
       } catch {}
     }
     if (isCleared) return [];
 
     const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
-    if (isDemo) return DEMO_CARDS;
-    return REAL_CARDS;
+    const initial = isDemo ? DEMO_CARDS : REAL_CARDS;
+    return initial.filter((c) => !deletedSet.has(c.id));
   });
 
   const { data: cardsData } = useQuery({
@@ -221,12 +226,23 @@ export default function HomePage() {
   });
 
   const cards: CardItem[] = useMemo(() => {
-    let baseList = cardsData?.cards !== undefined ? cardsData.cards : localCards;
+    let baseList: CardItem[] = [];
     if (typeof window !== "undefined") {
       try {
+        const stored = localStorage.getItem("geev_local_cards");
+        if (stored !== null) {
+          // Fonte de verdade do Dono: se o dono salvou/excluiu, respeita o array local
+          baseList = JSON.parse(stored);
+        } else if (cardsData?.cards && Array.isArray(cardsData.cards) && cardsData.cards.length > 0) {
+          baseList = cardsData.cards;
+        } else {
+          baseList = localCards;
+        }
+
         const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
         const deletedRaw = localStorage.getItem("geev_deleted_card_ids");
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
         if (isCleared) {
           const legacyIds = new Set(REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id)));
           baseList = baseList.filter((c) => !legacyIds.has(c.id));
@@ -234,7 +250,11 @@ export default function HomePage() {
         if (deletedSet.size > 0) {
           baseList = baseList.filter((c) => !deletedSet.has(c.id));
         }
-      } catch {}
+      } catch {
+        baseList = localCards;
+      }
+    } else {
+      baseList = localCards;
     }
     return baseList;
   }, [cardsData?.cards, localCards]);
@@ -243,18 +263,23 @@ export default function HomePage() {
   const [localApps, setLocalApps] = useState<AppItem[]>(() => {
     if (typeof window === "undefined") return REAL_APPS;
     const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
+    const deletedRaw = localStorage.getItem("geev_deleted_app_ids");
+    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
     const stored = localStorage.getItem("geev_local_apps");
     if (stored !== null) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter((a: AppItem) => !deletedSet.has(a.id));
+        }
       } catch {}
     }
     if (isCleared) return [];
 
     const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
-    if (isDemo) return DEMO_APPS;
-    return REAL_APPS;
+    const initial = isDemo ? DEMO_APPS : REAL_APPS;
+    return initial.filter((a) => !deletedSet.has(a.id));
   });
 
   const { data: appsData } = useQuery({
@@ -264,12 +289,23 @@ export default function HomePage() {
   });
 
   const apps: AppItem[] = useMemo(() => {
-    let baseList = appsData?.apps !== undefined ? appsData.apps : localApps;
+    let baseList: AppItem[] = [];
     if (typeof window !== "undefined") {
       try {
+        const stored = localStorage.getItem("geev_local_apps");
+        if (stored !== null) {
+          // Fonte de verdade do Dono: se o dono salvou/excluiu, respeita o array local
+          baseList = JSON.parse(stored);
+        } else if (appsData?.apps && Array.isArray(appsData.apps) && appsData.apps.length > 0) {
+          baseList = appsData.apps;
+        } else {
+          baseList = localApps;
+        }
+
         const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
         const deletedRaw = localStorage.getItem("geev_deleted_app_ids");
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
         if (isCleared) {
           const legacyIds = new Set(REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id)));
           baseList = baseList.filter((a) => !legacyIds.has(a.id));
@@ -277,7 +313,11 @@ export default function HomePage() {
         if (deletedSet.size > 0) {
           baseList = baseList.filter((a) => !deletedSet.has(a.id));
         }
-      } catch {}
+      } catch {
+        baseList = localApps;
+      }
+    } else {
+      baseList = localApps;
     }
     return baseList;
   }, [appsData?.apps, localApps]);
@@ -588,6 +628,91 @@ export default function HomePage() {
         return await api.processCommand(text);
       } catch {
         const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        // 0. Excluir / Deletar / Apagar / Remover
+        if (lower.includes("excluir") || lower.includes("deletar") || lower.includes("apagar") || lower.includes("remover") || lower.includes("limpar")) {
+          // Se for limpeza de dados legados ou zerar
+          if (lower.includes("tudo") || lower.includes("legado") || lower.includes("dados") || lower.includes("painel") || lower.includes("zerar") || lower.includes("reset")) {
+            const legacyCardIds = REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id)).concat(localCards.map(c => c.id));
+            const legacyAppIds = REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id)).concat(localApps.map(a => a.id));
+
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.removeItem("geev_demo_mode");
+                localStorage.setItem("geev_cleared_legacy", "true");
+                localStorage.setItem("geev_local_cards", JSON.stringify([]));
+                localStorage.setItem("geev_local_apps", JSON.stringify([]));
+                localStorage.setItem("geev_deleted_card_ids", JSON.stringify(legacyCardIds));
+                localStorage.setItem("geev_deleted_app_ids", JSON.stringify(legacyAppIds));
+              } catch {}
+            }
+            setLocalCards([]);
+            setLocalApps([]);
+            queryClient.invalidateQueries({ queryKey: ["cards"] });
+            queryClient.invalidateQueries({ queryKey: ["apps"] });
+            queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+            return {
+              intent: "delete",
+              message: "🧹 Todos os dados foram excluídos e o painel foi zerado com sucesso! Nenhum dado antigo retornará.",
+              requires_confirmation: false,
+            };
+          }
+
+          // Extrai o nome do alvo a excluir
+          let targetName = text.replace(/^(jarvis|jake)[,:]?\s*/i, "").trim();
+          targetName = targetName.replace(/^(excluir|deletar|apagar|remover)\s*/i, "").trim();
+          targetName = targetName.replace(/^(o projeto|o app|a demanda|projeto|app|demanda)\s*/i, "").trim();
+          const cleanTarget = targetName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+          // 1. Tenta achar no localCards
+          const targetCard = localCards.find(c => {
+            const cTitle = c.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const cClient = c.client_name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return cleanTarget && (cTitle.includes(cleanTarget) || cClient.includes(cleanTarget) || cleanTarget.includes(cTitle) || cleanTarget.includes(cClient));
+          });
+
+          if (targetCard) {
+            deleteCardMutation.mutate(targetCard.id);
+            return {
+              intent: "delete",
+              message: `🗑️ Demanda "${targetCard.title}" de ${targetCard.client_name} excluída permanentemente!`,
+              requires_confirmation: false,
+            };
+          }
+
+          // 2. Tenta achar no localApps
+          const targetApp = localApps.find(a => {
+            const aName = a.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const aClient = a.client_name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return cleanTarget && (aName.includes(cleanTarget) || aClient.includes(cleanTarget) || cleanTarget.includes(aName));
+          });
+
+          if (targetApp) {
+            deleteAppMutation.mutate(targetApp.id);
+            return {
+              intent: "delete",
+              message: `🗑️ Aplicativo "${targetApp.name}" (${targetApp.client_name}) excluído permanentemente!`,
+              requires_confirmation: false,
+            };
+          }
+
+          // 3. Se não achou por nome específico, mas só tem 1 demanda
+          if (localCards.length === 1 && !cleanTarget) {
+            const onlyCard = localCards[0];
+            deleteCardMutation.mutate(onlyCard.id);
+            return {
+              intent: "delete",
+              message: `🗑️ Demanda "${onlyCard.title}" excluída permanentemente!`,
+              requires_confirmation: false,
+            };
+          }
+
+          return {
+            intent: "delete",
+            message: `Não encontrei nenhum cartão ou aplicativo com o nome "${targetName}" para excluir. Você pode clicar no cartão e tocar no botão vermelho "Excluir".`,
+            requires_confirmation: false,
+          };
+        }
 
         if (lower.includes("pausar") || lower.includes("parar")) {
           setIsPaused(true);

@@ -25,6 +25,11 @@
     - Adicionado suporte a prefixos de assistente no parser determinístico Go (`parser.go`), permitindo frases como *"Jarvis, criar projeto X"* ou *"Jake, construir sistema Y"*.
     - Criada a intenção `IntentCreate` para registro automático de demandas por comando de voz/texto.
     - O comando `IntentBuild` agora cria a demanda automaticamente sob demanda se ela ainda não existir, iniciando a esteira dos 7 agentes de IA na mesma hora.
+    - **Correção Definitiva de Travamento/Loop e Exclusão Permanente de Dados (2026-10-29):**
+      - Adicionado timeout de 3.5s no `apiClient` para neutralizar o atraso de hibernação (cold sleep) do Render no mobile.
+      - Implementado suporte no assistente para comandos `"excluir [nome]"`, `"deletar"`, `"apagar"` e `"zerar painel"`, executando a remoção imediata.
+      - Garantida a precedência perpétua do estado local do dono (`localCards`/`localApps`) sobre queries remotas defasadas, eliminando de vez o reaparecimento de dados excluídos ao atualizar a tela.
+      - Adicionado botão de limpeza do histórico da conversa (`🧹 Limpar`) e indicador visual `isThinking` no chat do Jarvis.
     - **Correção Definitiva de Voz e Loop de Repetição no Celular (2026-10-29):**
       - Identificada a causa de mensagens repetidas e eco no mobile: o Web Speech API mantinha o microfone aberto enquanto a voz do assistente (TTS) saía pelo alto-falante do celular, captando e reenviando o áudio em loop infinito.
       - Implementado cancelamento atômico do microfone (`recognition.abort()`) antes de falar (`speakText`), controle estrito via `isSpeakingRef` e `activeRecognitionRef`, debounce de 2s contra mensagens repetidas e encerramento imediato no primeiro resultado (`recognition.stop()`).

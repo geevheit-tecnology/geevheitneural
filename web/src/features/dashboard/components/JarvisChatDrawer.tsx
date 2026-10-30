@@ -120,12 +120,33 @@ export function JarvisChatDrawer({
 
   const [inputVal, setInputVal] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("geev_voice_feedback_enabled") === "true";
     }
     return false; // Silencioso por padrão, usuário liga quando quiser
   });
+
+  const clearChatHistory = () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("geev_jarvis_chat_history");
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    }
+    setMessages([
+      {
+        id: "msg_welcome_cleared",
+        sender: "jarvis",
+        text:
+          persona === "jake"
+            ? "Histórico limpo, Senhor! Sou a Jake. Pronta para receber suas ordens de projetos, aprovações ou finanças."
+            : "Histórico limpo, Senhor! Sou o Jarvis. Pronto para receber suas ordens de projetos, aprovações ou finanças.",
+        timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeRecognitionRef = useRef<any>(null);
@@ -409,11 +430,13 @@ export function JarvisChatDrawer({
 
     setMessages((prev) => [...prev, userMsg]);
     setInputVal("");
+    setIsThinking(true);
 
     const q = trimmed.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     // 1. Respostas conversacionais imediatas de identidade
     if (/quem e voce|seu nome/.test(q)) {
+      setIsThinking(false);
       const assistantName = persona === "jake" ? "Jake" : "Jarvis";
       const reply = `Sou ${assistantName}, a inteligência operacional da GeevheitNeural. Você pode alternar entre Jarvis (voz masculina) e Jake (voz feminina) clicando no ícone de engrenagem no cabeçalho.`;
       const assistantMsg: ChatMessage = {
@@ -427,10 +450,11 @@ export function JarvisChatDrawer({
       return;
     }
 
-    // 2. Execução de comandos reais através da API da central
+    // 2. Execução de comandos reais através da central
     if (onExecuteCommand) {
       try {
         const cmdResult = await onExecuteCommand(trimmed);
+        setIsThinking(false);
         if (cmdResult && typeof cmdResult === "string") {
           const assistantMsg: ChatMessage = {
             id: `ast_${Date.now()}`,
@@ -443,6 +467,7 @@ export function JarvisChatDrawer({
           return;
         }
       } catch (err: unknown) {
+        setIsThinking(false);
         const errorMsg = (err as Error)?.message || "Não foi possível executar a ordem solicitada.";
         const assistantMsg: ChatMessage = {
           id: `ast_${Date.now()}`,
@@ -458,6 +483,7 @@ export function JarvisChatDrawer({
 
     // 3. Fallback inteligente local
     setTimeout(() => {
+      setIsThinking(false);
       const reply = processAssistantResponse(trimmed);
       const assistantMsg: ChatMessage = {
         id: `ast_${Date.now()}`,
@@ -617,6 +643,18 @@ export function JarvisChatDrawer({
               <span>{voiceEnabled ? "🔊" : "🔇"}</span>
             </button>
 
+            {/* Botão Limpar Histórico do Chat */}
+            <button
+              id="btn-clear-chat"
+              type="button"
+              onClick={clearChatHistory}
+              title="Limpar mensagens e zerar conversa do assistente"
+              className="p-1.5 px-2 rounded-lg text-xs font-semibold border border-[var(--line)] bg-[var(--bg)] text-[var(--mute)] hover:text-red-500 hover:border-red-500/40 cursor-pointer transition-all flex items-center gap-1"
+            >
+              <span>🧹</span>
+              <span className="text-[10px] hidden sm:inline">Limpar</span>
+            </button>
+
             {/* Fechar Gaveta */}
             <button
               onClick={onClose}
@@ -769,6 +807,14 @@ export function JarvisChatDrawer({
               <span className="text-[10px] text-[var(--mute)] mt-1 px-1">{m.timestamp}</span>
             </div>
           ))}
+          {isThinking && (
+            <div className="flex flex-col items-start animate-pulse">
+              <div className="bg-[var(--surf)] border border-[var(--acc)]/40 text-[var(--ink)] rounded-2xl p-3 text-xs flex items-center gap-2 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-[var(--acc)] animate-ping"></span>
+                <span>{isJake ? "Jake" : "Jarvis"} executando sua ordem na central...</span>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -793,6 +839,12 @@ export function JarvisChatDrawer({
             📝 Especificações
           </button>
           <button
+            onClick={() => handleSend("Excluir dados legados e zerar painel")}
+            className="text-[11px] whitespace-nowrap bg-[var(--bg)] border border-red-500/40 hover:bg-red-500/10 rounded-full px-2.5 py-1 text-red-600 dark:text-red-400 cursor-pointer"
+          >
+            🧹 Zerar Painel
+          </button>
+          <button
             onClick={() => handleSend(isPaused ? "Retomar sistema" : "Pausar tudo agora")}
             className="text-[11px] whitespace-nowrap bg-[var(--bg)] border border-[var(--line)] hover:border-[var(--bad)] rounded-full px-2.5 py-1 text-[var(--bad)] cursor-pointer"
           >
@@ -811,19 +863,25 @@ export function JarvisChatDrawer({
           <input
             type="text"
             value={inputVal}
+            disabled={isThinking}
             onChange={(e) => setInputVal(e.target.value)}
-            placeholder={`Fale com ${isJake ? "a Jake" : "o Jarvis"} ou dite uma ordem...`}
-            className="flex-1 text-xs sm:text-sm py-2 px-3.5 rounded-xl border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] outline-none focus:border-[var(--acc)]"
+            placeholder={
+              isThinking
+                ? "Executando ordem..."
+                : `Fale com ${isJake ? "a Jake" : "o Jarvis"} ou dite uma ordem...`
+            }
+            className="flex-1 text-xs sm:text-sm py-2 px-3.5 rounded-xl border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] outline-none focus:border-[var(--acc)] disabled:opacity-60"
           />
 
           <button
             type="button"
             onClick={handleMicClick}
+            disabled={isThinking}
             title="Ditar por voz"
             className={`p-2 rounded-xl text-xs font-bold border-0 cursor-pointer flex-none transition-all ${
               isListening
                 ? "bg-[var(--bad)] text-white animate-pulse"
-                : "bg-[var(--accs)] text-[var(--acc)] hover:opacity-90"
+                : "bg-[var(--accs)] text-[var(--acc)] hover:opacity-90 disabled:opacity-50"
             }`}
           >
             {isListening ? "Gravando..." : "🎙️"}
@@ -831,9 +889,10 @@ export function JarvisChatDrawer({
 
           <button
             type="submit"
-            className="py-2 px-3.5 rounded-xl text-xs font-bold bg-[var(--acc)] text-white border-0 cursor-pointer hover:opacity-90 transition-opacity flex-none"
+            disabled={isThinking || !inputVal.trim()}
+            className="py-2 px-3.5 rounded-xl text-xs font-bold bg-[var(--acc)] text-white border-0 cursor-pointer hover:opacity-90 transition-opacity flex-none disabled:opacity-50"
           >
-            Enviar
+            {isThinking ? "..." : "Enviar"}
           </button>
         </form>
       </div>

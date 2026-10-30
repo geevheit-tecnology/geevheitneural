@@ -5,6 +5,12 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 ## [Sprint 02/03 - Homologação Completa para Deploy] - Integração Ponta a Ponta `sprit02` (Fases 6 a 10) — 2026-10-29
 
 ### Corrigido
+- **Resolução Definitiva de Travamento/Loop e Exclusão Permanente de Dados:**
+  - **Timeout Resiliente do Cliente HTTP (`apiClient`):** Adicionado `AbortController` com limite de 3.5 segundos em todas as requisições para evitar travamentos de até 60 segundos decorrentes de cold sleep do Render no celular.
+  - **Comandos de Exclusão no Assistente (`processCommandMutation`):** Implementado suporte completo para comandos de voz e texto como `"excluir [projeto/app]"`, `"deletar"`, `"apagar"` e `"zerar painel"`, removendo o item na hora e adicionando o ID na blacklist perpétua.
+  - **Precedência Estrita do Estado do Dono (`useMemo` e `useState`):** O estado local salvo em `geev_local_cards` e `geev_local_apps` agora tem precedência estrita sobre dados remotos defasados, garantindo que itens deletados nunca mais retornem após recarregar a página (F5/refresh).
+  - **Botão de Limpeza do Chat do Jarvis (`JarvisChatDrawer`):** Adicionado botão `🧹 Limpar` no cabeçalho do assistente para resetar o histórico de mensagens salvas em `geev_jarvis_chat_history`.
+  - **Feedback Visual de Processamento (`isThinking`):** Exibição de indicador visual `"🤖 Jarvis/Jake executando sua ordem..."`, eliminando a sensação de congelamento ou loop no celular.
 - **Eliminação do Loop de Eco de Áudio e Repetição de Mensagens no Mobile:**
   - Identificada a causa raiz de repetição infinita de mensagens no celular: o Web Speech API não cancelava o microfone durante a fala do assistente (TTS), fazendo com que o microfone captasse a própria voz sintetizada do celular em loop acústico contínuo.
   - Implementado cancelamento atômico do reconhecimento (`recognition.abort()`) antes de qualquer síntese de voz (`speakText`) e controle com `isSpeakingRef` e `activeRecognitionRef`.
