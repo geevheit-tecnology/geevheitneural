@@ -25,8 +25,11 @@
     - Adicionado suporte a prefixos de assistente no parser determinístico Go (`parser.go`), permitindo frases como *"Jarvis, criar projeto X"* ou *"Jake, construir sistema Y"*.
     - Criada a intenção `IntentCreate` para registro automático de demandas por comando de voz/texto.
     - O comando `IntentBuild` agora cria a demanda automaticamente sob demanda se ela ainda não existir, iniciando a esteira dos 7 agentes de IA na mesma hora.
-    - **Laboratório Neural da Fábrica Autônoma (`LabTab`) Criado (2026-10-30):**
-      - Adicionada aba "Lab IA" no BottomNav móvel e HomeHub, permitindo acompanhar os 7 agentes construindo e testando projetos em tempo real no sandbox isolado, com feed estilo chat/terminal de operações, inspetor de código gerado e canal de comando direto com os agentes.
+    - **Laboratório Neural da Fábrica Autônoma (`LabTab`) & Correção de Cache Mobile (2026-10-30):**
+      - Adicionada aba "Lab" no `BottomNav` móvel otimizada para telas a partir de 360px com `min-w-0`, `truncate` e indicador visual púrpura.
+      - Adicionado atalho direto `🧪 Lab` no cabeçalho superior (`Header.tsx`) e opção no menu do dono, garantindo acesso imediato em qualquer viewport.
+      - Corrigido travamento de cache do Service Worker no celular (`web/public/sw.js` atualizado para `geevheit-v4-lab`, Network-First irrestrito para páginas HTML navegadas, e `reg.update()` no `layout.tsx` para recarregamento instantâneo em novos deploys).
+      - Adicionado botão de contingência "Atualizar App (Limpar Cache)" no menu do dono para expurgo forçado de Service Workers e caches em navegadores móveis.
     - **Exibição Imediata e Navegação Automática para o Kanban (2026-10-30):**
       - Eliminada a mensagem passiva "registrou na central". Comandos de criar ou construir agora executam na hora, unificam o estado reativo via `Map` no `useMemo` e alternam a aba ativa para o Quadro Kanban com fechamento automático do chat, trazendo o cartão criado diretamente para o campo visual do dono.
     - **Correção Definitiva de Travamento/Loop e Exclusão Permanente de Dados (2026-10-29):**
