@@ -25,6 +25,8 @@
     - Adicionado suporte a prefixos de assistente no parser determinístico Go (`parser.go`), permitindo frases como *"Jarvis, criar projeto X"* ou *"Jake, construir sistema Y"*.
     - Criada a intenção `IntentCreate` para registro automático de demandas por comando de voz/texto.
     - O comando `IntentBuild` agora cria a demanda automaticamente sob demanda se ela ainda não existir, iniciando a esteira dos 7 agentes de IA na mesma hora.
+    - **Exibição Imediata e Navegação Automática para o Kanban (2026-10-30):**
+      - Eliminada a mensagem passiva "registrou na central". Comandos de criar ou construir agora executam na hora, unificam o estado reativo via `Map` no `useMemo` e alternam a aba ativa para o Quadro Kanban com fechamento automático do chat, trazendo o cartão criado diretamente para o campo visual do dono.
     - **Correção Definitiva de Travamento/Loop e Exclusão Permanente de Dados (2026-10-29):**
       - Adicionado timeout de 3.5s no `apiClient` para neutralizar o atraso de hibernação (cold sleep) do Render no mobile.
       - Implementado suporte no assistente para comandos `"excluir [nome]"`, `"deletar"`, `"apagar"` e `"zerar painel"`, executando a remoção imediata.

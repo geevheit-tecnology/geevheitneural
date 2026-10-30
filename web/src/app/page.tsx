@@ -229,19 +229,20 @@ export default function HomePage() {
     let baseList: CardItem[] = [];
     if (typeof window !== "undefined") {
       try {
-        const stored = localStorage.getItem("geev_local_cards");
-        if (stored !== null) {
-          // Fonte de verdade do Dono: se o dono salvou/excluiu, respeita o array local
-          baseList = JSON.parse(stored);
-        } else if (cardsData?.cards && Array.isArray(cardsData.cards) && cardsData.cards.length > 0) {
-          baseList = cardsData.cards;
-        } else {
-          baseList = localCards;
-        }
-
         const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
         const deletedRaw = localStorage.getItem("geev_deleted_card_ids");
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
+        const remoteCards = (cardsData?.cards && Array.isArray(cardsData.cards)) ? cardsData.cards : [];
+        const cardMap = new Map<string, CardItem>();
+
+        // 1. Insere primeiro locais do dono
+        localCards.forEach((c) => cardMap.set(c.id, c));
+
+        // 2. Mescla com remotos
+        remoteCards.forEach((c) => cardMap.set(c.id, c));
+
+        baseList = Array.from(cardMap.values());
 
         if (isCleared) {
           const legacyIds = new Set(REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id)));
@@ -292,19 +293,20 @@ export default function HomePage() {
     let baseList: AppItem[] = [];
     if (typeof window !== "undefined") {
       try {
-        const stored = localStorage.getItem("geev_local_apps");
-        if (stored !== null) {
-          // Fonte de verdade do Dono: se o dono salvou/excluiu, respeita o array local
-          baseList = JSON.parse(stored);
-        } else if (appsData?.apps && Array.isArray(appsData.apps) && appsData.apps.length > 0) {
-          baseList = appsData.apps;
-        } else {
-          baseList = localApps;
-        }
-
         const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
         const deletedRaw = localStorage.getItem("geev_deleted_app_ids");
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
+        const remoteApps = (appsData?.apps && Array.isArray(appsData.apps)) ? appsData.apps : [];
+        const appMap = new Map<string, AppItem>();
+
+        // 1. Insere primeiro locais do dono
+        localApps.forEach((a) => appMap.set(a.id, a));
+
+        // 2. Mescla com remotos
+        remoteApps.forEach((a) => appMap.set(a.id, a));
+
+        baseList = Array.from(appMap.values());
 
         if (isCleared) {
           const legacyIds = new Set(REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id)));
@@ -886,6 +888,40 @@ export default function HomePage() {
         showToast(res.message);
         queryClient.invalidateQueries({ queryKey: ["cards"] });
         queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+
+        // Se a API remota retornou o card criado, insere no estado local imediatamente
+        const resData = res.data as Record<string, unknown> | undefined;
+        if (resData && resData.card_id) {
+          const createdCard: CardItem = {
+            id: String(resData.card_id),
+            title: String(resData.title || "Nova Demanda"),
+            client_name: String(resData.client_name || "Cliente Direto"),
+            app_name: String(resData.app_name || resData.title || "Novo App"),
+            type: "orcamento",
+            client_id: "c-direto",
+            currency: "BRL",
+            stage: String(resData.stage || (res.intent === "build" ? "em_execucao" : "proposta_aprovar")),
+            priority: 1,
+            price_cents: 250000,
+            est_cost_cents: 3000,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setLocalCards((prev) => {
+            const filtered = prev.filter((c) => c.id !== createdCard.id);
+            const updated = [createdCard, ...filtered];
+            try {
+              localStorage.setItem("geev_local_cards", JSON.stringify(updated));
+            } catch {}
+            return updated;
+          });
+        }
+
+        // Se criou demanda ou mandou construir, navega na hora para o Quadro Kanban e fecha o chat
+        if (res.intent === "create" || res.intent === "build") {
+          setActiveTab("quadro");
+          setTimeout(() => setIsChatDrawerOpen(false), 1200);
+        }
       }
     },
     onError: (err: Error) => {

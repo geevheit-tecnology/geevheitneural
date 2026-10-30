@@ -384,7 +384,7 @@ export function JarvisChatDrawer({
     }
 
     // 6. Cadastrar Novo Projeto / Demanda
-    if (/criar|novo projeto|nova demanda|novo app|cadastrar/.test(q)) {
+    if (/criar|novo projeto|nova demanda|novo app|cadastrar|fazer/.test(q)) {
       onOpenNewCardModal();
       return "Abrindo o modal de cadastro de nova demanda na tela para você preencher os dados.";
     }
@@ -395,7 +395,7 @@ export function JarvisChatDrawer({
     }
 
     // 8. Resposta Geral
-    return `Compreendido. Sua ordem "${userPrompt}" foi registrada no histórico. Como líder da central, o senhor pode me pedir resumos de faturamento, consultar agentes, pausar o sistema ou aprovar portões pelo nome.`;
+    return "Compreendido, Senhor! Estou pronto para agir. Você pode me pedir para criar uma demanda (ex: 'Criar app de entregas'), construir uma solução com a fábrica autônoma, aprovar um portão ou excluir um projeto antigo.";
   };
 
   const handleSend = async (text: string) => {

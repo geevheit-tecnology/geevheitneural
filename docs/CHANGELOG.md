@@ -5,6 +5,10 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 ## [Sprint 02/03 - Homologação Completa para Deploy] - Integração Ponta a Ponta `sprit02` (Fases 6 a 10) — 2026-10-29
 
 ### Corrigido
+- **Navegação Automática e Exibição Imediata de Demandas Criadas:**
+  - **Sincronização em Tempo Real (`cards` e `apps`):** O `useMemo` agora utiliza um mapa unificado (`Map<string, CardItem>`) que mescla cartões locais e remotos instantaneamente, acabando com a condição de corrida em que o cartão era criado mas não aparecia na tela.
+  - **Navegação Automática ao Criar/Construir:** Ao concluir a criação de uma demanda ou acionar a Fábrica Autônoma via assistente/comando, a aplicação muda a aba ativa imediatamente para o **Quadro Kanban (`quadro`)** e fecha a gaveta do chat, permitindo ao dono ver a demanda sendo criada e movida na hora.
+  - **Remoção de Mensagem Genérica Passiva:** Substituída a mensagem *"Sua ordem foi registrada no histórico"* por execução ativa imediata e respostas direcionadas à ação.
 - **Resolução Definitiva de Travamento/Loop e Exclusão Permanente de Dados:**
   - **Timeout Resiliente do Cliente HTTP (`apiClient`):** Adicionado `AbortController` com limite de 3.5 segundos em todas as requisições para evitar travamentos de até 60 segundos decorrentes de cold sleep do Render no celular.
   - **Comandos de Exclusão no Assistente (`processCommandMutation`):** Implementado suporte completo para comandos de voz e texto como `"excluir [projeto/app]"`, `"deletar"`, `"apagar"` e `"zerar painel"`, removendo o item na hora e adicionando o ID na blacklist perpétua.
