@@ -164,4 +164,4 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] Implementar cadastro TOTP pelo Supabase para usuário sem fator verificado, com QR Code e chave manual.
 - [x] Manter acesso bloqueado até código válido; preservar login com autenticador existente.
 - [x] Validar 12 testes de voz/sessão/MFA e build estático.
-- [ ] Publicar o formulário e confirmar deploy Ready. O cadastro real será concluído pelo dono no seu aplicativo autenticador.
+- [x] Publicar formulário (`568e8a7`) e confirmar deploy Ready (`web-g9ss0sivf`). O cadastro real será concluído pelo dono no seu aplicativo autenticador.

@@ -206,10 +206,9 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 pattern="[0-9]{6}"
-                maxLength={6}
                 required
                 value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                 placeholder="123456"
                 className="w-full px-3 py-2 text-lg tracking-widest text-center font-mono rounded-lg border border-[var(--line)] bg-[var(--surf)] text-[var(--ink)] focus:outline-none focus:border-[var(--acc)]"
               />

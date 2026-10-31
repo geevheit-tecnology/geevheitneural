@@ -164,6 +164,9 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Commit `3a334e3` enviado para main; Vercel informou produção Ready em `https://web-2e3y0603e-geevheits-projects.vercel.app`. Sete testes e build estático passaram. Navegador local confirmou login sem sessão em 360/1366 px e demonstração identificada em 360 px. Login real com credenciais/TOTP do dono permanece não executado pelo agente.
 
 ## Primeiro acesso com usuário recriado — 2026-10-31
-- Dono recriou usuário no Supabase; UID novo informado: `d195af78-3b7c-4919-94a0-2d7d7ae0c24d`. Configuração local OWNER_USER_ID atualizada; alteração correspondente no Render foi orientada, mas ainda não confirmada via acesso administrativo.
+- Dono recriou usuário no Supabase (`getuliopedromoreirafilho@gmail.com`); UID atualizado: `4b909875-5f0d-432e-a979-bad6971d6090` (substituindo `d195af78-3b7c-4919-94a0-2d7d7ae0c24d`). Configuração local `OWNER_USER_ID` atualizada em `api/.env`; alteração correspondente no Render orientada ao dono.
 - LoginForm não cadastrava TOTP quando faltava fator; agora usa `mfa.enroll`, exibe QR/chave manual e confirma via challenge/verify antes de permitir AAL2. Segredo fica somente no estado React e é limpo após sucesso, sem persistência/log.
 - Testes simulados cobrem primeiro cadastro, fator existente, falha de listagem/cadastro, código inválido e confirmação. Nenhum fator real do dono foi criado pelo agente: o dono faz isso no primeiro login.
+
+### Publicação do cadastro TOTP
+- Commit `568e8a7` enviado para main; produção Vercel `web-g9ss0sivf` Ready. Usuário deve autenticar por senha, cadastrar o QR/chave em seu aplicativo e confirmar o código. Não houve criação de fator real pelo agente nem confirmação da configuração OWNER_USER_ID em produção.
