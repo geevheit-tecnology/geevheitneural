@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -107,7 +108,7 @@ type UpsertSpecificationParams struct {
 	ID                 pgtype.UUID
 	OwnerID            pgtype.UUID
 	CardID             pgtype.UUID
-	UserStories        []byte
+	UserStories        json.RawMessage
 	TestsCode          string
 	TestsPassed        bool
 	ClientApproved     bool

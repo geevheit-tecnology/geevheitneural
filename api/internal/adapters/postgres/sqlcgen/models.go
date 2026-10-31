@@ -6,6 +6,7 @@ package sqlcgen
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -278,7 +279,7 @@ type GeevAuditLog struct {
 	ActorID    pgtype.UUID
 	TargetType string
 	TargetID   pgtype.UUID
-	Meta       []byte
+	Meta       json.RawMessage
 	At         pgtype.Timestamptz
 }
 
@@ -304,7 +305,7 @@ type GeevCardEvent struct {
 	OwnerID   pgtype.UUID
 	CardID    pgtype.UUID
 	Kind      string
-	Payload   []byte
+	Payload   json.RawMessage
 	ActorType string
 	ActorID   pgtype.UUID
 	At        pgtype.Timestamptz
@@ -396,7 +397,7 @@ type GeevModule struct {
 	Name          string
 	Category      string
 	Description   string
-	CodeTemplates []byte
+	CodeTemplates json.RawMessage
 	IsReviewed    bool
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
@@ -405,8 +406,8 @@ type GeevModule struct {
 type GeevNotificationPreference struct {
 	ID        pgtype.UUID
 	OwnerID   pgtype.UUID
-	Channels  []byte
-	Events    []byte
+	Channels  json.RawMessage
+	Events    json.RawMessage
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }
@@ -433,9 +434,9 @@ type GeevPlaybook struct {
 	ProductType   string
 	Title         string
 	Description   string
-	Stack         []byte
-	Checklist     []byte
-	Prompts       []byte
+	Stack         json.RawMessage
+	Checklist     json.RawMessage
+	Prompts       json.RawMessage
 	AutonomyLevel int32
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
@@ -448,7 +449,7 @@ type GeevPreview struct {
 	PreviewUrl   string
 	Status       string
 	ExpiresAt    pgtype.Timestamptz
-	RollbackPlan []byte
+	RollbackPlan json.RawMessage
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }
@@ -482,10 +483,10 @@ type GeevRiskReport struct {
 	ID           pgtype.UUID
 	OwnerID      pgtype.UUID
 	CardID       pgtype.UUID
-	Tests        []byte
-	SecretsScan  []byte
-	OutdatedDeps []byte
-	LgpdPoints   []byte
+	Tests        json.RawMessage
+	SecretsScan  json.RawMessage
+	OutdatedDeps json.RawMessage
+	LgpdPoints   json.RawMessage
 	Source       string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
@@ -506,7 +507,7 @@ type GeevSpecification struct {
 	ID                 pgtype.UUID
 	OwnerID            pgtype.UUID
 	CardID             pgtype.UUID
-	UserStories        []byte
+	UserStories        json.RawMessage
 	TestsCode          string
 	TestsPassed        bool
 	ClientApproved     bool
@@ -566,7 +567,7 @@ type GeevWebhookDelivery struct {
 	OwnerID      pgtype.UUID
 	WebhookID    pgtype.UUID
 	Event        string
-	Payload      []byte
+	Payload      json.RawMessage
 	StatusCode   int32
 	Attempts     int32
 	ResponseBody string

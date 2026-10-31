@@ -186,3 +186,9 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Com a autenticação resolvida, "pode fazer uma landpage de agencia de veiculos simples" caiu em "Comando não compreendido": o parser só reconhecia frases que começavam direto pelo verbo.
 - `stripPoliteness` (em `parser.go`) remove cortesias do início ("pode", "por favor", "você poderia", "quero", "gostaria de"...) com limite de palavra, mantendo o parser determinístico (ADR-011). Testes novos cobrem o caso real, cortesia após "Jarvis," e "podemos conversar" (continua desconhecido).
 - Contrato inalterado: `criar`/`fazer` registra a demanda; `construir [nome]` inicia a esteira de geração.
+
+### "commit unexpectedly resulted in rollback" ao criar demanda — 2026-10-31
+- Causa raiz (reproduzida contra o banco real em transação com ROLLBACK, nada gravado): no Render a API usa `DB_SIMPLE_PROTOCOL=true`; nesse modo o pgx envia `[]byte` como `bytea`, e o Postgres rejeita em colunas `jsonb` (`invalid input syntax for type json`, 22P02). O INSERT em `card_events` falhava, o erro era descartado (`_ =`) e só o COMMIT acusava a transação abortada.
+- Correção: `api/sqlc.yaml` mapeia `jsonb` para `json.RawMessage` (sqlcgen regenerado; vale para todas as colunas jsonb: eventos, auditoria, playbooks, webhooks, especificações, métricas). `CreateCardUseCase` agora propaga o erro do evento em vez de ignorá-lo. Verificado no banco real com `json.RawMessage` em protocolo simples.
+- Teste de regressão: `jsonb_types_test.go`. Suíte Go completa com `-race` verde.
+- Armadilha: nunca usar `[]byte` para parâmetro jsonb com `DB_SIMPLE_PROTOCOL=true`. Ainda existem outros `_ =` descartando erros dentro de transações (ex.: `pipeline_usecases.go`, `factory_usecases.go`); revisar em tarefa própria.

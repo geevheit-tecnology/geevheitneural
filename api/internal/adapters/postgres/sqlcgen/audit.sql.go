@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -64,7 +65,7 @@ type RecordAuditParams struct {
 	ActorID    pgtype.UUID
 	TargetType string
 	TargetID   pgtype.UUID
-	Meta       []byte
+	Meta       json.RawMessage
 	At         pgtype.Timestamptz
 }
 

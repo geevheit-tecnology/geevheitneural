@@ -566,7 +566,9 @@ func (uc *CreateCardUseCase) Execute(ctx context.Context, cmd CreateCardCommand)
 			return err
 		}
 
-		_ = tx.CardEvents.Create(ctx, CardEventDTO{
+		// O evento faz parte da mesma transação: se falhar, a transação já está abortada
+		// no Postgres, então o erro precisa subir em vez de aparecer só no COMMIT.
+		if err := tx.CardEvents.Create(ctx, CardEventDTO{
 			CardID:    cardID,
 			ActorType: "owner",
 			Kind:      "card_created",
@@ -576,7 +578,9 @@ func (uc *CreateCardUseCase) Execute(ctx context.Context, cmd CreateCardCommand)
 				"price_cents": cmd.PriceCents,
 			},
 			At: now,
-		})
+		}); err != nil {
+			return fmt.Errorf("registrar evento do cartão: %w", err)
+		}
 		return nil
 	})
 	if err != nil {

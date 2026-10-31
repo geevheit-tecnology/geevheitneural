@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -53,6 +54,19 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
+	return err
+}
+
+const deleteCard = `-- name: DeleteCard :exec
+WITH allow_delete AS (
+    SELECT set_config('geev.allow_card_delete', 'on', true)
+)
+DELETE FROM geev.cards
+WHERE id = $1
+`
+
+func (q *Queries) DeleteCard(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCard, id)
 	return err
 }
 
@@ -436,10 +450,10 @@ type UpsertRiskReportParams struct {
 	ID           pgtype.UUID
 	OwnerID      pgtype.UUID
 	CardID       pgtype.UUID
-	Tests        []byte
-	SecretsScan  []byte
-	OutdatedDeps []byte
-	LgpdPoints   []byte
+	Tests        json.RawMessage
+	SecretsScan  json.RawMessage
+	OutdatedDeps json.RawMessage
+	LgpdPoints   json.RawMessage
 	Source       string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
@@ -472,17 +486,4 @@ func (q *Queries) UpsertRiskReport(ctx context.Context, arg UpsertRiskReportPara
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const deleteCard = `-- name: DeleteCard :exec
-WITH allow_delete AS (
-    SELECT set_config('geev.allow_card_delete', 'on', true)
-)
-DELETE FROM geev.cards
-WHERE id = $1
-`
-
-func (q *Queries) DeleteCard(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteCard, id)
-	return err
 }

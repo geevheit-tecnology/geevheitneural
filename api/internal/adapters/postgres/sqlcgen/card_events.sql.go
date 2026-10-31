@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,7 +25,7 @@ type CreateCardEventParams struct {
 	OwnerID   pgtype.UUID
 	CardID    pgtype.UUID
 	Kind      string
-	Payload   []byte
+	Payload   json.RawMessage
 	ActorType string
 	ActorID   pgtype.UUID
 	At        pgtype.Timestamptz

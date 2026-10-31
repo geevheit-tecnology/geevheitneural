@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,7 +25,7 @@ type CreateWebhookDeliveryParams struct {
 	OwnerID      pgtype.UUID
 	WebhookID    pgtype.UUID
 	Event        string
-	Payload      []byte
+	Payload      json.RawMessage
 	StatusCode   int32
 	Attempts     int32
 	ResponseBody string
@@ -228,8 +229,8 @@ SET channels = EXCLUDED.channels,
 type UpsertNotificationPreferencesParams struct {
 	ID        pgtype.UUID
 	OwnerID   pgtype.UUID
-	Channels  []byte
-	Events    []byte
+	Channels  json.RawMessage
+	Events    json.RawMessage
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 }

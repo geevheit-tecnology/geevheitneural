@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -131,7 +132,7 @@ type UpsertModuleParams struct {
 	Name          string
 	Category      string
 	Description   string
-	CodeTemplates []byte
+	CodeTemplates json.RawMessage
 	IsReviewed    bool
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
@@ -186,9 +187,9 @@ type UpsertPlaybookParams struct {
 	ProductType   string
 	Title         string
 	Description   string
-	Stack         []byte
-	Checklist     []byte
-	Prompts       []byte
+	Stack         json.RawMessage
+	Checklist     json.RawMessage
+	Prompts       json.RawMessage
 	AutonomyLevel int32
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz

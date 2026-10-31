@@ -8,3 +8,11 @@ sql:
         package: "sqlcgen"
         out: "internal/adapters/postgres/sqlcgen"
         sql_package: "pgx/v5"
+        overrides:
+          # json.RawMessage é enviado como JSON no protocolo simples (pooler do Supabase);
+          # []byte seria enviado como bytea e rejeitado pelo Postgres em colunas jsonb.
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"
+          - db_type: "jsonb"
+            nullable: true
+            go_type: "encoding/json.RawMessage"

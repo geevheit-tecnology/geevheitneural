@@ -7,6 +7,7 @@ package sqlcgen
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -79,7 +80,7 @@ type CreatePreviewParams struct {
 	PreviewUrl   string
 	Status       string
 	ExpiresAt    pgtype.Timestamptz
-	RollbackPlan []byte
+	RollbackPlan json.RawMessage
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }
