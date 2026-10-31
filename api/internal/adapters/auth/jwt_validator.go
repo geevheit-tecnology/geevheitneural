@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ var (
 type TokenValidator struct {
 	ownerUserID string
 	jwtSecret   []byte
+	jwks        *jwksProvider
 }
 
 func NewTokenValidator(ownerUserID string, jwtSecret string) *TokenValidator {
@@ -29,6 +31,13 @@ func NewTokenValidator(ownerUserID string, jwtSecret string) *TokenValidator {
 		ownerUserID: ownerUserID,
 		jwtSecret:   []byte(jwtSecret),
 	}
+}
+
+// WithJWKS habilita a validação de tokens assimétricos (ES256/RS256) usando as
+// chaves públicas publicadas em jwksURL (ex.: $SUPABASE_URL/auth/v1/.well-known/jwks.json).
+func (v *TokenValidator) WithJWKS(jwksURL string) *TokenValidator {
+	v.jwks = newJWKSProvider(jwksURL)
+	return v
 }
 
 type AuthResult struct {
@@ -48,16 +57,27 @@ func (v *TokenValidator) ValidateToken(tokenStr string) (AuthResult, error) {
 
 	claims := jwt.MapClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
-		// Se segredo HS256 foi configurado, valida por ele
-		if len(v.jwtSecret) > 0 {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("método de assinatura inesperado: %v", t.Header["alg"])
+		switch t.Method.(type) {
+		case *jwt.SigningMethodHMAC:
+			// Projetos que assinam com segredo compartilhado (HS256)
+			if len(v.jwtSecret) == 0 {
+				return nil, errors.New("chave de validação de assinatura não configurada")
 			}
 			return v.jwtSecret, nil
+		case *jwt.SigningMethodECDSA, *jwt.SigningMethodRSA:
+			// Projetos com chaves assimétricas (ES256/RS256): valida pela chave pública (JWKS)
+			if v.jwks == nil {
+				return nil, errors.New("JWKS não configurado para token assimétrico")
+			}
+			kid, _ := t.Header["kid"].(string)
+			if kid == "" {
+				return nil, errors.New("token assimétrico sem kid")
+			}
+			return v.jwks.Key(context.Background(), kid)
+		default:
+			return nil, fmt.Errorf("método de assinatura inesperado: %v", t.Header["alg"])
 		}
-		// Para modo sem segredo configurado (ex: validação com JWKS ou skip de assinatura em teste)
-		return nil, errors.New("chave de validação de assinatura não configurada")
-	})
+	}, jwt.WithValidMethods([]string{"HS256", "ES256", "RS256"}))
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {

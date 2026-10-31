@@ -165,3 +165,9 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] Manter acesso bloqueado até código válido; preservar login com autenticador existente.
 - [x] Validar 12 testes de voz/sessão/MFA e build estático.
 - [x] Publicar formulário (`568e8a7`) e confirmar deploy Ready (`web-g9ss0sivf`). O cadastro real será concluído pelo dono no seu aplicativo autenticador.
+
+## Validação JWT por JWKS (ES256) — 2026-10-31
+- [x] Reproduzir a causa: token ES256 do Supabase rejeitado pelo validador HS256.
+- [x] Implementar JWKS com cache e rotação por `kid`, restringindo algoritmos (ADR-014).
+- [x] Testes de ES256 válido, chave errada, `kid` desconhecido, não-dono, aal1 e `alg=none`; suíte Go com `-race`.
+- [ ] Redeploy no Render e teste de um comando real do Jarvis pelo dono.

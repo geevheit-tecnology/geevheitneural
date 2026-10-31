@@ -79,7 +79,8 @@ func main() {
 	clk := clock.SystemClock{}
 	uow := postgres.NewUnitOfWork(pool)
 	publisher := events.NewInMemoryPublisher()
-	tokenValidator := auth.NewTokenValidator(cfg.OwnerUserID, cfg.SupabaseJWTSecret)
+	tokenValidator := auth.NewTokenValidator(cfg.OwnerUserID, cfg.SupabaseJWTSecret).
+		WithJWKS(strings.TrimRight(cfg.SupabaseURL, "/") + "/auth/v1/.well-known/jwks.json")
 
 	q := sqlcgen.New(pool)
 	moneyReader := postgres.NewMoneyWaitingReader(q)

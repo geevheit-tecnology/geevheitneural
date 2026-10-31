@@ -176,3 +176,8 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Causa do erro de formato no 2FA: apps autenticadores exibem o código com espaço (`482 915`) e o campo cortava em 6 caracteres. Corrigido no commit `57ba9c1` (só dígitos, máx. 6, aceita colar com espaço).
 - Dono confirmou: abriu no PC, cadastrou o autenticador no Android e entrou com AAL2 na Vercel.
 - Pendente: confirmar `OWNER_USER_ID=4b909875-5f0d-432e-a979-bad6971d6090` no Render, necessário para a API aceitar ordens do dono.
+
+### API rejeitava token ES256 — 2026-10-31
+- Sintoma no Jarvis: "token JWT inválido ou malformado: ... método de assinatura inesperado: ES256". O login Supabase funcionava, mas o projeto assina JWT com ES256 e o validador da API só aceitava HS256 (JWKS previsto na ADR-004 nunca foi implementado).
+- Corrigido com validação por JWKS (ADR-014), em `api/internal/adapters/auth/jwks.go`. Testes: ES256 válido, chave errada, `kid` desconhecido, outro usuário, aal1, `alg=none` e ES256 sem JWKS configurado. Suíte Go completa com `-race` verde.
+- Atenção: `SUPABASE_URL` no Render precisa apontar para `https://tggzeapudgzswdojtndj.supabase.co` (a API busca o JWKS lá). Depende de redeploy do Render após o push.

@@ -120,6 +120,7 @@ Regras de dependência (verificadas em revisão e por teste de import):
 | ADR-011 | Barra de comando com **parser determinístico** no backend (sem LLM nesta fase) | LLM | Previsível, testável, sem custo; ambiguidade ⇒ `needs_clarification`. |
 | ADR-012 | Contrato **OpenAPI escrito à mão (spec-first)**, validado no CI | Gerar do código | É o contrato para agentes e para o app Flutter da Fase 2. |
 | ADR-013 | Isolamento LGPD por `client_id` obrigatório em todo dado de cliente + export/expurgo por cliente | Um projeto Supabase por cliente | Viável no plano gratuito; **a confirmar com o dono**. |
+| ADR-014 | Validador JWT aceita **HS256** (segredo) e **ES256/RS256 via JWKS** (`$SUPABASE_URL/auth/v1/.well-known/jwks.json`, cache de 10 min, atualização por `kid` desconhecido com intervalo mínimo de 30 s). Algoritmos restritos por `WithValidMethods`; `alg=none` rejeitado. Só stdlib + `golang-jwt` já existente | Exigir HS256 legado; biblioteca JWKS externa | O projeto Supabase atual assina com ES256; a ADR-004 previa JWKS e não estava implementada. Sem dependência nova. |
 
 ## 7. Dependências
 
