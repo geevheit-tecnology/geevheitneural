@@ -192,3 +192,11 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Correção: `api/sqlc.yaml` mapeia `jsonb` para `json.RawMessage` (sqlcgen regenerado; vale para todas as colunas jsonb: eventos, auditoria, playbooks, webhooks, especificações, métricas). `CreateCardUseCase` agora propaga o erro do evento em vez de ignorá-lo. Verificado no banco real com `json.RawMessage` em protocolo simples.
 - Teste de regressão: `jsonb_types_test.go`. Suíte Go completa com `-race` verde.
 - Armadilha: nunca usar `[]byte` para parâmetro jsonb com `DB_SIMPLE_PROTOCOL=true`. Ainda existem outros `_ =` descartando erros dentro de transações (ex.: `pipeline_usecases.go`, `factory_usecases.go`); revisar em tarefa própria.
+
+### Validação Completa de Produção — 2026-10-31
+- Login Dono com 2FA AAL2 no Supabase autenticado com sucesso no Android e PC.
+- Validação JWT adaptada para chaves assimétricas ES256 via JWKS do Supabase.
+- Parser de linguagem natural aprimorado com remoção de cortesias ("pode fazer...", "por favor...").
+- Protocolo simples do Postgres (`DB_SIMPLE_PROTOCOL=true`) corrigido para colunas `jsonb` utilizando `json.RawMessage`.
+- Fábrica Autônoma homologada de ponta a ponta com Google Gemini AI Studio (custo R$ 0,00 de tokens), com fallback resiliente para picos de demanda e geração de páginas e sistemas web ricos e completos.
+- Central GeevheitNeural 100% operacional em produção (Frontend Vercel + Backend Render + Banco Supabase).
