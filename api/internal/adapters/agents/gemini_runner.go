@@ -155,47 +155,70 @@ func (r *GeminiAgentRunner) RunStep(ctx context.Context, role pipeline.Role, pro
 		return nil, fmt.Errorf("falha ao serializar payload para Gemini: %w", err)
 	}
 
-	endpoint := fmt.Sprintf("%s/models/%s:generateContent",
-		strings.TrimRight(r.cfg.BaseURL, "/"), r.cfg.Model)
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(rawJSON))
-	if err != nil {
-		return nil, fmt.Errorf("falha ao criar requisição HTTP: %w", err)
+	modelsToTry := []string{r.cfg.Model}
+	for _, fallbackModel := range []string{"gemini-2.5-flash", "gemini-1.5-flash"} {
+		if fallbackModel != r.cfg.Model {
+			modelsToTry = append(modelsToTry, fallbackModel)
+		}
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-goog-api-key", r.cfg.APIKey)
 
 	var resp *http.Response
-	for attempt := 0; attempt < 3; attempt++ {
-		httpReq.Body = io.NopCloser(bytes.NewReader(rawJSON))
-		resp, err = r.cfg.HTTPClient.Do(httpReq)
-		if err != nil {
+	var bodyBytes []byte
+	var lastErr error
+
+	for _, modelName := range modelsToTry {
+		endpoint := fmt.Sprintf("%s/models/%s:generateContent",
+			strings.TrimRight(r.cfg.BaseURL, "/"), modelName)
+
+		for attempt := 0; attempt < 3; attempt++ {
+			httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(rawJSON))
+			if err != nil {
+				return nil, fmt.Errorf("falha ao criar requisição HTTP: %w", err)
+			}
+			httpReq.Header.Set("Content-Type", "application/json")
+			httpReq.Header.Set("x-goog-api-key", r.cfg.APIKey)
+
+			resp, err = r.cfg.HTTPClient.Do(httpReq)
+			if err != nil {
+				lastErr = fmt.Errorf("falha de rede ao conectar com Google Gemini (%s): %w", modelName, err)
+				break
+			}
+
+			bodyBytes, err = io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				lastErr = fmt.Errorf("falha ao ler resposta da API Gemini (%s): %w", modelName, err)
+				break
+			}
+
+			if resp.StatusCode == http.StatusOK {
+				lastErr = nil
+				break
+			}
+
+			lastErr = fmt.Errorf("%w: status %d - %s", ErrGeminiAPIError, resp.StatusCode, string(bodyBytes))
+
+			// Se for 503 (Unavailable) ou 429 (RateLimit), tenta novamente com backoff ou passa para o fallback
+			if resp.StatusCode != http.StatusServiceUnavailable && resp.StatusCode != http.StatusTooManyRequests {
+				break
+			}
+
+			timer := time.NewTimer(time.Duration(attempt+1) * 3 * time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, ctx.Err()
+			case <-timer.C:
+			}
+		}
+
+		if lastErr == nil && resp != nil && resp.StatusCode == http.StatusOK {
 			break
 		}
-		if (resp.StatusCode != http.StatusServiceUnavailable && resp.StatusCode != http.StatusTooManyRequests) || attempt == 2 {
-			break
-		}
-		resp.Body.Close()
-		timer := time.NewTimer(time.Duration(attempt+1) * 4 * time.Second)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return nil, ctx.Err()
-		case <-timer.C:
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("falha de rede ao conectar com Google Gemini: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("falha ao ler resposta da API Gemini: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: status %d - %s", ErrGeminiAPIError, resp.StatusCode, string(bodyBytes))
+	if lastErr != nil {
+		return nil, lastErr
 	}
 
 	var geminiResp geminiResponse
