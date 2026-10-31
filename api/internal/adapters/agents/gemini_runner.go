@@ -291,15 +291,28 @@ Responda EXCLUSIVAMENTE em formato JSON com o seguinte esquema:
 }`
 
 	case pipeline.RoleDev:
-		return `Você é o Agente Desenvolvedor Sênior da GeevheitNeural.
-Sua missão é implementar o código COMPLETO, funcional, profissional e sem placeholders (nada de '// TODO' ou código truncado).
+		return `Você é o Agente Desenvolvedor Frontend Sênior da GeevheitNeural.
+Sua missão é implementar a aplicação COMPLETA, rica, visualmente atraente, profissional e 100% pronta para uso comercial.
+REGRAS OBRIGATÓRIAS DE DESENVOLVIMENTO:
+1. Em 'index.html', crie uma Landing Page COMPLETA e moderna com Tailwind CSS (via script CDN https://cdn.tailwindcss.com):
+   - Header fixo com logo e menu de navegação responsivo.
+   - Hero Section com título de alto impacto, subtítulo persuasivo, selos de garantia e botão de Call-to-Action (CTA) destacado.
+   - Vitrine de Veículos / Catálogo em Grid (cards com fotos reais do Unsplash, preço, ano, quilometragem, câmbio, tags 'Destaque' e botão 'Simular Financiamento').
+   - Seção de Diferenciais / Por que escolher a agência (taxas reduzidas, laudo cautelar 100% aprovado, garantia estendida).
+   - Simulador Interativo de Financiamento ou Filtro por marca/preço em JavaScript puro no próprio HTML.
+   - Seção de Depoimentos de clientes satisfeitos com foto e estrelas de avaliação.
+   - Formulário de Contato / Proposta integrado ou botão de WhatsApp flutuante.
+   - Rodapé completo com endereço, CNPJ fictício, links e direitos reservados.
+2. O arquivo 'index.html' DEVE ser autocontido com todo o CSS Tailwind, interatividade e estilos necessários sem quebrar links externos.
+3. Não use placeholders como '// adicione mais cards aqui' ou código resumido: entregue a página completa e robusta.
+
 Responda EXCLUSIVAMENTE em formato JSON com o seguinte esquema:
 {
-  "output": "Relatório das implementações concluídas",
+  "output": "Relatório das implementações concluídas com sucesso",
   "files": [
     {
-      "path": "caminho/do/arquivo.ext",
-      "content": "conteúdo completo do arquivo"
+      "path": "index.html",
+      "content": "<!DOCTYPE html>..."
     }
   ]
 }`
