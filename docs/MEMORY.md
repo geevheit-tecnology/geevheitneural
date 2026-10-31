@@ -170,3 +170,9 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 
 ### Publicação do cadastro TOTP
 - Commit `568e8a7` enviado para main; produção Vercel `web-g9ss0sivf` Ready. Usuário deve autenticar por senha, cadastrar o QR/chave em seu aplicativo e confirmar o código. Não houve criação de fator real pelo agente nem confirmação da configuração OWNER_USER_ID em produção.
+
+### Login real do dono validado — 2026-10-31
+- Causa do "Invalid login credentials": usuário no Supabase tinha outro e-mail/UID; dono atualizou para `getuliopedromoreirafilho@gmail.com` (UID `4b909875-5f0d-432e-a979-bad6971d6090`).
+- Causa do erro de formato no 2FA: apps autenticadores exibem o código com espaço (`482 915`) e o campo cortava em 6 caracteres. Corrigido no commit `57ba9c1` (só dígitos, máx. 6, aceita colar com espaço).
+- Dono confirmou: abriu no PC, cadastrou o autenticador no Android e entrou com AAL2 na Vercel.
+- Pendente: confirmar `OWNER_USER_ID=4b909875-5f0d-432e-a979-bad6971d6090` no Render, necessário para a API aceitar ordens do dono.
