@@ -156,7 +156,7 @@ func (r *GeminiAgentRunner) RunStep(ctx context.Context, role pipeline.Role, pro
 	}
 
 	modelsToTry := []string{r.cfg.Model}
-	for _, fallbackModel := range []string{"gemini-2.5-flash", "gemini-1.5-flash"} {
+	for _, fallbackModel := range []string{"gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.1-flash-lite"} {
 		if fallbackModel != r.cfg.Model {
 			modelsToTry = append(modelsToTry, fallbackModel)
 		}
