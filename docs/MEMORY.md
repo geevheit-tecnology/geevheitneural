@@ -181,3 +181,8 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Sintoma no Jarvis: "token JWT inválido ou malformado: ... método de assinatura inesperado: ES256". O login Supabase funcionava, mas o projeto assina JWT com ES256 e o validador da API só aceitava HS256 (JWKS previsto na ADR-004 nunca foi implementado).
 - Corrigido com validação por JWKS (ADR-014), em `api/internal/adapters/auth/jwks.go`. Testes: ES256 válido, chave errada, `kid` desconhecido, outro usuário, aal1, `alg=none` e ES256 sem JWKS configurado. Suíte Go completa com `-race` verde.
 - Atenção: `SUPABASE_URL` no Render precisa apontar para `https://tggzeapudgzswdojtndj.supabase.co` (a API busca o JWKS lá). Depende de redeploy do Render após o push.
+
+### Parser não entendia pedidos educados — 2026-10-31
+- Com a autenticação resolvida, "pode fazer uma landpage de agencia de veiculos simples" caiu em "Comando não compreendido": o parser só reconhecia frases que começavam direto pelo verbo.
+- `stripPoliteness` (em `parser.go`) remove cortesias do início ("pode", "por favor", "você poderia", "quero", "gostaria de"...) com limite de palavra, mantendo o parser determinístico (ADR-011). Testes novos cobrem o caso real, cortesia após "Jarvis," e "podemos conversar" (continua desconhecido).
+- Contrato inalterado: `criar`/`fazer` registra a demanda; `construir [nome]` inicia a esteira de geração.

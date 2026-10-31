@@ -67,6 +67,12 @@ func ParseCommand(raw string) (*ParsedCommand, error) {
 		return nil, ErrEmptyCommand
 	}
 
+	// Remove cortesias e pedidos indiretos ("pode fazer...", "por favor, criar...")
+	normalized = stripPoliteness(normalized)
+	if normalized == "" {
+		return nil, ErrEmptyCommand
+	}
+
 	cmd := &ParsedCommand{
 		RawInput:   raw,
 		Normalized: normalized,
@@ -148,6 +154,35 @@ func ParseCommand(raw string) (*ParsedCommand, error) {
 	}
 
 	return cmd, nil
+}
+
+// politePrefixes são expressões de cortesia ou pedido indireto que antecedem o verbo.
+// Ordenadas da mais longa para a mais curta para que a mais específica vença.
+var politePrefixes = []string{
+	"voce poderia", "voce pode", "quero que voce", "gostaria de",
+	"por favor", "poderia", "preciso", "podes", "pode", "quero", "vamos", "favor",
+}
+
+// stripPoliteness remove cortesias do início do comando, respeitando limites de palavra.
+func stripPoliteness(text string) string {
+	for {
+		trimmed := strings.TrimLeft(text, " ,.:;-")
+		stripped := false
+		for _, p := range politePrefixes {
+			if !strings.HasPrefix(trimmed, p) {
+				continue
+			}
+			rest := trimmed[len(p):]
+			if rest == "" || strings.ContainsRune(" ,.:;", rune(rest[0])) {
+				text = strings.TrimLeft(rest, " ,.:;-")
+				stripped = true
+				break
+			}
+		}
+		if !stripped {
+			return strings.TrimSpace(trimmed)
+		}
+	}
 }
 
 func matchAny(text string, keywords ...string) bool {

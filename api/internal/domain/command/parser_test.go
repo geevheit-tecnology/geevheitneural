@@ -98,6 +98,25 @@ func TestParseCommand(t *testing.T) {
 			expectErr: true,
 		},
 		{
+			input:          "pode fazer uma landpage de agencia de veiculos simples",
+			expectedIntent: command.IntentCreate,
+			expectedTarget: "uma landpage de agencia de veiculos simples",
+		},
+		{
+			input:          "Jarvis, por favor, criar projeto Loja de Carros",
+			expectedIntent: command.IntentCreate,
+			expectedTarget: "loja de carros",
+		},
+		{
+			input:          "você poderia construir site da Auto Center",
+			expectedIntent: command.IntentBuild,
+			expectedTarget: "site da auto center",
+		},
+		{
+			input:          "podemos conversar",
+			expectedIntent: command.IntentUnknown,
+		},
+		{
 			input:          "abobrinha aleatoria",
 			expectedIntent: command.IntentUnknown,
 			destructive:    false,
