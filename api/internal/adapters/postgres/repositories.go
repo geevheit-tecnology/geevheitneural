@@ -214,7 +214,7 @@ func (r *CardRepository) SaveRiskReport(ctx context.Context, report *app.RiskRep
 
 	row, err := r.q.UpsertRiskReport(ctx, sqlcgen.UpsertRiskReportParams{
 		ID:           textToUUID(id),
-		OwnerID:      textToUUID("a0000000-0000-0000-0000-000000000001"),
+		OwnerID:      ownerUUID(ctx, DefaultOwnerID),
 		CardID:       textToUUID(report.CardID),
 		Tests:        testsBytes,
 		SecretsScan:  secretsBytes,
@@ -256,7 +256,7 @@ func (r *CardRepository) Create(ctx context.Context, c *app.CardListItemDTO) err
 
 	return r.q.CreateCard(ctx, sqlcgen.CreateCardParams{
 		ID:           textToUUID(c.ID),
-		OwnerID:      textToUUID("a0000000-0000-0000-0000-000000000001"),
+		OwnerID:      ownerUUID(ctx, DefaultOwnerID),
 		ClientID:     textToUUID(c.ClientID),
 		AppID:        appID,
 		Type:         sqlcgen.GeevCardType(c.Type),
@@ -331,7 +331,7 @@ func (r *CardEventRepository) Create(ctx context.Context, e app.CardEventDTO) er
 
 	return r.q.CreateCardEvent(ctx, sqlcgen.CreateCardEventParams{
 		ID:        textToUUID(eventID),
-		OwnerID:   textToUUID(ownerID),
+		OwnerID:   ownerUUID(ctx, ownerID),
 		CardID:    textToUUID(e.CardID),
 		Kind:      e.Kind,
 		Payload:   payloadBytes,
@@ -380,7 +380,7 @@ func (r *AuditRepository) Record(ctx context.Context, l app.AuditLogDTO) error {
 
 	return r.q.RecordAudit(ctx, sqlcgen.RecordAuditParams{
 		ID:         textToUUID(auditID),
-		OwnerID:    textToUUID(ownerID),
+		OwnerID:    ownerUUID(ctx, ownerID),
 		Action:     l.Action,
 		ActorType:  l.ActorType,
 		ActorID:    actorID,
@@ -809,7 +809,7 @@ func (r *ClientRepository) GetByID(ctx context.Context, id string) (*app.ClientD
 func (r *ClientRepository) Create(ctx context.Context, name, contactRef string) (*app.ClientDTO, error) {
 	now := time.Now()
 	newID := uuid.New()
-	ownerUUID := textToUUID("00000000-0000-0000-0000-000000000001") // Mock/default owner
+	ownerUUID := ownerUUID(ctx, DefaultOwnerID)
 	row, err := r.q.CreateClient(ctx, sqlcgen.CreateClientParams{
 		ID:         uuidToPgUUID(newID),
 		OwnerID:    ownerUUID,
@@ -1116,6 +1116,3 @@ func mapPaymentOrderRow(row sqlcgen.GeevPaymentOrder) *app.PaymentOrderDTO {
 	}
 	return dto
 }
-
-
-

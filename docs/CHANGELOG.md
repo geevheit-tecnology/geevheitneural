@@ -402,3 +402,21 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 
 - **CI & DevOps:**
   - Pipeline GitHub Actions em `.github/workflows/ci.yml` cobrindo Go format, vet, race tests, Docker build, compilação de static export do Next.js, migrations goose e testes pgTAP do Supabase.
+
+## Correção 004 — 2026-10-30 (local)
+- Corrigidos callbacks antigos de voz nas personas Jarvis/Jake e falsos sucessos do fluxo de comandos/construção.
+- Esteira preserva contexto e encaminha plano/código aos revisores; valida arquivos/publicação, propaga falhas e rejeita respostas inválidas. Sem provedor configurado, não inicia simulação silenciosa.
+- Removidos artefatos genéricos e alegações fixas de testes aprovados; regressões Go/Web Speech simuladas e build validados. Integração remota não homologada. Ver `RELATORIO_CORRECAO004.md`.
+
+## Correção 005 — 2026-10-30 (local; imagem pendente de homologação)
+
+- **Problema e evidência:** `LocalPublisher` depende de Git; a imagem final só recebia API Go/certificados/timezone. O teste com `PATH` vazio reproduz `ErrGitInitFailed` e confirma ausência de resultado de publicação.
+- **Menor correção:** `api/Dockerfile` inclui Git, seus templates, bibliotecas e loader do builder na imagem distroless existente. Mantém entrada, porta e usuário nonroot; adiciona verificação do executável isolado no build. Risco: aumento da imagem e necessidade de validar compatibilidade do pacote no contêiner final.
+- **Teste:** `api/internal/adapters/publisher/local_publisher_test.go` acrescenta cenário sem Git; o cenário existente com Git continua produzindo hash/URL. `go test -race ./...` passou e a API compilou com `go build`.
+- **Execução existente:** `make api-run` inicia o backend Go; depende de PostgreSQL/Supabase com schema migrado e configuração Auth. `make web-dev` inicia Next.js. A geração utiliza o runner já configurado, sandbox local e publicador Git. Não foram executados seeds, migrations nem inicialização contra o banco configurado para evitar alterar dados existentes.
+- **Limite:** Docker daemon local indisponível, inclusive na consulta fora do sandbox. A imagem corrigida e o fluxo completo em produção ainda não foram confirmados. Sem instalação de dependências no host, mudança de arquitetura, commit, push ou deploy. Alterações anteriores foram preservadas.
+
+### Validação Docker da correção 005 — 2026-10-30
+- Docker Engine 29.8.0 confirmado ativo. O primeiro build identificou ausência de `/dev/null` no chroot usado pela verificação isolada do Git; ajustado o Dockerfile para criá-lo temporariamente e removê-lo após a verificação.
+- `docker build --platform linux/amd64 -t geevheit-api:correcao005 api/` passou. Imagem final executou Git init/add/commit como nonroot, com `--network none`, sobre arquivo HTML em pasta temporária. Commit de teste: `7a6f089`; nenhum commit no projeto.
+- Confirmada a dependência de publicação na imagem final. Inicialização com banco, geração por IA real e produção continuam sem homologação nesta validação.

@@ -65,7 +65,7 @@ export async function apiClient<T>(
   } catch (err: unknown) {
     clearTimeout(timeoutId);
     if ((err as Error)?.name === "AbortError") {
-      throw new ApiException("timeout", "A API remota demorou para responder. Usando central local.", 408);
+      throw new ApiException("timeout", "A API demorou para responder. A execução não foi confirmada; confira o quadro antes de reenviar.", 408);
     }
     throw err;
   }

@@ -2,7 +2,9 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/geevheit/neuralcenter/api/internal/adapters/postgres/sqlcgen"
 	"github.com/geevheit/neuralcenter/api/internal/app"
@@ -83,4 +85,19 @@ func (u *UnitOfWork) RunInTx(ctx context.Context, fn func(tx app.Repositories) e
 	}
 
 	return nil
+}
+
+// ownerUUID uses the authenticated identity already validated by the middleware.
+// The fallback is retained for existing bootstrap operations without user claims.
+func ownerUUID(ctx context.Context, fallback string) pgtype.UUID {
+	if raw, ok := ctx.Value(ClaimsContextKey).(string); ok && raw != "" {
+		var claims struct {
+			Sub string `json:"sub"`
+		}
+		if json.Unmarshal([]byte(raw), &claims) != nil {
+			return pgtype.UUID{}
+		}
+		return textToUUID(claims.Sub)
+	}
+	return textToUUID(fallback)
 }

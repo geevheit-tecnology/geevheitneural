@@ -135,3 +135,15 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 
 
 
+
+## Correção 004 — execução e respostas dos assistentes (local)
+- [x] Inspecionar fluxo compartilhado Jarvis/Jake, voz, parser, runners, orquestrador e artefatos.
+- [x] Corrigir eventos de voz atrasados, falsos sucessos, encaminhamento de contexto/arquivos e erros de geração.
+- [x] Validar regressões Go com race detector, handlers de voz simulados e build web.
+- [ ] Homologar microfone real e geração com provedor/banco remotos. Evidências e limites em `RELATORIO_CORRECAO004.md`.
+
+## Correção 005 — dependência de publicação na imagem da API
+- [x] Inspecionar inicialização, configuração, dependências e fluxo de publicação existentes, preservando as alterações da correção 004.
+- [x] Reproduzir falha do publicador sem Git e ajustar somente o empacotamento dessa dependência no Dockerfile.
+- [x] Executar regressão Go com detector de concorrência e compilação da API.
+- [x] Construir a imagem final e testar Git init/add/commit em contêiner nonroot, sem rede, com arquivo temporário. Sem alteração de produção.

@@ -33,7 +33,7 @@ func (r *PipelineRepository) Upsert(ctx context.Context, p *app.PipelineDTO) err
 
 	row, err := r.q.UpsertCardPipeline(ctx, sqlcgen.UpsertCardPipelineParams{
 		ID:              textToUUID(id),
-		OwnerID:         textToUUID(DefaultOwnerID),
+		OwnerID:         ownerUUID(ctx, DefaultOwnerID),
 		CardID:          textToUUID(p.CardID),
 		Stage:           p.Stage,
 		ActiveRole:      p.ActiveRole,
@@ -134,7 +134,7 @@ func (r *SpecificationRepository) Upsert(ctx context.Context, spec *app.Specific
 
 	row, err := r.q.UpsertSpecification(ctx, sqlcgen.UpsertSpecificationParams{
 		ID:                 textToUUID(id),
-		OwnerID:            textToUUID(DefaultOwnerID),
+		OwnerID:            ownerUUID(ctx, DefaultOwnerID),
 		CardID:             textToUUID(spec.CardID),
 		UserStories:        userStoriesJSON,
 		TestsCode:          spec.TestsCode,
@@ -278,7 +278,7 @@ func (r *PlaybookRepository) UpsertPlaybook(ctx context.Context, p *app.Playbook
 
 	_, err := r.q.UpsertPlaybook(ctx, sqlcgen.UpsertPlaybookParams{
 		ID:            textToUUID(uuid.NewString()),
-		OwnerID:       textToUUID(DefaultOwnerID),
+		OwnerID:       ownerUUID(ctx, DefaultOwnerID),
 		ProductType:   p.ProductType,
 		Title:         p.Title,
 		Description:   p.Description,
@@ -322,7 +322,7 @@ func (r *PlaybookRepository) UpsertModule(ctx context.Context, m *app.ModuleDTO)
 
 	_, err := r.q.UpsertModule(ctx, sqlcgen.UpsertModuleParams{
 		ID:            textToUUID(uuid.NewString()),
-		OwnerID:       textToUUID(DefaultOwnerID),
+		OwnerID:       ownerUUID(ctx, DefaultOwnerID),
 		Name:          m.Name,
 		Category:      m.Category,
 		Description:   m.Description,
@@ -350,7 +350,7 @@ func (r *PreviewRepository) Create(ctx context.Context, prev *app.PreviewDTO) er
 
 	row, err := r.q.CreatePreview(ctx, sqlcgen.CreatePreviewParams{
 		ID:           textToUUID(id),
-		OwnerID:      textToUUID(DefaultOwnerID),
+		OwnerID:      ownerUUID(ctx, DefaultOwnerID),
 		CardID:       textToUUID(prev.CardID),
 		PreviewUrl:   prev.PreviewURL,
 		Status:       prev.Status,
@@ -400,7 +400,7 @@ func (r *FactoryMetricsRepository) Record(ctx context.Context, cardID string, le
 	now := time.Now()
 	_, err := r.q.CreateFactoryMetric(ctx, sqlcgen.CreateFactoryMetricParams{
 		ID:                       textToUUID(uuid.NewString()),
-		OwnerID:                  textToUUID(DefaultOwnerID),
+		OwnerID:                  ownerUUID(ctx, DefaultOwnerID),
 		CardID:                   textToUUID(cardID),
 		LeadTimeSeconds:          leadTimeSec,
 		AiCostCents:              aiCost,
@@ -459,7 +459,7 @@ func (r *ProjectMemoryRepository) Upsert(ctx context.Context, mem *app.ProjectMe
 	}
 	return r.q.UpsertProjectMemory(ctx, sqlcgen.UpsertProjectMemoryParams{
 		ID:        textToUUID(id),
-		OwnerID:   textToUUID(DefaultOwnerID),
+		OwnerID:   ownerUUID(ctx, DefaultOwnerID),
 		CardID:    textToUUID(mem.CardID),
 		ClientID:  textToUUID(mem.ClientID),
 		Key:       mem.Key,

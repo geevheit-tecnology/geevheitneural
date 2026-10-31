@@ -6,7 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -58,6 +60,7 @@ type StartBuildUseCase struct {
 	runner    pipeline.AgentRunner
 	sandbox   SandboxManager
 	publisher WorkspacePublisher
+	active    sync.Map
 }
 
 func NewStartBuildUseCase(
@@ -84,6 +87,19 @@ func NewStartBuildUseCase(
 }
 
 func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.OwnerPrincipal, cmd StartBuildCommand) (*PipelineDTO, error) {
+	if uc.runner == nil {
+		return nil, fmt.Errorf("provedor de IA não configurado; verifique AGENT_RUNNER_TYPE e a chave do provedor")
+	}
+	if _, loaded := uc.active.LoadOrStore(cmd.CardID, true); loaded {
+		return nil, fmt.Errorf("pipeline já está em execução para este cartão")
+	}
+	lockID := cmd.CardID
+	launched := false
+	defer func() {
+		if !launched {
+			uc.active.Delete(lockID)
+		}
+	}()
 	var pipelineDTO PipelineDTO
 	var cardTitle string
 	var cardClientID string
@@ -204,7 +220,12 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 	_ = uc.events.Publish(ctx, TopicCardsChanged, map[string]string{"id": cmd.CardID, "stage": string(card.StageEmExecucao)})
 
 	// 2. Execução assíncrona do Pipeline de Agentes
-	go uc.runFactoryPipeline(context.Background(), cmd.CardID, cardTitle, cardClientID, cardPriceCents, pipelineDTO.SpendLimitCents)
+	launched = true
+	activeID := lockID
+	go func() {
+		defer uc.active.Delete(activeID)
+		uc.runFactoryPipeline(context.WithoutCancel(ctx), cmd.CardID, cardTitle, cardClientID, cardPriceCents, pipelineDTO.SpendLimitCents)
+	}()
 
 	return &pipelineDTO, nil
 }
@@ -224,6 +245,8 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 	totalSpend := int64(0)
 	var generatedStories []map[string]any
 	var acceptanceCode string
+	var generatedFiles []ProjectFile
+	var architecture map[string]any
 	requiresHumanReview := RequiresMandatoryHumanReview(title)
 
 	for _, role := range roles {
@@ -306,32 +329,30 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 			"client_id":                  clientID,
 			"stories":                    generatedStories,
 			"previous_code":              acceptanceCode,
+			"files":                      generatedFiles,
+			"architecture":               architecture,
 			"routed_model":               routedModel,
 			"revisao_humana_obrigatoria": requiresHumanReview,
 		}
 
 		res, err := uc.runner.RunStep(ctx, role, fmt.Sprintf("Executar etapa para o projeto %s", title), contextMeta)
+		if err == nil && res == nil {
+			err = fmt.Errorf("agente retornou resultado vazio")
+		}
 		if err != nil {
-			_ = uc.uow.RunInTx(ctx, func(tx Repositories) error {
-				p, _ := tx.Pipelines.GetByCardID(ctx, cardID)
-				if p != nil {
-					p.Status = string(pipeline.StatusFailed)
-					p.CurrentTask = fmt.Sprintf("Falha no agente %s: %v", role, err)
-					_ = tx.Pipelines.Upsert(ctx, p)
-				}
-				return nil
-			})
-			_ = uc.events.Publish(ctx, TopicPipelineChanged, map[string]any{"card_id": cardID, "status": string(pipeline.StatusFailed)})
+			uc.failPipeline(ctx, cardID, role, err)
 			return
 		}
 
 		totalSpend += res.CostCents
 
 		// Persiste resultados específicos de cada etapa
-		_ = uc.uow.RunInTx(ctx, func(tx Repositories) error {
-			_ = tx.Pipelines.AddSpend(ctx, cardID, res.CostCents)
+		err = uc.uow.RunInTx(ctx, func(tx Repositories) error {
+			if err := tx.Pipelines.AddSpend(ctx, cardID, res.CostCents); err != nil {
+				return err
+			}
 
-			_ = tx.CardEvents.Create(ctx, CardEventDTO{
+			if err := tx.CardEvents.Create(ctx, CardEventDTO{
 				CardID:    cardID,
 				ActorType: "agent",
 				Kind:      fmt.Sprintf("agent_%s_finished", role),
@@ -342,7 +363,9 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 					"revisao_humana_obrigatoria": requiresHumanReview,
 				},
 				At: time.Now(),
-			})
+			}); err != nil {
+				return err
+			}
 
 			switch role {
 			case pipeline.RoleRequisitos:
@@ -357,32 +380,18 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 					}
 				}
 				if len(stories) == 0 {
-					stories = []map[string]any{
-						{
-							"title":  fmt.Sprintf("Fluxo Principal — %s", title),
-							"given":  "O cliente acessa a interface responsiva da aplicação",
-							"when":   "Executa a operação principal solicitada no escopo",
-							"then":   "Os dados são validados e processados com confirmação imediata",
-							"passed": true,
-						},
-					}
+					return fmt.Errorf("agente requisitos não produziu histórias")
 				}
 				generatedStories = stories
 				testCode, _ := res.Artifacts["test_code"].(string)
-				shortID := strings.ReplaceAll(cardID, "-", "")
-				if len(shortID) > 8 {
-					shortID = shortID[:8]
-				}
-				if testCode == "" {
-					testCode = fmt.Sprintf("func TestBDD_%s(t *testing.T) { /* Critérios Given-When-Then verificados */ }", shortID)
-				}
+
 				rawToken := "sc_" + generateSecureToken()
 				tokenHash := hashToken(rawToken)
 				signalCents := priceCents * 30 / 100
 				if signalCents <= 0 {
 					signalCents = 15000
 				}
-				_ = tx.Specifications.Upsert(ctx, &SpecificationDTO{
+				if err := tx.Specifications.Upsert(ctx, &SpecificationDTO{
 					CardID:             cardID,
 					UserStories:        stories,
 					TestsCode:          testCode,
@@ -391,70 +400,97 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 					PaymentSignalCents: signalCents,
 					PaymentSignalPaid:  false,
 					ScopeTokenRaw:      rawToken,
-				}, tokenHash)
+				}, tokenHash); err != nil {
+					return err
+				}
 
 				if tx.ProjectMemory != nil && clientID != "" {
-					_ = tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
+					if err := tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
 						CardID:   cardID,
 						ClientID: clientID,
 						Key:      "requisitos_bdd",
 						Category: "requisito",
 						Content:  fmt.Sprintf("Geradas %d user stories BDD executáveis. %s", len(stories), res.Output),
-					})
+					}); err != nil {
+						return err
+					}
 				}
 
 			case pipeline.RoleArquiteto:
+				architecture = res.Artifacts
 				if tx.ProjectMemory != nil && clientID != "" {
 					pbSelected, _ := res.Artifacts["playbook_selected"].(string)
 					if pbSelected == "" {
 						pbSelected = "saas_b2b"
 					}
-					_ = tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
+					if err := tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
 						CardID:   cardID,
 						ClientID: clientID,
 						Key:      "decisao_arquitetura",
 						Category: "decisao",
 						Content:  fmt.Sprintf("Playbook selecionado: %s. %s", pbSelected, res.Output),
-					})
+					}); err != nil {
+						return err
+					}
 				}
 
 			case pipeline.RoleDev:
 				if code, ok := res.Artifacts["pr_url"].(string); ok {
 					acceptanceCode = code
 				}
-				projectFiles := extractProjectFiles(res.Artifacts["files"], title)
-				if uc.sandbox != nil && len(projectFiles) > 0 {
-					_, _ = uc.sandbox.InitWorkspace(cardID)
-					_ = uc.sandbox.WriteFiles(cardID, projectFiles)
+				generatedFiles = extractProjectFiles(res.Artifacts["files"], title)
+				if len(generatedFiles) == 0 {
+					return fmt.Errorf("agente dev não produziu arquivos")
+				}
+				if uc.sandbox == nil {
+					return fmt.Errorf("sandbox não configurada")
+				}
+				if _, err := uc.sandbox.InitWorkspace(cardID); err != nil {
+					return err
+				}
+				if err := uc.sandbox.WriteFiles(cardID, generatedFiles); err != nil {
+					return err
+				}
+				stored, err := uc.sandbox.ReadFiles(cardID)
+				if err != nil {
+					return err
+				}
+				if len(stored) == 0 {
+					return fmt.Errorf("workspace vazio após gravação")
 				}
 
 			case pipeline.RoleQA:
+				if ready, ok := res.Artifacts["ready_for_review"].(bool); ok && !ready {
+					return fmt.Errorf("QA rejeitou os artefatos gerados")
+				}
 				spec, _ := tx.Specifications.GetByCardID(ctx, cardID)
 				if spec != nil {
-					spec.TestsPassed = true
+					spec.TestsPassed = false
 					if spec.TestsCode == "" {
 						spec.TestsCode = acceptanceCode
 					}
-					_ = tx.Specifications.Upsert(ctx, spec, "")
+					if err := tx.Specifications.Upsert(ctx, spec, ""); err != nil {
+						return err
+					}
 				}
 
 			case pipeline.RoleSeguranca:
 				// Fase 9 (sprit02): Alimenta automaticamente a Ficha de Risco completa
-				lgpdStatus := "Isolamento por tenant + minimização de dados conferidos"
+				lgpdStatus := "Revisão do modelo: " + res.Output
 				if requiresHumanReview {
 					lgpdStatus = "⚠️ Código sensível: revisão_humana_obrigatória exigida no Portão 3"
 				}
 				riskDTO := &RiskReportDTO{
 					CardID: cardID,
 					Tests: []map[string]any{
-						{"label": "Testes unitários & BDD", "status": "24 de 24 passaram (94.2% cob.)", "level": "ok"},
-						{"label": "Acessibilidade & Perf (Lighthouse)", "status": "Score 98/100 · 360px Mobile-First", "level": "ok"},
+						{"label": "Testes unitários & BDD", "status": "Sem execução de testes locais comprovada", "level": "warn"},
+						{"label": "Acessibilidade & Perf (Lighthouse)", "status": "Lighthouse não executado", "level": "warn"},
 					},
 					SecretsScan: []map[string]any{
-						{"label": "Varredura de segredos e SAST", "status": "0 chaves expostas · 0 vulnerabilidades OWASP", "level": "ok"},
+						{"label": "Varredura de segredos e SAST", "status": "Auditoria automatizada não executada", "level": "warn"},
 					},
 					OutdatedDeps: []map[string]any{
-						{"label": "Auditoria de dependências", "status": "Todas as dependências seguras e fixadas", "level": "ok"},
+						{"label": "Auditoria de dependências", "status": "Auditoria de dependências não executada", "level": "warn"},
 					},
 					LgpdPoints: []map[string]any{
 						{"label": "Conformidade LGPD & Código Sensível", "status": lgpdStatus, "level": map[bool]string{true: "warn", false: "ok"}[requiresHumanReview]},
@@ -462,58 +498,75 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 					Source: "factory_pipeline",
 				}
 				if writer, ok := tx.Cards.(RiskReportWriter); ok {
-					_ = writer.SaveRiskReport(ctx, riskDTO)
+					if err := writer.SaveRiskReport(ctx, riskDTO); err != nil {
+						return err
+					}
 				}
 				if tx.ProjectMemory != nil && clientID != "" {
-					_ = tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
+					if err := tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
 						CardID:   cardID,
 						ClientID: clientID,
 						Key:      "auditoria_seguranca_lgpd",
 						Category: "decisao",
-						Content:  fmt.Sprintf("SAST, varredura de segredos e checklist LGPD aprovados. Revisão humana obrigatória: %v.", requiresHumanReview),
-					})
-				}
-
-			case pipeline.RolePublicador:
-				previewURL := fmt.Sprintf("/v1/cards/%s/preview", cardID)
-				if uc.publisher != nil {
-					pubRes, err := uc.publisher.PublishWorkspace(ctx, cardID, fmt.Sprintf("feat(%s): autonomous build", title))
-					if err == nil && pubRes != nil && pubRes.PreviewURL != "" {
-						previewURL = pubRes.PreviewURL
+						Content:  fmt.Sprintf("Revisão do modelo registrada; auditoria automatizada não executada. Revisão humana obrigatória: %v.", requiresHumanReview),
+					}); err != nil {
+						return err
 					}
 				}
 
-				_ = tx.Previews.Create(ctx, &PreviewDTO{
+			case pipeline.RolePublicador:
+				if uc.publisher == nil {
+					return fmt.Errorf("publicador não configurado")
+				}
+				previewURL := ""
+				if uc.publisher != nil {
+					pubRes, err := uc.publisher.PublishWorkspace(ctx, cardID, fmt.Sprintf("feat(%s): autonomous build", title))
+					if err != nil {
+						return err
+					}
+					if pubRes == nil || pubRes.PreviewURL == "" {
+						return fmt.Errorf("publicação sem prévia")
+					}
+					previewURL = pubRes.PreviewURL
+				}
+
+				if err := tx.Previews.Create(ctx, &PreviewDTO{
 					CardID:     cardID,
 					PreviewURL: previewURL,
 					Status:     "ready",
 					ExpiresAt:  time.Now().Add(48 * time.Hour),
 					RollbackPlan: map[string]any{
-						"strategy":                    "blue_green_instant_rollback",
-						"image_backup":                "geevheit/app:" + cardID[:minLen(len(cardID), 8)] + "-prev",
-						"database_tag":                "goose_safe_point",
-						"revisao_humana_obrigatoria":  requiresHumanReview,
+						"strategy":                   "blue_green_instant_rollback",
+						"image_backup":               "geevheit/app:" + cardID[:minLen(len(cardID), 8)] + "-prev",
+						"database_tag":               "goose_safe_point",
+						"revisao_humana_obrigatoria": requiresHumanReview,
 					},
-				})
+				}); err != nil {
+					return err
+				}
 
 				// INVARIANTE: O agente Publicador transita para entrega_aprovar, NUNCA aprova nem entrega direto!
 				c, _ := tx.Cards.GetByID(ctx, cardID)
 				if c != nil {
 					c.Stage = card.StageEntregaAprovar
 					c.UpdatedAt = time.Now()
-					_ = tx.Cards.Update(ctx, c)
+					if err := tx.Cards.Update(ctx, c); err != nil {
+						return err
+					}
 				}
 
 				p, _ := tx.Pipelines.GetByCardID(ctx, cardID)
 				if p != nil {
 					p.Stage = string(card.StageEntregaAprovar)
-					p.Status = string(pipeline.StatusCompleted)
+					p.Status = string(pipeline.StatusRunning)
 					taskMsg := "Build e Prévia ao Vivo concluídos! Aguardando aprovação de entrega pelo Dono."
 					if requiresHumanReview {
 						taskMsg = "[revisão_humana_obrigatória] Build concluído! Código sensível aguarda revisão explícita do Dono."
 					}
 					p.CurrentTask = taskMsg
-					_ = tx.Pipelines.Upsert(ctx, p)
+					if err := tx.Pipelines.Upsert(ctx, p); err != nil {
+						return err
+					}
 				}
 
 				// Fase 10 (sprit02): Registra métricas reais no Placar da Fábrica
@@ -523,23 +576,43 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 						leadSec = 12
 					}
 					margin := priceCents - totalSpend
-					_ = tx.FactoryMetrics.Record(ctx, cardID, leadSec, totalSpend, 0, margin, 60, true, 0)
+					if err := tx.FactoryMetrics.Record(ctx, cardID, leadSec, totalSpend, 0, margin, 60, true, 0); err != nil {
+						return err
+					}
 				}
 
 			case pipeline.RoleSuporte:
 				if tx.ProjectMemory != nil && clientID != "" {
-					_ = tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
+					if err := tx.ProjectMemory.Upsert(ctx, &ProjectMemoryDTO{
 						CardID:   cardID,
 						ClientID: clientID,
 						Key:      "monitoramento_pos_entrega",
 						Category: "nota",
-						Content:  "Agente de Suporte ativado: monitoramento de disponibilidade, logs e abertura automática de bugs configurado.",
-					})
+						Content:  res.Output,
+					}); err != nil {
+						return err
+					}
 				}
 			}
 
 			return nil
 		})
+		if err != nil {
+			uc.failPipeline(ctx, cardID, role, err)
+			return
+		}
+	}
+
+	if err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		p, err := tx.Pipelines.GetByCardID(ctx, cardID)
+		if err != nil {
+			return err
+		}
+		p.Status = string(pipeline.StatusCompleted)
+		return tx.Pipelines.Upsert(ctx, p)
+	}); err != nil {
+		uc.failPipeline(ctx, cardID, pipeline.RoleSuporte, err)
+		return
 	}
 
 	_ = uc.events.Publish(ctx, TopicCardsChanged, map[string]string{"id": cardID, "stage": string(card.StageEntregaAprovar)})
@@ -619,60 +692,22 @@ func extractProjectFiles(raw any, title string) []ProjectFile {
 		}
 	}
 
-	// Se não houver arquivos gerados, cria baseline estático de aplicação web moderna
-	if len(files) == 0 {
-		htmlContent := fmt.Sprintf(`<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>%s — GeevheitNeural Preview</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-6">
-  <main class="max-w-xl w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-8 shadow-2xl backdrop-blur">
-    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
-      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      Build Autônomo Homologado
-    </div>
-    <h1 class="text-3xl font-extrabold tracking-tight text-white mb-3">%s</h1>
-    <p class="text-slate-400 text-sm mb-6 leading-relaxed">
-      Esta aplicação foi concebida, codificada e compilada pelo pipeline de inteligência da GeevheitNeural sob o comando do Dono.
-    </p>
-    <div class="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 mb-6">
-      <div class="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-2">Status da Inspeção</div>
-      <div class="flex items-center justify-between text-sm py-1 border-b border-slate-800/50">
-        <span class="text-slate-300">Testes Unitários & BDD</span>
-        <span class="text-emerald-400 font-medium">100%% Aprovados</span>
-      </div>
-      <div class="flex items-center justify-between text-sm py-1 border-b border-slate-800/50">
-        <span class="text-slate-300">Auditoria SAST</span>
-        <span class="text-emerald-400 font-medium">0 Vulnerabilidades</span>
-      </div>
-      <div class="flex items-center justify-between text-sm py-1">
-        <span class="text-slate-300">Custo Total da Geração</span>
-        <span class="text-slate-200 font-medium">R$ 0,00 (Free Tier)</span>
-      </div>
-    </div>
-    <button onclick="alert('Aplicação em funcionamento perfeito!')" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] transition font-medium text-white rounded-xl shadow-lg shadow-emerald-600/20">
-      Testar Interatividade
-    </button>
-  </main>
-</body>
-</html>`, title, title)
-
-		files = append(files,
-			ProjectFile{
-				Path:    "index.html",
-				Content: htmlContent,
-			},
-			ProjectFile{
-				Path:    "README.md",
-				Content: fmt.Sprintf("# %s\n\nGerado automaticamente pela Fábrica Autônoma GeevheitNeural.", title),
-			},
-		)
-	}
-
 	return files
 }
 
+func (uc *StartBuildUseCase) failPipeline(ctx context.Context, cardID string, role pipeline.Role, cause error) {
+	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		p, err := tx.Pipelines.GetByCardID(ctx, cardID)
+		if err != nil {
+			return err
+		}
+		p.Status = string(pipeline.StatusFailed)
+		p.CurrentTask = fmt.Sprintf("Falha na etapa %s: %v", role, cause)
+		return tx.Pipelines.Upsert(ctx, p)
+	})
+	if err != nil {
+		slog.Error("pipeline_failure_persistence", "card_id", cardID, "role", role, "error", err)
+	}
+	slog.Error("pipeline_step_failed", "card_id", cardID, "role", role)
+	_ = uc.events.Publish(ctx, TopicPipelineChanged, map[string]any{"card_id": cardID, "status": string(pipeline.StatusFailed)})
+}

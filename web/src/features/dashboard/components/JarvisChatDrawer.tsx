@@ -544,7 +544,7 @@ export function JarvisChatDrawer({
       };
 
       recognition.onresult = (e: SpeechEvent) => {
-        if (hasHandledResult) return;
+        if (hasHandledResult || activeRecognitionRef.current !== recognition || isSpeakingRef.current) return;
         hasHandledResult = true;
 
         const transcript = e.results?.[0]?.[0]?.transcript;
@@ -562,11 +562,13 @@ export function JarvisChatDrawer({
       };
 
       recognition.onerror = () => {
+        if (activeRecognitionRef.current !== recognition) return;
         activeRecognitionRef.current = null;
         setIsListening(false);
       };
 
       recognition.onend = () => {
+        if (activeRecognitionRef.current !== recognition) return;
         activeRecognitionRef.current = null;
         setIsListening(false);
       };

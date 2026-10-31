@@ -16,6 +16,7 @@ type Config struct {
 	SupabaseJWTSecret  string
 	CORSAllowedOrigins []string
 	BaseURL            string
+	APIBaseURL         string
 }
 
 func Load() *Config {
@@ -31,6 +32,7 @@ func Load() *Config {
 	sbSecret := getEnv("SUPABASE_JWT_SECRET", "super-secret-jwt-token-with-at-least-32-bytes-long")
 	corsStr := getEnv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000")
 	baseURL := getEnv("BASE_URL", "http://localhost:3000")
+	apiBaseURL := getEnv("API_BASE_URL", getEnv("RENDER_EXTERNAL_URL", "http://localhost:"+port))
 
 	var origins []string
 	for _, o := range strings.Split(corsStr, ",") {
@@ -50,6 +52,7 @@ func Load() *Config {
 		SupabaseJWTSecret:  sbSecret,
 		CORSAllowedOrigins: origins,
 		BaseURL:            baseURL,
+		APIBaseURL:         strings.TrimRight(apiBaseURL, "/"),
 	}
 }
 
@@ -83,4 +86,3 @@ func loadDotEnv(filepath string) {
 		}
 	}
 }
-

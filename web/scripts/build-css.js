@@ -19,3 +19,4 @@ if (fs.existsSync(cssPath)) {
   console.error('❌ globals.css não encontrado em:', cssPath);
   process.exit(1);
 }
+

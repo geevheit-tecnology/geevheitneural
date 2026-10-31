@@ -60,8 +60,8 @@ func TestGeminiAgentRunner_RunStep_Success(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Errorf("esperava método POST, recebeu %s", r.Method)
 		}
-		if r.URL.Query().Get("key") != "test-api-key" {
-			t.Errorf("chave de api inválida ou ausente: %s", r.URL.Query().Get("key"))
+		if r.Header.Get("x-goog-api-key") != "test-api-key" || r.URL.Query().Has("key") {
+			t.Error("a chave deve estar somente no cabeçalho")
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(fakeGeminiResponse)
@@ -151,5 +151,24 @@ func TestGeminiAgentRunner_APIError(t *testing.T) {
 	_, err := runner.RunStep(context.Background(), pipeline.RoleDev, "Construir código", nil)
 	if err == nil {
 		t.Fatalf("esperava erro HTTP 429, mas obteve sucesso")
+	}
+}
+
+func TestGeminiAgentRunner_TransientFailureRetry(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"candidates":[{"content":{"parts":[{"text":"{\"output\":\"ok\"}"}]}}]}`))
+	}))
+	defer server.Close()
+	runner := agents.NewGeminiAgentRunner(agents.GeminiConfig{APIKey: "test", BaseURL: server.URL, HTTPClient: server.Client(), MinInterval: time.Millisecond})
+	result, err := runner.RunStep(context.Background(), pipeline.RoleDev, "test", nil)
+	if err != nil || result.Output != "ok" || calls != 2 {
+		t.Fatalf("calls=%d result=%v err=%v", calls, result, err)
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/geevheit/neuralcenter/api/internal/adapters/agents"
+	localpub "github.com/geevheit/neuralcenter/api/internal/adapters/publisher"
+	"github.com/geevheit/neuralcenter/api/internal/adapters/sandbox"
 	"github.com/geevheit/neuralcenter/api/internal/app"
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
 	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
@@ -372,7 +374,7 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 	uow := &mockSprint02UOW{m: m}
 	pub := &mockEventPublisherSprint02{}
 	guard := system.NewExecutionGuard()
-	runner := agents.NewMockAgentRunner()
+	runner := &fixtureFileRunner{AgentRunner: agents.NewMockAgentRunner()}
 
 	owner := system.OwnerPrincipal{ID: "owner-1", AAL: "aal2"}
 
@@ -386,7 +388,32 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 		UpdatedAt: time.Now(),
 	})
 
-	startBuildUC := app.NewStartBuildUseCase(uow, pub, guard, runner)
+	sm, err := sandbox.NewLocalSandboxManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	startBuildUC := app.NewStartBuildUseCase(uow, pub, guard, runner, sm, localpub.NewLocalPublisher("http://localhost:8080", sm))
+	t.Cleanup(func() {
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			running := false
+			m.mu.RLock()
+			for _, p := range m.pipelines {
+				if p.Status == string(pipeline.StatusRunning) {
+					running = true
+				}
+			}
+			m.mu.RUnlock()
+			if !running {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Error("pipeline fixture did not finish")
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+	})
 	getPipelineUC := app.NewGetCardPipelineUseCase(uow)
 
 	t.Run("Fase 6: Iniciar Build transita cartão para em_execucao e inicializa pipeline", func(t *testing.T) {
@@ -571,4 +598,14 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 			t.Fatalf("esperava erro ao tentar aprovar com token falso")
 		}
 	})
+}
+
+type fixtureFileRunner struct{ pipeline.AgentRunner }
+
+func (r *fixtureFileRunner) RunStep(ctx context.Context, role pipeline.Role, prompt string, meta map[string]any) (*pipeline.RunnerResult, error) {
+	result, err := r.AgentRunner.RunStep(ctx, role, prompt, meta)
+	if err == nil && role == pipeline.RoleDev {
+		result.Artifacts["files"] = []map[string]any{{"path": "index.html", "content": "<!doctype html><title>Fixture</title>"}}
+	}
+	return result, err
 }

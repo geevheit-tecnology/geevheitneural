@@ -144,9 +144,9 @@ func main() {
 	if err != nil {
 		logger.Error("sandbox_init_failed", slog.Any("error", err))
 	}
-	localPublisher := localpub.NewLocalPublisher(cfg.BaseURL, localSandbox)
+	localPublisher := localpub.NewLocalPublisher(cfg.APIBaseURL, localSandbox)
 
-	var agentRunner pipeline.AgentRunner = agents.NewMockAgentRunner()
+	var agentRunner pipeline.AgentRunner
 	geminiKey := os.Getenv("GEMINI_API_KEY")
 	groqKey := os.Getenv("GROQ_API_KEY")
 	runnerType := strings.ToLower(os.Getenv("AGENT_RUNNER_TYPE"))
@@ -182,7 +182,7 @@ func main() {
 	createModuleUC := app.NewCreateModuleUseCase(uow)
 	getScoreboardUC := app.NewGetFactoryScoreboardUseCase(uow)
 	estimatePriceUC := app.NewEstimatePriceUseCase(uow)
-	getCardPreviewInfoUC := app.NewGetCardPreviewInfoUseCase(uow, cfg.BaseURL)
+	getCardPreviewInfoUC := app.NewGetCardPreviewInfoUseCase(uow, cfg.APIBaseURL)
 	executeRollbackUC := app.NewExecuteRollbackUseCase(uow, publisher)
 	listProjectMemoryUC := app.NewListProjectMemoryUseCase(uow)
 	addProjectMemoryUC := app.NewAddProjectMemoryUseCase(uow)
@@ -352,7 +352,6 @@ func main() {
 	mux.Handle("POST /v1/apps/{id}/monitor", requireAuth(handlers.HandleMonitorAppHealth(monitorAppHealthUC)))
 	mux.HandleFunc("GET /v1/cards/{id}/preview", handlers.HandleGetCardPreview(localSandbox))
 	mux.Handle("GET /v1/cards/{id}/workspace", requireAuth(handlers.HandleGetCardWorkspace(localSandbox)))
-
 
 	// Cobrança PIX (Fase 11)
 	mux.Handle("POST /v1/cards/{id}/pix", requireAuth(handlers.HandleGeneratePix(generatePixUC, cfg.OwnerUserID)))

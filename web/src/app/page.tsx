@@ -490,29 +490,16 @@ export default function HomePage() {
   const startBuildMutation = useMutation({
     mutationFn: async (params: { id: string; spendLimitCents?: number }) => {
       const targetCard = cards.find((c) => c.id === params.id);
-      try {
-        return await api.startBuild(params.id, params.spendLimitCents || 5000, {
-          title: targetCard?.title,
-          client_name: targetCard?.client_name,
-          price_cents: targetCard?.price_cents,
-        });
-      } catch {
-        return { success: true };
-      }
-    },
-    onSuccess: (_, params) => {
-      // Atualiza estágio localmente: em_execucao -> entrega_aprovar (após pipeline concluído, nunca entrega sozinho)
-      setLocalCards((prev) => {
-        const updated = prev.map((c) =>
-          c.id === params.id ? { ...c, stage: "entrega_aprovar", updated_at: new Date().toISOString() } : c
-        );
-        try {
-          localStorage.setItem("geev_local_cards", JSON.stringify(updated));
-        } catch {}
-        return updated;
+      return await api.startBuild(params.id, params.spendLimitCents || 5000, {
+        title: targetCard?.title,
+        client_name: targetCard?.client_name,
+        price_cents: targetCard?.price_cents,
       });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cards"] });
-      showToast("⚡ Pipeline concluído pelos 7 agentes! Prévia ao vivo e Ficha de Risco prontas no Portão 3.");
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      showToast("Pipeline iniciado. Acompanhe o resultado na fábrica.");
       setIsSheetOpen(false);
     },
     onError: (err: Error) => {
@@ -627,267 +614,7 @@ export default function HomePage() {
 
   const processCommandMutation = useMutation({
     mutationFn: async (text: string) => {
-      try {
-        return await api.processCommand(text);
-      } catch {
-        const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-        // 0. Excluir / Deletar / Apagar / Remover
-        if (lower.includes("excluir") || lower.includes("deletar") || lower.includes("apagar") || lower.includes("remover") || lower.includes("limpar")) {
-          // Se for limpeza de dados legados ou zerar
-          if (lower.includes("tudo") || lower.includes("legado") || lower.includes("dados") || lower.includes("painel") || lower.includes("zerar") || lower.includes("reset")) {
-            const legacyCardIds = REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id)).concat(localCards.map(c => c.id));
-            const legacyAppIds = REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id)).concat(localApps.map(a => a.id));
-
-            if (typeof window !== "undefined") {
-              try {
-                localStorage.removeItem("geev_demo_mode");
-                localStorage.setItem("geev_cleared_legacy", "true");
-                localStorage.setItem("geev_local_cards", JSON.stringify([]));
-                localStorage.setItem("geev_local_apps", JSON.stringify([]));
-                localStorage.setItem("geev_deleted_card_ids", JSON.stringify(legacyCardIds));
-                localStorage.setItem("geev_deleted_app_ids", JSON.stringify(legacyAppIds));
-              } catch {}
-            }
-            setLocalCards([]);
-            setLocalApps([]);
-            queryClient.invalidateQueries({ queryKey: ["cards"] });
-            queryClient.invalidateQueries({ queryKey: ["apps"] });
-            queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
-            return {
-              intent: "delete",
-              message: "🧹 Todos os dados foram excluídos e o painel foi zerado com sucesso! Nenhum dado antigo retornará.",
-              requires_confirmation: false,
-            };
-          }
-
-          // Extrai o nome do alvo a excluir
-          let targetName = text.replace(/^(jarvis|jake)[,:]?\s*/i, "").trim();
-          targetName = targetName.replace(/^(excluir|deletar|apagar|remover)\s*/i, "").trim();
-          targetName = targetName.replace(/^(o projeto|o app|a demanda|projeto|app|demanda)\s*/i, "").trim();
-          const cleanTarget = targetName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-          // 1. Tenta achar no localCards
-          const targetCard = localCards.find(c => {
-            const cTitle = c.title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const cClient = c.client_name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return cleanTarget && (cTitle.includes(cleanTarget) || cClient.includes(cleanTarget) || cleanTarget.includes(cTitle) || cleanTarget.includes(cClient));
-          });
-
-          if (targetCard) {
-            deleteCardMutation.mutate(targetCard.id);
-            return {
-              intent: "delete",
-              message: `🗑️ Demanda "${targetCard.title}" de ${targetCard.client_name} excluída permanentemente!`,
-              requires_confirmation: false,
-            };
-          }
-
-          // 2. Tenta achar no localApps
-          const targetApp = localApps.find(a => {
-            const aName = a.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const aClient = a.client_name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return cleanTarget && (aName.includes(cleanTarget) || aClient.includes(cleanTarget) || cleanTarget.includes(aName));
-          });
-
-          if (targetApp) {
-            deleteAppMutation.mutate(targetApp.id);
-            return {
-              intent: "delete",
-              message: `🗑️ Aplicativo "${targetApp.name}" (${targetApp.client_name}) excluído permanentemente!`,
-              requires_confirmation: false,
-            };
-          }
-
-          // 3. Se não achou por nome específico, mas só tem 1 demanda
-          if (localCards.length === 1 && !cleanTarget) {
-            const onlyCard = localCards[0];
-            deleteCardMutation.mutate(onlyCard.id);
-            return {
-              intent: "delete",
-              message: `🗑️ Demanda "${onlyCard.title}" excluída permanentemente!`,
-              requires_confirmation: false,
-            };
-          }
-
-          return {
-            intent: "delete",
-            message: `Não encontrei nenhum cartão ou aplicativo com o nome "${targetName}" para excluir. Você pode clicar no cartão e tocar no botão vermelho "Excluir".`,
-            requires_confirmation: false,
-          };
-        }
-
-        if (lower.includes("pausar") || lower.includes("parar")) {
-          setIsPaused(true);
-          return { intent: "pause", message: "Comando executado: Sistema pausado pelo ExecutionGuard.", requires_confirmation: false };
-        }
-
-        if (lower.includes("retomar") || lower.includes("continuar")) {
-          setIsPaused(false);
-          return { intent: "resume", message: "Comando executado: Sistema retomado. Agentes prontos.", requires_confirmation: false };
-        }
-
-        if (lower.includes("aprovar") || lower.includes("aceitar") || lower.includes("liberar")) {
-          const target = localCards.find(c =>
-            lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase())
-          );
-          if (target) {
-            handleQuickApprove(target.id);
-            return { intent: "approve", message: `Ordem executada: Aprovado portão de ${target.title} (${target.client_name})!`, requires_confirmation: false };
-          }
-          const pending = localCards.filter(c => ["proposta_aprovar", "prompt_aprovar", "entrega_aprovar"].includes(c.stage));
-          if (pending.length === 1) {
-            handleQuickApprove(pending[0].id);
-            return { intent: "approve", message: `Ordem executada: Aprovado portão de ${pending[0].title} (${pending[0].client_name})!`, requires_confirmation: false };
-          }
-          if (pending.length > 1) {
-            return { intent: "approve", message: `Existem ${pending.length} portões pendentes. Diga o nome do projeto ou cliente para aprovar.`, requires_confirmation: false };
-          }
-          return { intent: "approve", message: "Nenhum portão pendente de aprovação no momento.", requires_confirmation: false };
-        }
-
-        // Construir / Desenvolver / Compilar com Fábrica Autônoma
-        if (lower.includes("construir") || lower.includes("desenvolver") || lower.includes("compilar") || lower.includes("executar")) {
-          const target = localCards.find(c =>
-            lower.includes(c.client_name.toLowerCase()) || lower.includes(c.title.toLowerCase())
-          );
-          if (target) {
-            startBuildMutation.mutate({ id: target.id, spendLimitCents: 5000 });
-            return { intent: "build", message: `⚡ Fábrica Autônoma acionada para "${target.title}" (${target.client_name})! Os 7 agentes iniciaram a construção.`, requires_confirmation: false };
-          }
-
-          // Se a demanda não existe ainda, cria e inicia a construção imediatamente
-          let rawTitle = text.replace(/^(jarvis|jake)[,:]?\s*/i, "").trim();
-          rawTitle = rawTitle.replace(/^(construir|desenvolver|compilar|executar)\s*/i, "").trim();
-          rawTitle = rawTitle.replace(/^(este projeto|o projeto|projeto|a demanda|demanda|o app|app)\s*/i, "").trim();
-          if (!rawTitle) rawTitle = "Novo Software";
-          const formattedTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
-          const newCardId = `card_${Date.now()}`;
-          const newCard: CardItem = {
-            id: newCardId,
-            type: "orcamento",
-            client_id: "c-direto",
-            client_name: "Cliente Direto",
-            app_name: formattedTitle,
-            title: formattedTitle,
-            currency: "BRL",
-            stage: "em_execucao",
-            priority: 1,
-            price_cents: 350000,
-            est_cost_cents: 5000,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          setLocalCards((prev) => {
-            const updated = [newCard, ...prev];
-            try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
-            return updated;
-          });
-          api.createCard({
-            title: newCard.title,
-            client_name: newCard.client_name,
-            app_name: newCard.app_name,
-            type: newCard.type,
-            price_cents: newCard.price_cents,
-            est_cost_cents: newCard.est_cost_cents,
-            stage: newCard.stage,
-            priority: newCard.priority,
-          }).catch(() => {});
-          startBuildMutation.mutate({ id: newCardId, spendLimitCents: 5000 });
-          return {
-            intent: "build",
-            message: `⚡ Demanda "${formattedTitle}" criada e Fábrica Autônoma acionada! Os 7 agentes iniciaram a construção no sandbox.`,
-            requires_confirmation: false,
-          };
-        }
-
-        // Criar / Cadastrar Nova Demanda
-        if (lower.includes("criar") || lower.includes("cadastrar") || lower.includes("novo projeto") || lower.includes("nova demanda") || lower.includes("novo app") || lower.includes("fazer")) {
-          let raw = text.replace(/^(jarvis|jake)[,:]?\s*/i, "").trim();
-          raw = raw.replace(/^(criar|cadastrar|novo projeto|nova demanda|novo app|fazer)\s*/i, "").trim();
-          raw = raw.replace(/^(um projeto|uma demanda|um app|projeto|demanda|app)\s*/i, "").trim();
-
-          let title = raw;
-          let clientName = "Cliente Direto";
-          const paraIdx = raw.toLowerCase().indexOf(" para ");
-          if (paraIdx !== -1) {
-            title = raw.slice(0, paraIdx).trim();
-            clientName = raw.slice(paraIdx + 6).trim() || "Cliente Direto";
-          }
-          if (!title) title = "Nova Demanda de Software";
-          const formattedTitle = title.charAt(0).toUpperCase() + title.slice(1);
-          const formattedClient = clientName.charAt(0).toUpperCase() + clientName.slice(1);
-
-          const newCardId = `card_${Date.now()}`;
-          const newCard: CardItem = {
-            id: newCardId,
-            type: "orcamento",
-            client_id: "c-direto",
-            client_name: formattedClient,
-            app_name: formattedTitle,
-            title: formattedTitle,
-            currency: "BRL",
-            stage: "proposta_aprovar",
-            priority: 2,
-            price_cents: 250000,
-            est_cost_cents: 3000,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          setLocalCards((prev) => {
-            const updated = [newCard, ...prev];
-            try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
-            return updated;
-          });
-          api.createCard({
-            title: newCard.title,
-            client_name: newCard.client_name,
-            app_name: newCard.app_name,
-            type: newCard.type,
-            price_cents: newCard.price_cents,
-            est_cost_cents: newCard.est_cost_cents,
-            stage: newCard.stage,
-            priority: newCard.priority,
-          }).catch(() => {});
-          return {
-            intent: "create",
-            message: `Demanda "${formattedTitle}" criada para ${formattedClient}! Já está disponível no seu quadro na coluna Propostas.`,
-            requires_confirmation: false,
-          };
-        }
-
-        if (lower.includes("laboratorio") || lower.includes("lab") || lower.includes("maquina") || lower.includes("construcao")) {
-          setActiveTab("lab");
-          setTimeout(() => setIsChatDrawerOpen(false), 800);
-          return {
-            intent: "lab",
-            message: "🧪 Abrindo o Laboratório Neural! Aqui você acompanha os 7 agentes construindo e testando os projetos no sandbox em tempo real.",
-            requires_confirmation: false,
-          };
-        }
-
-        if (lower.includes("status") || lower.includes("resumo") || lower.includes("como esta")) {
-          return {
-            intent: "status",
-            message: `Status da Central: ${localCards.length} demandas cadastradas, ${localApps.length} apps em produção. Sistema ${isPaused ? "pausado" : "operando normalmente sob o motor de IA"}.`,
-            requires_confirmation: false,
-          };
-        }
-
-        if (lower.includes("lucro") || lower.includes("faturamento") || lower.includes("financas") || lower.includes("dinheiro")) {
-          return {
-            intent: "finances",
-            message: `Painel Financeiro: Faturamento previsto de R$ ${(finances.total_revenue_cents / 100).toFixed(2)} e margem líquida de R$ ${(finances.net_profit_cents / 100).toFixed(2)}.`,
-            requires_confirmation: false,
-          };
-        }
-
-        return {
-          intent: "custom",
-          message: "Ordem compreendida! Estou à disposição para criar demandas, iniciar a fábrica autônoma, aprovar portões ou relatar faturamento.",
-          requires_confirmation: false,
-        };
-      }
+      return await api.processCommand(text);
     },
     onSuccess: (res) => {
       if (res.requires_confirmation && res.confirmation_token && res.confirmation_prompt) {
@@ -955,7 +682,7 @@ export default function HomePage() {
       }
       return res.message;
     } catch (err: unknown) {
-      return (err as Error)?.message || "Erro ao processar comando pela central.";
+      throw err;
     }
   };
 

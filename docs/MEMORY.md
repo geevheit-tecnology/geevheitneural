@@ -132,3 +132,16 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 
 
 
+
+## Correção 004 — validação local em 2026-10-30
+- As afirmações anteriores de homologação/produção não comprovam a execução real atual. Inspeção encontrou fallback de sucesso na tela, mock silencioso sem chave, artefatos genéricos e erros ignorados na esteira.
+- Corrigidos eventos antigos do reconhecimento compartilhado por Jarvis/Jake; comandos falhos não anunciam execução, QA recebe código, arquivos/publicação são exigidos, falhas das etapas são propagadas e contexto RLS é preservado na execução assíncrona.
+- Testes locais com arquivos temporários e runners simulados; integração real, voz em aparelho e deploy pendentes. Ver `docs/RELATORIO_CORRECAO004.md`.
+
+## Correção 005 — dependência Git no runtime (2026-10-30)
+- `LocalPublisher` chama `git init/config/add/commit/rev-parse`, mas o Dockerfile copiava somente o binário Go, certificados e timezone para distroless. Dependência ausente impedia publicar o workspace.
+- Dockerfile passou a empacotar Git do builder, templates, bibliotecas compartilhadas e loader musl no runtime distroless existente, mantendo usuário nonroot. `chroot ... git --version` verifica o pacote durante o build; esse build ainda não foi executado nesta sessão, pois o Docker daemon estava desligado.
+- Regressão no teste existente do publicador reproduz Git ausente e exige erro sem resultado; publicação local com Git continua passando. Suíte Go com `-race` passou. Nenhuma configuração de produção/ambiente ou banco alterado.
+
+### Atualização da validação Docker da correção 005
+- Docker 29.8.0 disponível; build linux/amd64 passou após corrigir `/dev/null` no chroot de verificação. Imagem `geevheit-api:correcao005` validou init/add/commit com arquivo real em pasta temporária como nonroot, sem rede. A pendência do empacotamento Docker foi resolvida; integração com banco/IA e deploy seguem pendentes.

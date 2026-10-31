@@ -24,8 +24,8 @@ var (
 // GeminiConfig define as opções de conexão com a API do Google AI Studio (Free Tier)
 type GeminiConfig struct {
 	APIKey      string
-	Model       string        // ex: "gemini-1.5-flash" ou "gemini-2.5-flash"
-	BaseURL     string        // URL base, configurável para mocks de teste
+	Model       string // ex: "gemini-1.5-flash" ou "gemini-2.5-flash"
+	BaseURL     string // URL base, configurável para mocks de teste
 	HTTPClient  *http.Client
 	MinInterval time.Duration // Intervalo mínimo entre chamadas para respeitar o limite gratuito de 15 RPM (ex: 4s)
 }
@@ -46,7 +46,7 @@ func NewGeminiAgentRunner(cfg GeminiConfig) *GeminiAgentRunner {
 		cfg.BaseURL = "https://generativelanguage.googleapis.com/v1beta"
 	}
 	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = &http.Client{Timeout: 60 * time.Second}
+		cfg.HTTPClient = &http.Client{Timeout: 180 * time.Second}
 	}
 	if cfg.MinInterval <= 0 {
 		cfg.MinInterval = 4100 * time.Millisecond // ~14.6 req/minuto (dentro dos 15 RPM free)
@@ -155,16 +155,35 @@ func (r *GeminiAgentRunner) RunStep(ctx context.Context, role pipeline.Role, pro
 		return nil, fmt.Errorf("falha ao serializar payload para Gemini: %w", err)
 	}
 
-	endpoint := fmt.Sprintf("%s/models/%s:generateContent?key=%s",
-		strings.TrimRight(r.cfg.BaseURL, "/"), r.cfg.Model, r.cfg.APIKey)
+	endpoint := fmt.Sprintf("%s/models/%s:generateContent",
+		strings.TrimRight(r.cfg.BaseURL, "/"), r.cfg.Model)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(rawJSON))
 	if err != nil {
 		return nil, fmt.Errorf("falha ao criar requisição HTTP: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-goog-api-key", r.cfg.APIKey)
 
-	resp, err := r.cfg.HTTPClient.Do(httpReq)
+	var resp *http.Response
+	for attempt := 0; attempt < 3; attempt++ {
+		httpReq.Body = io.NopCloser(bytes.NewReader(rawJSON))
+		resp, err = r.cfg.HTTPClient.Do(httpReq)
+		if err != nil {
+			break
+		}
+		if (resp.StatusCode != http.StatusServiceUnavailable && resp.StatusCode != http.StatusTooManyRequests) || attempt == 2 {
+			break
+		}
+		resp.Body.Close()
+		timer := time.NewTimer(time.Duration(attempt+1) * 4 * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("falha de rede ao conectar com Google Gemini: %w", err)
 	}
@@ -314,15 +333,11 @@ Responda EXCLUSIVAMENTE em formato JSON com o seguinte esquema:
 func parseRoleOutput(role pipeline.Role, responseText string, contextMeta map[string]any) (*pipeline.RunnerResult, error) {
 	var parsed map[string]any
 	if err := json.Unmarshal([]byte(responseText), &parsed); err != nil {
-		// Se não foi possível deserializar direto, encapsula o texto como output simples
-		parsed = map[string]any{
-			"output": responseText,
-		}
+		return nil, fmt.Errorf("resposta inválida do agente %s: %w", role, err)
 	}
-
 	outputText, _ := parsed["output"].(string)
-	if outputText == "" {
-		outputText = fmt.Sprintf("Passo do agente %s concluído com sucesso via Google Gemini.", role)
+	if strings.TrimSpace(outputText) == "" {
+		return nil, fmt.Errorf("resposta vazia do agente %s", role)
 	}
 
 	result := &pipeline.RunnerResult{
