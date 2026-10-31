@@ -420,3 +420,10 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 - Docker Engine 29.8.0 confirmado ativo. O primeiro build identificou ausência de `/dev/null` no chroot usado pela verificação isolada do Git; ajustado o Dockerfile para criá-lo temporariamente e removê-lo após a verificação.
 - `docker build --platform linux/amd64 -t geevheit-api:correcao005 api/` passou. Imagem final executou Git init/add/commit como nonroot, com `--network none`, sobre arquivo HTML em pasta temporária. Commit de teste: `7a6f089`; nenhum commit no projeto.
 - Confirmada a dependência de publicação na imagem final. Inicialização com banco, geração por IA real e produção continuam sem homologação nesta validação.
+
+## Correção de comunicação em produção — 2026-10-31
+- Reproduzido o bloqueio: preflight OPTIONS de `https://geevheit.vercel.app` retornava 204 sem `Access-Control-Allow-Origin`; o domínio antigo era permitido. O navegador bloqueava os comandos com `Failed to fetch`.
+- Configuração agora inclui explicitamente a origem oficial e preserva as origens adicionais do host, sem wildcard. Blueprint declara as duas origens conhecidas.
+- Gemini 2.5 Flash retornou 404; 3.8 Flash respondeu à conexão, mas falhou por alta demanda na geração completa. Com autorização do dono, Gemini 3.1 Flash Lite concluiu as sete etapas em teste real com PostgreSQL isolado, arquivos e publicação Git reais (60,89 s). Modelo padrão/Blueprint atualizado.
+- Correções anteriores incluídas no commit 4c99e9c: identificação do dono por claims nas gravações, retentativas limitadas para 429/503, chave Gemini no cabeçalho e origem da API nos links de prévia.
+- Publicação autorizada expressamente pelo dono nesta sessão. Confirmação do preflight após deploy ainda pendente.

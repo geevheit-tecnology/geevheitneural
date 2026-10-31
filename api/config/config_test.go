@@ -19,3 +19,16 @@ func TestPreviewUsesAPIOrigin(t *testing.T) {
 		}
 	}
 }
+
+func TestCORSAllowsOfficialAndConfiguredOrigins(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://web-lake-eight-gwn3vopv94.vercel.app")
+	cfg := Load()
+	got := map[string]bool{}
+	for _, origin := range cfg.CORSAllowedOrigins {
+		got[origin] = true
+	}
+	if !got["https://geevheit.vercel.app"] || !got["https://web-lake-eight-gwn3vopv94.vercel.app"] || got["*"] {
+		t.Fatal("official and configured origins must be allowed without wildcard")
+	}
+}

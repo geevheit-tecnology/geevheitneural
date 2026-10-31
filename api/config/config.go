@@ -42,6 +42,18 @@ func Load() *Config {
 		}
 	}
 
+	// Origem oficial da central. Preserva origens adicionais configuradas no host.
+	const productionOrigin = "https://geevheit.vercel.app"
+	foundProduction := false
+	for _, origin := range origins {
+		if origin == productionOrigin {
+			foundProduction = true
+		}
+	}
+	if !foundProduction {
+		origins = append(origins, productionOrigin)
+	}
+
 	return &Config{
 		Port:               port,
 		LogLevel:           logLevel,

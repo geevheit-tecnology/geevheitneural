@@ -434,7 +434,23 @@ func TestSprint02_FactoryAndPipelines(t *testing.T) {
 		}
 
 		// Aguarda o pipeline assíncrono processar as etapas
-		time.Sleep(100 * time.Millisecond)
+		deadline := time.Now().Add(5 * time.Second)
+		for {
+			current, err := getPipelineUC.Execute(context.Background(), cardID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if current.Status == string(pipeline.StatusFailed) {
+				t.Fatalf("pipeline failed: %s", current.CurrentTask)
+			}
+			if current.Status == string(pipeline.StatusCompleted) {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("pipeline did not complete within the test deadline")
+			}
+			time.Sleep(time.Millisecond)
+		}
 
 		pAfter, err := getPipelineUC.Execute(context.Background(), cardID)
 		if err != nil {

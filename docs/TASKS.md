@@ -147,3 +147,9 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] Reproduzir falha do publicador sem Git e ajustar somente o empacotamento dessa dependência no Dockerfile.
 - [x] Executar regressão Go com detector de concorrência e compilação da API.
 - [x] Construir a imagem final e testar Git init/add/commit em contêiner nonroot, sem rede, com arquivo temporário. Sem alteração de produção.
+
+## Comunicação de produção — 2026-10-31
+- [x] Reproduzir preflight sem permissão CORS para a origem oficial.
+- [x] Preservar origens existentes e incluir explicitamente o domínio oficial, com regressão de configuração.
+- [x] Validar geração real com Gemini 3.1 Flash Lite e PostgreSQL isolado; aprovar modelo local com o dono.
+- [ ] Publicar ajuste autorizado e confirmar preflight do domínio oficial em produção.

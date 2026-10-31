@@ -145,3 +145,8 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 
 ### Atualização da validação Docker da correção 005
 - Docker 29.8.0 disponível; build linux/amd64 passou após corrigir `/dev/null` no chroot de verificação. Imagem `geevheit-api:correcao005` validou init/add/commit com arquivo real em pasta temporária como nonroot, sem rede. A pendência do empacotamento Docker foi resolvida; integração com banco/IA e deploy seguem pendentes.
+
+## Bloqueio CORS em produção — 2026-10-31
+- Usuário relatou `Failed to fetch` ao solicitar landing page de loja de veículos. Preflight confirmou que a API permitia o domínio antigo da Vercel e não permitia `https://geevheit.vercel.app`; endpoints /healthz e /readyz responderam 200.
+- Domínio oficial acrescentado à configuração CORS sem remover origens adicionais; Blueprint atualizado. Gemini padrão/Blueprint: 3.1 Flash Lite, aprovado pelo dono após geração completa real com banco isolado; 2.5 retornou 404 e 3.8 sofreu alta demanda.
+- Dono autorizou corrigir produção e publicar. Commit anterior 4c99e9c já estava no GitHub. Render ainda não conectado; acompanhamento da publicação/preflight necessário.

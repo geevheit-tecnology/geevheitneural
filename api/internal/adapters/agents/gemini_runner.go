@@ -40,7 +40,7 @@ type GeminiAgentRunner struct {
 // NewGeminiAgentRunner instancia o executor do Gemini com proteção de taxa (Rate Limiter)
 func NewGeminiAgentRunner(cfg GeminiConfig) *GeminiAgentRunner {
 	if cfg.Model == "" {
-		cfg.Model = "gemini-1.5-flash"
+		cfg.Model = "gemini-3.1-flash-lite"
 	}
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = "https://generativelanguage.googleapis.com/v1beta"
