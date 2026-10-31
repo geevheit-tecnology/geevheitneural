@@ -158,4 +158,10 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] Conferir projeto, aliases, produção Ready, CSS e interface pública.
 - [x] Corrigir entrada silenciosa em sessão simulada e preservar demonstração identificada.
 - [x] Testar ausência de sessão, erro Auth, AAL1/AAL2, signout, voz, build e viewport móvel.
-- [ ] Publicar correção da sessão e confirmar novo deploy Ready na Vercel.
+- [x] Publicar correção da sessão (`3a334e3`) e confirmar deploy Ready na Vercel (`web-2e3y0603e`).
+
+## Cadastro de autenticador no primeiro acesso — 2026-10-31
+- [x] Implementar cadastro TOTP pelo Supabase para usuário sem fator verificado, com QR Code e chave manual.
+- [x] Manter acesso bloqueado até código válido; preservar login com autenticador existente.
+- [x] Validar 12 testes de voz/sessão/MFA e build estático.
+- [ ] Publicar o formulário e confirmar deploy Ready. O cadastro real será concluído pelo dono no seu aplicativo autenticador.

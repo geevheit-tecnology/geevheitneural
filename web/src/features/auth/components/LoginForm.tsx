@@ -13,7 +13,8 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [factorId, setFactorId] = useState<string | null>(null);
-  const [step, setStep] = useState<"credentials" | "totp">("credentials");
+  const [step, setStep] = useState<"credentials" | "totp" | "enroll">("credentials");
+  const [enrollment, setEnrollment] = useState<{ qrCode: string; secret: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -34,15 +35,24 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
 
       // Verifica se o usuário possui fatores MFA TOTP cadastrados
       const factorsRes = await supabase.auth.mfa.listFactors();
-      const totpFactors = factorsRes.data?.totp || [];
+      if (factorsRes.error) throw factorsRes.error;
+      setPassword("");
+      const totpFactors = (factorsRes.data?.totp || []).filter((factor) => factor.status === "verified");
 
       if (totpFactors.length > 0) {
         // Exige o segundo fator (AAL2)
         setFactorId(totpFactors[0].id);
         setStep("totp");
       } else {
-        // Sessão iniciada (caso TOTP ainda não esteja cadastrado na Fase 1)
-        if (onSuccess) onSuccess();
+        const result = await supabase.auth.mfa.enroll({
+          factorType: "totp",
+          friendlyName: `GeevheitNeural ${Date.now()}`,
+          issuer: "GeevheitNeural",
+        });
+        if (result.error) throw result.error;
+        setFactorId(result.data.id);
+        setEnrollment({ qrCode: result.data.totp.qr_code, secret: result.data.totp.secret });
+        setStep("enroll");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Credenciais incorretas";
@@ -55,6 +65,10 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
   async function handleTOTPSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!factorId) return;
+    if (!/^\d{6}$/.test(totpCode)) {
+      setErrorMsg("Digite os 6 números do aplicativo autenticador.");
+      return;
+    }
 
     setErrorMsg(null);
     setLoading(true);
@@ -71,7 +85,9 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
 
       if (verify.error) throw verify.error;
 
-      // Autenticação com AAL2 concluída com sucesso
+      // O segredo de cadastro permanece somente em memória até a confirmação.
+      setEnrollment(null);
+      setTotpCode("");
       if (onSuccess) onSuccess();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Código TOTP inválido ou expirado";
@@ -154,6 +170,26 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
           </form>
         ) : (
           <form onSubmit={handleTOTPSubmit} className="flex flex-col gap-3">
+            {step === "enroll" && enrollment && (
+              <section id="totp-enrollment" className="space-y-3">
+                <h2 className="text-sm font-bold">Configure seu autenticador</h2>
+                <p className="text-xs text-[var(--mute)]">
+                  No Google Authenticator ou Microsoft Authenticator, adicione uma conta e leia este QR Code.
+                  Depois, informe abaixo o código gerado pelo aplicativo.
+                </p>
+                <img
+                  id="totp-qr-code"
+                  src={enrollment.qrCode}
+                  alt="QR Code para cadastrar o autenticador GeevheitNeural"
+                  className="w-48 max-w-full mx-auto rounded-lg bg-white p-2"
+                />
+                <details className="text-xs text-[var(--mute)]">
+                  <summary className="cursor-pointer">Não consigo ler o QR Code</summary>
+                  <p className="my-2">No mesmo celular, escolha inserir uma chave de configuração no autenticador e copie esta chave. Não a compartilhe.</p>
+                  <input id="totp-setup-key" aria-label="Chave de configuração do autenticador" readOnly value={enrollment.secret} className="w-full p-2 rounded-lg border border-[var(--line)] bg-[var(--bg)] text-[var(--ink)] font-mono select-all" />
+                </details>
+              </section>
+            )}
             <div className="text-xs text-[var(--mute)] mb-1">
               Digite o código de 6 dígitos do seu app autenticador:
             </div>
@@ -168,6 +204,8 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
                 id="totp-code"
                 type="text"
                 inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]{6}"
                 maxLength={6}
                 required
                 value={totpCode}
@@ -183,7 +221,7 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
               disabled={loading}
               className="btn btn-primary mt-2 flex justify-center items-center font-bold"
             >
-              {loading ? "Validando..." : "Confirmar e Entrar"}
+              {loading ? "Validando..." : step === "enroll" ? "Ativar 2FA e entrar" : "Confirmar e Entrar"}
             </button>
           </form>
         )}

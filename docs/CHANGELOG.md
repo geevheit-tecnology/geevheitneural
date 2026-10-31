@@ -434,3 +434,8 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 - Corrigida sessão simulada criada automaticamente quando o Supabase não retornava usuário ou falhava. O painel real agora exige sessão AAL2; AAL1 não desmonta prematuramente o formulário de segundo fator. Signout limpa o painel.
 - Demonstração permanece explícita, com rótulo próprio, sem alegação de 2FA e sem execução de ordens reais pelo assistente.
 - Validação: 7 testes de voz/sessão e build estático passaram; navegador local confirmou login sem painel em 360 px, além de verificação desktop e demonstração identificada. Login real com senha/TOTP do dono não foi executado.
+
+## Cadastro TOTP no primeiro login — 2026-10-31
+- Usuário sem autenticador agora recebe QR Code e chave manual gerados pelo Supabase após autenticação por senha. Acesso só avança após validar os seis dígitos; fatores já verificados mantêm o fluxo anterior.
+- Corrigida a saída silenciosa do login sem MFA; falhas de listagem e cadastro são exibidas, e código inválido permite nova tentativa sem recriar o fator.
+- Segredo de cadastro mantido somente em memória e limpo ao concluir. Doze testes de voz/sessão/MFA passaram; build estático passou. Validação do cadastro real depende de leitura do QR Code pelo dono.

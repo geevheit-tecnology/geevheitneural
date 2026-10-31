@@ -101,3 +101,51 @@ test('AAL1 cannot open owner panel; AAL2 can, and signout clears the panel',asyn
 test('Explicit demonstration stays labeled as demonstration',async()=>{
   const h=await sessionHarness(null,false,true);assert.equal(h.demo,true);assert.equal(h.session.user.id,'owner-demo');
 });
+
+const loginSource = ts.createSourceFile('LoginForm.tsx', readFileSync(resolve(__dirname, '../src/features/auth/components/LoginForm.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const loginHandlers=[];
+function findLoginHandlers(node){
+ if(ts.isFunctionDeclaration(node)&&['handlePasswordSubmit','handleTOTPSubmit'].includes(node.name?.text))loginHandlers.push(node.getText(loginSource));
+ ts.forEachChild(node,findLoginHandlers);
+}
+findLoginHandlers(loginSource);assert.equal(loginHandlers.length,2);
+const loginCode=ts.transpileModule(loginHandlers.join('\n')+'\nglobalThis.loginHandlers={handlePasswordSubmit,handleTOTPSubmit};',{compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText;
+function loginHarness({verified=false,listError=false,enrollError=false,verifyError=false}={}){
+ const calls=[];
+ const state={
+  Error, email:'fixture@example.invalid',password:'fixture-password',factorId:null,totpCode:'123456',enrollment:null,step:'credentials',errorMsg:null,success:0,
+  setErrorMsg(v){state.errorMsg=v;},setLoading(){},setPassword(v){state.password=v;},
+  setFactorId(v){state.factorId=v;},setEnrollment(v){state.enrollment=v;},setStep(v){state.step=v;},setTotpCode(v){state.totpCode=v;},onSuccess(){state.success++;},
+  supabase:{auth:{
+   signInWithPassword:async()=>({error:null}),
+   mfa:{
+    listFactors:async()=>({data:{totp:verified?[{id:'verified-factor',status:'verified'}]:[]},error:listError?Error('list failed'):null}),
+    enroll:async()=>{calls.push('enroll');return {data:{id:'new-factor',totp:{qr_code:'data:image/svg+xml;utf-8,<svg/>',secret:'FAKE-TEST-SECRET'}},error:enrollError?Error('enrollment failed'):null};},
+    challenge:async({factorId})=>{calls.push(['challenge',factorId]);return {data:{id:'challenge'},error:null};},
+    verify:async(args)=>{calls.push(['verify',args.factorId,args.code]);return {error:verifyError?Error('invalid code'):null};},
+   },
+  }},
+ };
+ vm.createContext(state);vm.runInContext(loginCode,state);return {state,calls,...state.loginHandlers};
+}
+const submit={preventDefault(){}};
+test('First login enrolls TOTP and waits for confirmation before allowing access',async()=>{
+ const h=loginHarness();await h.handlePasswordSubmit(submit);
+ assert.equal(h.state.step,'enroll');assert.equal(h.state.factorId,'new-factor');assert.ok(h.state.enrollment.qrCode);assert.equal(h.state.success,0);assert.equal(h.state.password,'');
+ await h.handleTOTPSubmit(submit);assert.equal(h.state.success,1);assert.equal(h.state.enrollment,null);assert.equal(h.state.totpCode,'');
+ assert.deepEqual(h.calls.at(-1),['verify','new-factor','123456']);
+});
+test('Existing verified TOTP is challenged without enrolling another factor',async()=>{
+ const h=loginHarness({verified:true});await h.handlePasswordSubmit(submit);assert.equal(h.state.step,'totp');assert.equal(h.state.success,0);assert.equal(h.calls.length,0);
+ await h.handleTOTPSubmit(submit);assert.equal(h.state.success,1);assert.deepEqual(h.calls[0],['challenge','verified-factor']);
+});
+test('Factor listing and enrollment failures cannot open the panel',async()=>{
+ for(const options of [{listError:true},{enrollError:true}]){const h=loginHarness(options);await h.handlePasswordSubmit(submit);assert.equal(h.state.success,0);assert.equal(h.state.step,'credentials');assert.ok(h.state.errorMsg);}
+});
+test('Invalid verification preserves enrollment for retry and never allows access',async()=>{
+ const h=loginHarness({verifyError:true});await h.handlePasswordSubmit(submit);await h.handleTOTPSubmit(submit);
+ assert.equal(h.state.success,0);assert.ok(h.state.enrollment);assert.equal(h.state.errorMsg,'invalid code');
+});
+test('Malformed TOTP codes are rejected before calling the provider',async()=>{
+ const h=loginHarness({verified:true});await h.handlePasswordSubmit(submit);h.state.totpCode='123';await h.handleTOTPSubmit(submit);assert.equal(h.calls.length,0);assert.equal(h.state.success,0);assert.ok(h.state.errorMsg);
+});

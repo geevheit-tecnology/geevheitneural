@@ -159,3 +159,11 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Projeto Vercel vinculado é `web` (raiz `web`). Os três domínios conhecidos são aliases do mesmo deploy, não três versões independentes. Produção anterior à revisão: `dpl_4LoW5oYr9Kb71jw7PFVj25aFDPFJ`, Ready.
 - Inspeção encontrou abertura silenciosa de painel `owner-demo` sem sessão Supabase: removida. Painel real exige JWT com AAL2 na interface (validação de assinatura/owner continua na API). Demonstração só por ação explícita, identificada e com comandos reais bloqueados.
 - Navegador móvel em 360 px confirmou login sem sessão e sem transbordamento. Não alterar layout baseado na primeira screenshot desktop estreita: emulação móvel em 390 px não confirmou o problema inicialmente suspeitado.
+
+### Publicação da sessão real — 2026-10-31
+- Commit `3a334e3` enviado para main; Vercel informou produção Ready em `https://web-2e3y0603e-geevheits-projects.vercel.app`. Sete testes e build estático passaram. Navegador local confirmou login sem sessão em 360/1366 px e demonstração identificada em 360 px. Login real com credenciais/TOTP do dono permanece não executado pelo agente.
+
+## Primeiro acesso com usuário recriado — 2026-10-31
+- Dono recriou usuário no Supabase; UID novo informado: `d195af78-3b7c-4919-94a0-2d7d7ae0c24d`. Configuração local OWNER_USER_ID atualizada; alteração correspondente no Render foi orientada, mas ainda não confirmada via acesso administrativo.
+- LoginForm não cadastrava TOTP quando faltava fator; agora usa `mfa.enroll`, exibe QR/chave manual e confirma via challenge/verify antes de permitir AAL2. Segredo fica somente no estado React e é limpo após sucesso, sem persistência/log.
+- Testes simulados cobrem primeiro cadastro, fator existente, falha de listagem/cadastro, código inválido e confirmação. Nenhum fator real do dono foi criado pelo agente: o dono faz isso no primeiro login.
