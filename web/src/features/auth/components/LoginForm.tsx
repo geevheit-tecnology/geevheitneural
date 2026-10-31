@@ -197,7 +197,7 @@ export function LoginForm({ onSuccess, onDemoLogin }: LoginFormProps) {
               className="w-full py-2.5 px-3 rounded-lg border border-[var(--acc)] text-[var(--acc)] hover:bg-[var(--acc)]/10 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
             >
               <span>⚡</span>
-              <span>Acessar Central (Acesso Direto do Dono)</span>
+              <span>Explorar demonstração (sem executar ordens)</span>
             </button>
           </div>
         )}

@@ -65,3 +65,39 @@ for (const persona of ['jarvis', 'jake']) {
     assert.equal(h.spoken.length, 1);
   });
 }
+
+const pageSource = ts.createSourceFile('page.tsx', readFileSync(resolve(__dirname, '../src/app/page.tsx'), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let sessionGuard, sessionEffect;
+function findSessionCode(node) {
+  if (ts.isFunctionDeclaration(node) && node.name?.text === 'hasMfaSession') sessionGuard = node.getText(pageSource);
+  if (ts.isCallExpression(node) && node.expression.getText(pageSource) === 'useEffect' && node.arguments[0]?.getText(pageSource).includes('const forceDemo')) sessionEffect = node.arguments[0].getText(pageSource);
+  ts.forEachChild(node, findSessionCode);
+}
+findSessionCode(pageSource);
+assert.ok(sessionGuard && sessionEffect);
+const sessionCode = ts.transpileModule(`${sessionGuard}\nglobalThis.boot = ${sessionEffect};`, {compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText;
+function fakeSession(aal) {
+  return {access_token:`header.${Buffer.from(JSON.stringify({aal})).toString('base64url')}.signature`,user:{email:'test@example.invalid'}};
+}
+async function sessionHarness(session, fail=false, demo=false) {
+  let current=null, authCallback, isDemo=false;
+  const context = {
+    window:{location:{search:demo?'?demo=true':''}}, URLSearchParams, atob,
+    localStorage:{getItem(){return null;}}, sessionStorage:{removeItem(){}},
+    setIsDemoMode(v){isDemo=v;},setLoadingAuth(){},setSession(v){current=v;},
+    supabase:{auth:{getSession:async()=>{if(fail) throw Error('offline');return {data:{session}};},onAuthStateChange(fn){authCallback=fn;return {data:{subscription:{unsubscribe(){}}}};}}},
+  };
+  vm.createContext(context);vm.runInContext(sessionCode,context);context.boot();await flush();
+  return {get session(){return current;},get demo(){return isDemo;},authCallback};
+}
+test('No authenticated session or auth failure never creates an owner session',async()=>{
+  for(const fail of [false,true]){const h=await sessionHarness(null,fail);assert.equal(h.session,null);assert.equal(h.demo,false);}
+});
+test('AAL1 cannot open owner panel; AAL2 can, and signout clears the panel',async()=>{
+  assert.equal((await sessionHarness(fakeSession('aal1'))).session,null);
+  const session=fakeSession('aal2');const h=await sessionHarness(session);assert.equal(h.session,session);
+  h.authCallback('SIGNED_OUT',null);assert.equal(h.session,null);
+});
+test('Explicit demonstration stays labeled as demonstration',async()=>{
+  const h=await sessionHarness(null,false,true);assert.equal(h.demo,true);assert.equal(h.session.user.id,'owner-demo');
+});

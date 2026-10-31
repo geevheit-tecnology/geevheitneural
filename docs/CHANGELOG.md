@@ -426,4 +426,11 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 - Configuração agora inclui explicitamente a origem oficial e preserva as origens adicionais do host, sem wildcard. Blueprint declara as duas origens conhecidas.
 - Gemini 2.5 Flash retornou 404; 3.8 Flash respondeu à conexão, mas falhou por alta demanda na geração completa. Com autorização do dono, Gemini 3.1 Flash Lite concluiu as sete etapas em teste real com PostgreSQL isolado, arquivos e publicação Git reais (60,89 s). Modelo padrão/Blueprint atualizado.
 - Correções anteriores incluídas no commit 4c99e9c: identificação do dono por claims nas gravações, retentativas limitadas para 429/503, chave Gemini no cabeçalho e origem da API nos links de prévia.
-- Publicação autorizada expressamente pelo dono nesta sessão. Confirmação do preflight após deploy ainda pendente.
+- Publicação autorizada expressamente pelo dono nesta sessão. Commit `bde0742` publicado: preflight 204 com `Access-Control-Allow-Origin: https://geevheit.vercel.app`, healthz/readyz 200. Geração autenticada em produção ainda depende de validação com a sessão do dono.
+
+## Revisão Vercel e sessão da central — 2026-10-31
+- Projeto Vercel `web`, raiz `web`, com produção Ready e aliases `geevheit.vercel.app`, `geevheitneural.vercel.app` e domínio antigo no mesmo deploy. Falhas exibidas no histórico são de publicações anteriores.
+- Emulação móvel correta confirmou largura de documento igual ao viewport a 390 px; a primeira captura em janela desktop estreita não representava o viewport móvel e não justificou alterações de layout.
+- Corrigida sessão simulada criada automaticamente quando o Supabase não retornava usuário ou falhava. O painel real agora exige sessão AAL2; AAL1 não desmonta prematuramente o formulário de segundo fator. Signout limpa o painel.
+- Demonstração permanece explícita, com rótulo próprio, sem alegação de 2FA e sem execução de ordens reais pelo assistente.
+- Validação: 7 testes de voz/sessão e build estático passaram; navegador local confirmou login sem painel em 360 px, além de verificação desktop e demonstração identificada. Login real com senha/TOTP do dono não foi executado.

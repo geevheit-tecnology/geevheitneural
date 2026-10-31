@@ -152,4 +152,10 @@ Definição de pronto: `make check` verde no local e no CI; README explica como 
 - [x] Reproduzir preflight sem permissão CORS para a origem oficial.
 - [x] Preservar origens existentes e incluir explicitamente o domínio oficial, com regressão de configuração.
 - [x] Validar geração real com Gemini 3.1 Flash Lite e PostgreSQL isolado; aprovar modelo local com o dono.
-- [ ] Publicar ajuste autorizado e confirmar preflight do domínio oficial em produção.
+- [x] Publicar ajuste autorizado (`bde0742`) e confirmar preflight do domínio oficial em produção: 204 com origem correta, healthz/readyz 200.
+
+## Revisão Vercel e sessão — 2026-10-31
+- [x] Conferir projeto, aliases, produção Ready, CSS e interface pública.
+- [x] Corrigir entrada silenciosa em sessão simulada e preservar demonstração identificada.
+- [x] Testar ausência de sessão, erro Auth, AAL1/AAL2, signout, voz, build e viewport móvel.
+- [ ] Publicar correção da sessão e confirmar novo deploy Ready na Vercel.

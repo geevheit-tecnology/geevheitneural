@@ -14,6 +14,7 @@ interface HeaderProps {
   onNavigateHome?: () => void;
   onNavigateTab?: (tab: "hoje" | "quadro" | "lab" | "apps" | "fin" | "con") => void;
   currentTab?: string;
+  isDemoMode?: boolean;
 }
 
 export function Header({
@@ -28,6 +29,7 @@ export function Header({
   onNavigateHome,
   onNavigateTab,
   currentTab,
+  isDemoMode = false,
 }: HeaderProps) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -175,7 +177,7 @@ export function Header({
                   <div className="text-[11px] text-[var(--mute)] truncate">{userEmail || "dono@geevheit.com"}</div>
                   <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--ok)] font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--ok)] inline-block"></span>
-                    2FA (AAL2) Ativo
+                    {isDemoMode ? "Demonstração · sem sessão real" : "2FA (AAL2) Ativo"}
                   </div>
                 </div>
 

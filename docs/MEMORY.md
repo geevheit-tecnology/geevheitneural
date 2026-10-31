@@ -150,3 +150,12 @@ PWA mobile-first em que **um único dono** opera uma software house: decide, apr
 - Usuário relatou `Failed to fetch` ao solicitar landing page de loja de veículos. Preflight confirmou que a API permitia o domínio antigo da Vercel e não permitia `https://geevheit.vercel.app`; endpoints /healthz e /readyz responderam 200.
 - Domínio oficial acrescentado à configuração CORS sem remover origens adicionais; Blueprint atualizado. Gemini padrão/Blueprint: 3.1 Flash Lite, aprovado pelo dono após geração completa real com banco isolado; 2.5 retornou 404 e 3.8 sofreu alta demanda.
 - Dono autorizou corrigir produção e publicar. Commit anterior 4c99e9c já estava no GitHub. Render ainda não conectado; acompanhamento da publicação/preflight necessário.
+
+### Confirmação da publicação — 2026-10-31
+- Commit `bde0742` enviado para main e efeito confirmado na API pública: OPTIONS de `https://geevheit.vercel.app` retornou `Access-Control-Allow-Origin` correto, `/healthz` e `/readyz` responderam 200. Publicação ocorreu pela integração existente do repositório; não foi necessário acesso direto à conta Render.
+- Geração autenticada em produção e microfone real dependem de teste do dono; `criar` registra a demanda e `construir` inicia a geração no contrato atual.
+
+## Revisão Vercel e sessão — 2026-10-31
+- Projeto Vercel vinculado é `web` (raiz `web`). Os três domínios conhecidos são aliases do mesmo deploy, não três versões independentes. Produção anterior à revisão: `dpl_4LoW5oYr9Kb71jw7PFVj25aFDPFJ`, Ready.
+- Inspeção encontrou abertura silenciosa de painel `owner-demo` sem sessão Supabase: removida. Painel real exige JWT com AAL2 na interface (validação de assinatura/owner continua na API). Demonstração só por ação explícita, identificada e com comandos reais bloqueados.
+- Navegador móvel em 360 px confirmou login sem sessão e sem transbordamento. Não alterar layout baseado na primeira screenshot desktop estreita: emulação móvel em 390 px não confirmou o problema inicialmente suspeitado.

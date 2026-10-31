@@ -120,6 +120,17 @@ const DEMO_APPS: AppItem[] = [
   { id: "a6", client_name: "sem cliente", name: "api-antiga", hosting: "Docker (VPS)", database: "Postgres local", repository: "", domain: "", status: "ativo", monthly_cost_cents: 9600, monthly_revenue_cents: 0, net_margin_cents: -9600, is_costly: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
 ];
 
+function hasMfaSession(value: unknown): boolean {
+  const token = (value as { access_token?: string } | null)?.access_token;
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.aal === "aal2";
+  } catch {
+    return false;
+  }
+}
+
 export default function HomePage() {
   const [session, setSession] = useState<unknown>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -149,7 +160,6 @@ export default function HomePage() {
   useSSE((paused) => setIsPaused(paused));
 
   useEffect(() => {
-    const wasLoggedOut = typeof window !== "undefined" && sessionStorage.getItem("geevheit_logged_out") === "true";
     const forceDemo = typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true");
     setIsDemoMode(!!forceDemo);
 
@@ -161,25 +171,16 @@ export default function HomePage() {
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setSession(session);
-      } else if (!wasLoggedOut) {
-        // Modo Dono ativo
-        setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
-      }
+      setSession(hasMfaSession(session) ? session : null);
       setLoadingAuth(false);
     }).catch(() => {
-      if (!wasLoggedOut) {
-        setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
-      }
+      setSession(null);
       setLoadingAuth(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        setSession(session);
-        if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
-      }
+      setSession(hasMfaSession(session) ? session : null);
+      if (session && typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
     });
 
     return () => subscription.unsubscribe();
@@ -671,6 +672,9 @@ export default function HomePage() {
   });
 
   const handleExecuteCommand = async (text: string): Promise<string> => {
+    if (isDemoMode) {
+      throw new Error("Modo demonstração: entre na sua conta para executar ordens reais.");
+    }
     try {
       const res = await processCommandMutation.mutateAsync(text);
       if (res.requires_confirmation && res.confirmation_token && res.confirmation_prompt) {
@@ -774,8 +778,10 @@ export default function HomePage() {
     } finally {
       if (typeof window !== "undefined") {
         sessionStorage.setItem("geevheit_logged_out", "true");
+        localStorage.removeItem("geev_demo_mode");
       }
       queryClient.clear();
+      setIsDemoMode(false);
       setSession(null);
       showToast("Sessão encerrada com segurança.");
     }
@@ -795,9 +801,13 @@ export default function HomePage() {
     return (
       <main className="flex items-center justify-center min-h-screen bg-[var(--bg)] p-4">
         <LoginForm
-          onSuccess={() => supabase.auth.getSession().then(({ data }) => setSession(data.session))}
+          onSuccess={() => supabase.auth.getSession().then(({ data }) => setSession(hasMfaSession(data.session) ? data.session : null))}
           onDemoLogin={() => {
-            if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("geevheit_logged_out");
+              localStorage.setItem("geev_demo_mode", "true");
+            }
+            setIsDemoMode(true);
             setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
           }}
         />
@@ -823,6 +833,7 @@ export default function HomePage() {
         onNavigateHome={() => setActiveTab("hoje")}
         onNavigateTab={(tab) => setActiveTab(tab)}
         currentTab={activeTab}
+        isDemoMode={isDemoMode}
       />
 
       {/* Banner de Sistema Pausado */}
