@@ -1,0 +1,10 @@
+.codegraph/
+.git/
+**/.env
+**/.env.*
+**/node_modules/
+web/.next/
+web/out/
+api/
+db/
+docs/

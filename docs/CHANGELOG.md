@@ -453,3 +453,8 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 - Resolvido bloqueio do build com Next.js 16.4.6 e correções transitivas compatíveis; auditoria zero vulnerabilidades e build estático aprovado.
 - Validada persistência PostgreSQL com ROLLBACK e geração real Gemini de landing page com arquivos/Git locais, sem gravar clientes reais.
 - Cabeçalho passa a quebrar controles no celular, eliminando transbordamento observado em 360/390 px. Novo teste do painel em ESM, sem erros no lint dos componentes da entrega.
+
+### Publicação confirmada
+- Implementação `7dcc1ea` enviada ao GitHub e publicada automaticamente no Render. Nova rota de ferramentas exige autenticação (401), healthz/readyz 200 e preflight do domínio oficial 204.
+- Vercel Ready: `dpl_DPgjQswVmuNjyk3ey1S51gF4xmZX`, alias `https://geevheit.vercel.app`, Next.js 16.4.6 e build remoto aprovado. `.vercelignore` protege o upload contra índices/sockets e arquivos locais de ambiente.
+- Nenhuma sessão AAL2 real do dono foi utilizada; comando autenticado em produção permanece verificação distinta dos testes reais controlados de geração e persistência.

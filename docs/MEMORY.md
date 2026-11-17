@@ -1,5 +1,13 @@
 # Memory — GeevheitNeural
 
+## Publicação confirmada — 2026-11-16
+- Commit de implementação `7dcc1ea` enviado à `origin/main`. Render publicou automaticamente: `/v1/factory/tools` passou de 404 a 401 (rota existe e exige autenticação); `/healthz` e `/readyz` responderam 200.
+- Preflight PUT para `/v1/factory/tools/gemini` com origem `https://geevheit.vercel.app`: HTTP 204, origem exata permitida, métodos e cabeçalhos Authorization/Content-Type autorizados.
+- Vercel produção `dpl_DPgjQswVmuNjyk3ey1S51gF4xmZX`, `web-221zbasug-geevheits-projects.vercel.app`, Ready, alias `https://geevheit.vercel.app`. Logs remotos confirmaram Next.js 16.4.6 e build completo aprovado. A integração Git também gerou um deploy Ready da mesma implementação antes do deploy CLI.
+- Upload CLI inicialmente esbarrou no socket do CodeGraph; `.vercelignore` exclui índice/socket, ambientes, dependências/outputs locais e pastas alheias ao frontend. Nenhuma credencial enviada ao Git.
+- Geração real Gemini e PostgreSQL/RLS foram validados nos testes controlados descritos acima. Login/2FA real do dono e geração autenticada pelo domínio de produção **não foram executados**; não confundir testes controlados com esse fluxo. Groq só é utilizável se sua chave estiver configurada; nenhuma chave nova foi criada ou ativada pelo agente.
+- Sem migration nova, cobrança, alteração de conta ou plano. Débitos de lint globais anteriores continuam documentados; build, testes e lint dos componentes desta entrega passaram (um aviso legado de imagem).
+
 ## Preparação da publicação autorizada — 2026-11-16
 - Dono autorizou produção. Next/eslint-config-next 16.4.6 e transitivas corrigidas: auditoria zero vulnerabilidades, build estático passou. Vet/race/build Go e 16 testes web passaram.
 - Persistência PostgreSQL + auditoria JSONB + isolamento RLS validados com identidade sintética e ROLLBACK. Gemini real gerou landing page de 4.226 bytes pelas sete etapas em 26,84 s; arquivos/Git reais, repositórios em memória. Sem gravações de teste em produção.

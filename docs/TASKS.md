@@ -5,7 +5,8 @@
 - [x] Acrescentar briefing copiável para Figma Make e documentar cotas/pesquisa, sem automatizar o navegador ou ativar serviços.
 - [x] Validar controle de execução e interface com fakes locais; registrar limites de homologação em `FERRAMENTAS_CRIACAO.md`.
 - [x] Validar PostgreSQL com ROLLBACK, geração Gemini real com arquivos/Git locais, viewport móvel e correção do alerta Next (16.4.6, auditoria zero).
-- [/] Publicar API/frontend e confirmar rotas/saúde remotas. Login/2FA real do dono e comando autenticado permanecem verificação distinta.
+- [x] Publicar API/frontend e confirmar rotas/saúde remotas: Vercel Ready, Render tools 401, healthz/readyz 200, preflight oficial 204.
+- [ ] Dono conferir com sua sessão AAL2 a área de ferramentas e um comando `construir` em produção; não foi utilizada sessão real do dono pelo agente.
 
 ## Correção 006 — diagnóstico e reparo mínimo do orquestrador
 - [x] Reproduzir e corrigir continuação de agentes quando a consulta da pausa falha; validar regressão e registrar limites locais.
