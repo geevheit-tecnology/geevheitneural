@@ -1,5 +1,16 @@
 # Tasks — GeevheitNeural
 
+## Ferramentas de criação — APIs gratuitas e Figma manual
+- [x] Integrar seleção persistente de Gemini/Groq na área Conexões e no runner existente, com pausa e ativação exclusiva do dono.
+- [x] Acrescentar briefing copiável para Figma Make e documentar cotas/pesquisa, sem automatizar o navegador ou ativar serviços.
+- [x] Validar controle de execução e interface com fakes locais; registrar limites de homologação em `FERRAMENTAS_CRIACAO.md`.
+- [x] Validar PostgreSQL com ROLLBACK, geração Gemini real com arquivos/Git locais, viewport móvel e correção do alerta Next (16.4.6, auditoria zero).
+- [/] Publicar API/frontend e confirmar rotas/saúde remotas. Login/2FA real do dono e comando autenticado permanecem verificação distinta.
+
+## Correção 006 — diagnóstico e reparo mínimo do orquestrador
+- [x] Reproduzir e corrigir continuação de agentes quando a consulta da pausa falha; validar regressão e registrar limites locais.
+- [ ] Resolver alerta de segurança do Next.js com autorização para atualizar dependências; homologar integrações reais. Ver `RELATORIO_CORRECAO006.md`.
+
 > Fonte: [`/sprit01`](../sprit01). Legenda: `[ ]` a fazer · `[/]` em andamento · `[x]` feito.
 > Regra: **parar ao fim de cada fase e aguardar aprovação do dono.**
 

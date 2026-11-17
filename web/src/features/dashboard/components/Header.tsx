@@ -77,7 +77,7 @@ export function Header({
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-[var(--bg)] px-4 pt-3 pb-2 flex items-center justify-between gap-2.5 border-b border-[var(--line)]/50 backdrop-blur-md">
+      <header className="sticky top-0 z-30 bg-[var(--bg)] px-4 pt-3 pb-2 flex flex-wrap items-center justify-between gap-2.5 border-b border-[var(--line)]/50 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
           <img
             src="/icon-192.png"
@@ -104,7 +104,7 @@ export function Header({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {/* Pílula de Dinheiro Parado */}
           <div
             id="header-money-pill"

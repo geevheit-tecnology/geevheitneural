@@ -52,6 +52,7 @@ func (u *UnitOfWork) RunInTx(ctx context.Context, fn func(tx app.Repositories) e
 
 	q := sqlcgen.New(tx)
 	repos := app.Repositories{
+		FactoryTools:   &FactoryToolSettingsRepository{q: q},
 		Cards:          NewCardRepository(q),
 		Apps:           NewAppRepository(q),
 		Finances:       NewFinanceRepository(q),

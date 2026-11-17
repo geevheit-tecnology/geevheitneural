@@ -1,5 +1,24 @@
 # Memory — GeevheitNeural
 
+## Preparação da publicação autorizada — 2026-11-16
+- Dono autorizou produção. Next/eslint-config-next 16.4.6 e transitivas corrigidas: auditoria zero vulnerabilidades, build estático passou. Vet/race/build Go e 16 testes web passaram.
+- Persistência PostgreSQL + auditoria JSONB + isolamento RLS validados com identidade sintética e ROLLBACK. Gemini real gerou landing page de 4.226 bytes pelas sete etapas em 26,84 s; arquivos/Git reais, repositórios em memória. Sem gravações de teste em produção.
+- Chrome local validou login e demonstração em 360/390/1366 px. Corrigido cabeçalho que alargava tela para 426 px. Teste do painel agora é `web/scripts/test-factory-tools.mjs` (ESM).
+- Projeto Vercel `web` tem Root Directory `web`: raiz deste checkout agora vinculada ao mesmo ID. `.vercel` ignorado. API pública antes do deploy: healthz 200 e rota nova tools 404. Git remoto main em `6884407`; publicação e confirmação remota pendentes.
+- Lint dos componentes da entrega sem erros (aviso legado de imagem); lint global ainda aponta débitos em scripts CommonJS, hooks e `any` anteriores, sem regras desativadas.
+
+## Ferramentas de criação — 2026-11-16 (local)
+- Dono escolheu APIs gratuitas + Figma como apoio manual. `Conexões → Ferramentas de criação` permite selecionar Gemini/Groq com chaves somente no servidor, confirmação do plano/modelo gratuitos e bloqueio por pausa/AAL2. Figma: briefing copiável e abertura manual; sem geração/importação automática.
+- Seleção usa `geev.connectors` já existente e auditoria transacional; nenhuma migration ou dado real alterado. `AGENT_RUNNER_TYPE` continua definindo a seleção antes da primeira preferência salva; depois a escolha persistida prevalece. A seleção é conferida antes de cada etapa, e build desligado é recusado antes de mudar o cartão.
+- Vet, suíte Go com race, build Go, TypeScript, CSS, 4 testes do painel e 12 do assistente passaram. Build Next continua terminando em `SecurityFatalError` após gerar páginas. Sem atualização de dependências, teste visual de navegador, persistência PostgreSQL real ou geração remota nesta entrega.
+- Pesquisa oficial e instruções em `FERRAMENTAS_CRIACAO.md`; cotas gratuitas não garantem conclusão de um projeto nem comprovam conta sem cobrança. Sem ativação externa ou publicação.
+
+## Correção 006 — 2026-11-16 (local)
+- `runFactoryPipeline` descartava erro da transação/leitura de `SystemState` antes de cada etapa; estado ausente também permitia chamar IA. Regressão reproduziu chamada indevida nos quatro cenários.
+- Correção localizada: falhar pipeline e retornar antes do agente quando não é possível verificar a pausa. Caminho de pausa confirmada preservado. Se o banco continuar indisponível, a persistência de `failed` também pode falhar; a execução do agente permanece interrompida.
+- `go vet ./...`, `go test -race ./...`, `go build ./...` e 12 testes de voz/sessão/MFA passaram. Build web compilou e gerou páginas, mas terminou com `SecurityFatalError` sobre a versão atual do Next.js; nenhuma dependência atualizada.
+- Sem commit, push, deploy, mudança de ambiente ou dados. Integrações externas não homologadas nesta sessão. Relatório: `RELATORIO_CORRECAO006.md`.
+
 > Memória viva do projeto. Atualize a cada decisão, descoberta ou fim de fase.
 > Agentes de código: **leia este arquivo antes de começar qualquer tarefa.**
 

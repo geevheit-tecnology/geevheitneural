@@ -122,6 +122,10 @@ Regras de dependência (verificadas em revisão e por teste de import):
 | ADR-013 | Isolamento LGPD por `client_id` obrigatório em todo dado de cliente + export/expurgo por cliente | Um projeto Supabase por cliente | Viável no plano gratuito; **a confirmar com o dono**. |
 | ADR-014 | Validador JWT aceita **HS256** (segredo) e **ES256/RS256 via JWKS** (`$SUPABASE_URL/auth/v1/.well-known/jwks.json`, cache de 10 min, atualização por `kid` desconhecido com intervalo mínimo de 30 s). Algoritmos restritos por `WithValidMethods`; `alg=none` rejeitado. Só stdlib + `golang-jwt` já existente | Exigir HS256 legado; biblioteca JWKS externa | O projeto Supabase atual assina com ES256; a ADR-004 previa JWKS e não estava implementada. Sem dependência nova. |
 
+### ADR-015 — seleção de ferramentas da fábrica (2026-11-16)
+
+O caso de uso `FactoryTools` implementa a porta `AgentRunner` existente e encaminha etapas ao runner Gemini/Groq selecionado pelo dono. Preferência na tabela `connectors` já existente, auditoria na mesma UoW e validação via ExecutionGuard antes de cada etapa. Preserva seleção de ambiente anterior até a primeira escolha persistida. Alternativa rejeitada: criar outro orquestrador ou automatizar navegador para Figma; o dono escolheu APIs gratuitas e Figma manual. Sem dependência ou alteração de esquema. Confirmação de cota gratuita não substitui configuração de faturamento no provedor. Detalhes em `FERRAMENTAS_CRIACAO.md`.
+
 ## 7. Dependências
 
 Princípio: **stdlib primeiro**. Toda dependência nova precisa de linha nesta tabela.

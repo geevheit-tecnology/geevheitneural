@@ -27,3 +27,4 @@ db/supabase/.temp/
 # CodeGraph local index
 .codegraph/
 
+.vercel

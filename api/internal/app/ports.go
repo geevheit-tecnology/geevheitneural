@@ -61,12 +61,12 @@ type CardListItemDTO struct {
 
 // CardDetailsDTO é o detalhamento exibido na bottom sheet.
 type CardDetailsDTO struct {
-	Card        CardListItemDTO  `json:"card"`
-	Events      []CardEventDTO   `json:"events"`
-	RiskReport  *RiskReportDTO   `json:"risk_report,omitempty"`
-	IsGate      bool             `json:"is_gate"`
-	Actions     []string         `json:"actions"`
-	MarginCents int64            `json:"margin_cents"`
+	Card        CardListItemDTO `json:"card"`
+	Events      []CardEventDTO  `json:"events"`
+	RiskReport  *RiskReportDTO  `json:"risk_report,omitempty"`
+	IsGate      bool            `json:"is_gate"`
+	Actions     []string        `json:"actions"`
+	MarginCents int64           `json:"margin_cents"`
 }
 
 // AppDTO representa uma aplicação mantida pela software house.
@@ -222,10 +222,10 @@ type ClientDTO struct {
 }
 
 type ClientExportDTO struct {
-	Client  ClientDTO         `json:"client"`
-	Cards   []CardListItemDTO `json:"cards"`
-	Ledger  []LedgerEntryDTO  `json:"ledger"`
-	ExportAt time.Time        `json:"exported_at"`
+	Client   ClientDTO         `json:"client"`
+	Cards    []CardListItemDTO `json:"cards"`
+	Ledger   []LedgerEntryDTO  `json:"ledger"`
+	ExportAt time.Time         `json:"exported_at"`
 }
 
 type AuditLogDTO struct {
@@ -553,9 +553,8 @@ type WorkspacePublisher interface {
 	PublishWorkspace(ctx context.Context, cardID string, commitMsg string) (*PublishedPreviewDTO, error)
 }
 
-
-
 type Repositories struct {
+	FactoryTools   FactoryToolSettingsRepository
 	Cards          CardRepository
 	Apps           AppRepository
 	Finances       FinanceRepository

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -45,6 +47,76 @@ func (s correctionSandbox) WriteFiles(id string, files []app.ProjectFile) error 
 }
 
 type correctionContextKey struct{}
+
+type correctionUOW func(context.Context, func(app.Repositories) error) error
+
+func (f correctionUOW) RunInTx(ctx context.Context, fn func(app.Repositories) error) error {
+	return f(ctx, fn)
+}
+
+type correctionSystemState struct {
+	app.SystemStateRepository
+	err error
+}
+
+func (r correctionSystemState) Get(context.Context) (*system.SystemState, error) {
+	return nil, r.err
+}
+
+func TestCorrection006_StateCheckFailureStopsAgents(t *testing.T) {
+	for _, mode := range []string{"transaction_error", "read_error", "missing_repository", "missing_state"} {
+		t.Run(mode, func(t *testing.T) {
+			m := newMockSprint02Repos()
+			id := uuid.NewString()
+			m.setCard(&card.Card{ID: id, Title: "Landing"})
+			base := &mockSprint02UOW{m: m}
+			var transactions atomic.Int32
+			uow := correctionUOW(func(ctx context.Context, fn func(app.Repositories) error) error {
+				// A primeira transação inicia o build; a segunda verifica a pausa antes da IA.
+				if transactions.Add(1) == 2 {
+					if mode == "transaction_error" {
+						return errors.New("state transaction unavailable")
+					}
+					return base.RunInTx(ctx, func(tx app.Repositories) error {
+						tx.SystemState = correctionSystemState{}
+						if mode == "read_error" {
+							tx.SystemState = correctionSystemState{err: errors.New("state read unavailable")}
+						} else if mode == "missing_repository" {
+							tx.SystemState = nil
+						}
+						return fn(tx)
+					})
+				}
+				return base.RunInTx(ctx, fn)
+			})
+			var calls atomic.Int32
+			runner := correctionRunner(func(context.Context, pipeline.Role, string, map[string]any) (*pipeline.RunnerResult, error) {
+				calls.Add(1)
+				return nil, errors.New("agent should not run")
+			})
+			uc := app.NewStartBuildUseCase(uow, &mockEventPublisherSprint02{}, system.NewExecutionGuard(), runner)
+			if _, err := uc.Execute(context.Background(), system.OwnerPrincipal{ID: "owner-1", AAL: "aal2"}, app.StartBuildCommand{CardID: id}); err != nil {
+				t.Fatal(err)
+			}
+			deadline := time.Now().Add(3 * time.Second)
+			for {
+				m.mu.RLock()
+				p := *m.pipelines[id]
+				m.mu.RUnlock()
+				if p.Status == string(pipeline.StatusFailed) {
+					if calls.Load() != 0 || !strings.Contains(p.CurrentTask, "verificar estado do sistema") {
+						t.Fatalf("state check bypassed: calls=%d, task=%s", calls.Load(), p.CurrentTask)
+					}
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatalf("pipeline did not fail: %s", p.Status)
+				}
+				time.Sleep(time.Millisecond)
+			}
+		})
+	}
+}
 
 func TestCorrection004_ArtifactsAndFailures(t *testing.T) {
 	for _, mode := range []string{"success", "empty_files", "write_error", "publish_error", "nil_result", "provider_error", "qa_rejected"} {

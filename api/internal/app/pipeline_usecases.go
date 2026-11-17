@@ -90,6 +90,11 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 	if uc.runner == nil {
 		return nil, fmt.Errorf("provedor de IA não configurado; verifique AGENT_RUNNER_TYPE e a chave do provedor")
 	}
+	if availability, ok := uc.runner.(interface{ Ready(context.Context) error }); ok {
+		if err := availability.Ready(ctx); err != nil {
+			return nil, err
+		}
+	}
 	if _, loaded := uc.active.LoadOrStore(cmd.CardID, true); loaded {
 		return nil, fmt.Errorf("pipeline já está em execução para este cartão")
 	}
@@ -253,15 +258,24 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 		// 0. Verifica Botão Parar de Emergência a cada etapa (Requisito transversal sprit02:
 		// "Botão Parar interrompe pipelines em andamento e descarta ambientes")
 		var isPaused bool
-		_ = uc.uow.RunInTx(ctx, func(tx Repositories) error {
-			if tx.SystemState != nil {
-				st, err := tx.SystemState.Get(ctx)
-				if err == nil && st != nil && st.Paused {
-					isPaused = true
-				}
+		err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+			if tx.SystemState == nil {
+				return fmt.Errorf("repositório de estado indisponível")
 			}
+			st, err := tx.SystemState.Get(ctx)
+			if err != nil {
+				return err
+			}
+			if st == nil {
+				return fmt.Errorf("estado do sistema indisponível")
+			}
+			isPaused = st.Paused
 			return nil
 		})
+		if err != nil {
+			uc.failPipeline(ctx, cardID, role, fmt.Errorf("falha ao verificar estado do sistema: %w", err))
+			return
+		}
 		if isPaused {
 			if uc.sandbox != nil {
 				_ = uc.sandbox.CleanupWorkspace(cardID)

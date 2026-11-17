@@ -95,6 +95,8 @@ docker build -t geevheit-api:latest api/
 
 ## 🔒 Princípios e Invariantes do Sistema
 
+Ferramentas de criação: a aba **Conexões → Ferramentas de criação** seleciona Gemini/Groq para a fábrica e oferece briefing manual para Figma Make. Chaves continuam nas variáveis do servidor; ativar exige sessão AAL2, confirmação da cota gratuita e sistema fora da pausa. A seleção anterior de ambiente é preservada até a primeira preferência salva. Sem alteração de esquema. Pesquisa, configuração, testes e limites: [docs/FERRAMENTAS_CRIACAO.md](docs/FERRAMENTAS_CRIACAO.md).
+
 1. **API Go como ponto único de entrada**: Nenhuma ação ou mutação de estado ignora a API.
 2. **Aprovação exclusiva do dono**: Portões de decisão (*Proposta*, *Prompt*, *Entrega*) só avançam por decisão explícita do dono via token AAL2 TOTP. Agentes nunca aprovam portões.
 3. **ExecutionGuard**: Se o sistema estiver pausado (`system.pausado=true`) ou conector inativo (`ativo=false`), nenhuma execução externa ocorre.

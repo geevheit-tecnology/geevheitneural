@@ -924,7 +924,7 @@ export default function HomePage() {
         )}
 
         {activeTab === "con" && (
-          <ConexoesTab connectors={connectors} onShowToast={showToast} />
+          <ConexoesTab connectors={connectors} onShowToast={showToast} isDemoMode={isDemoMode} />
         )}
       </main>
 

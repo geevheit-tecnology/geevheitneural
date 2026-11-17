@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { FactoryToolsPanel } from "./FactoryToolsPanel";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ConnectorItem,
@@ -12,11 +13,12 @@ import {
 interface ConexoesTabProps {
   connectors: ConnectorItem[];
   onShowToast: (msg: string) => void;
+  isDemoMode?: boolean;
 }
 
-export function ConexoesTab({ connectors, onShowToast }: ConexoesTabProps) {
+export function ConexoesTab({ connectors, onShowToast, isDemoMode = false }: ConexoesTabProps) {
   const queryClient = useQueryClient();
-  const [activeSection, setActiveSection] = useState<"notificacoes" | "webhooks" | "conectores">("webhooks");
+  const [activeSection, setActiveSection] = useState<"ferramentas" | "notificacoes" | "webhooks" | "conectores">("ferramentas");
 
   // Estados do modal de novo webhook
   const [showWebhookModal, setShowWebhookModal] = useState(false);
@@ -110,8 +112,9 @@ export function ConexoesTab({ connectors, onShowToast }: ConexoesTabProps) {
     "Provedor de IA (agentes)",
   ];
 
-  const items = connectors.length > 0
-    ? connectors
+  const cloudConnectors = connectors.filter(conn => conn.scope !== "gemini" && conn.scope !== "groq");
+  const items = cloudConnectors.length > 0
+    ? cloudConnectors
     : fallbackList.map((name, i) => ({
         id: `con-${i}`,
         name,
@@ -141,7 +144,10 @@ export function ConexoesTab({ connectors, onShowToast }: ConexoesTabProps) {
   return (
     <div id="tab-conexoes" className="space-y-4">
       {/* Navegação entre Sub-Seções */}
-      <div className="flex bg-[var(--surf)] p-1 rounded-2xl border border-[var(--line)]">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-[var(--surf)] p-1 rounded-2xl border border-[var(--line)]">
+        <button id="connections-creation-tools" type="button" onClick={() => setActiveSection("ferramentas")} className={`py-2 px-2 text-xs font-bold rounded-xl ${activeSection === "ferramentas" ? "bg-[var(--acc)] text-white" : "text-[var(--mute)]"}`}>
+          Ferramentas de criação
+        </button>
         <button
           type="button"
           onClick={() => setActiveSection("webhooks")}
@@ -176,6 +182,8 @@ export function ConexoesTab({ connectors, onShowToast }: ConexoesTabProps) {
           Conectores Nuvem
         </button>
       </div>
+
+      {activeSection === "ferramentas" && <FactoryToolsPanel onShowToast={onShowToast} isDemoMode={isDemoMode} />}
 
       {/* 1. SEÇÃO DE WEBHOOKS (Fase 15) */}
       {activeSection === "webhooks" && (

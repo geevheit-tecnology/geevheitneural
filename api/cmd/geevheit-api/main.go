@@ -147,27 +147,35 @@ func main() {
 	}
 	localPublisher := localpub.NewLocalPublisher(cfg.APIBaseURL, localSandbox)
 
-	var agentRunner pipeline.AgentRunner
+	runners := make(map[string]pipeline.AgentRunner)
 	geminiKey := os.Getenv("GEMINI_API_KEY")
 	groqKey := os.Getenv("GROQ_API_KEY")
 	runnerType := strings.ToLower(os.Getenv("AGENT_RUNNER_TYPE"))
 
-	if (runnerType == "groq" || runnerType == "") && groqKey != "" {
-		logger.Info("autonomous_factory_runner_enabled", slog.String("provider", "groq_ultra_fast_free_tier"), slog.String("model", os.Getenv("GROQ_MODEL")))
-		agentRunner = agents.NewGroqAgentRunner(agents.GroqConfig{
+	if groqKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "groq"), slog.String("model", os.Getenv("GROQ_MODEL")))
+		runners["groq"] = agents.NewGroqAgentRunner(agents.GroqConfig{
 			APIKey: groqKey,
 			Model:  os.Getenv("GROQ_MODEL"),
 		})
-	} else if (runnerType == "gemini" || runnerType == "") && geminiKey != "" {
-		logger.Info("autonomous_factory_runner_enabled", slog.String("provider", "google_gemini_free_tier"))
-		agentRunner = agents.NewGeminiAgentRunner(agents.GeminiConfig{
+	}
+	if geminiKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "gemini"))
+		runners["gemini"] = agents.NewGeminiAgentRunner(agents.GeminiConfig{
 			APIKey: geminiKey,
 			Model:  os.Getenv("GEMINI_MODEL"),
 		})
 	}
 	guard := system.NewExecutionGuard()
+	legacyProvider := ""
+	if (runnerType == "groq" || runnerType == "") && runners["groq"] != nil {
+		legacyProvider = "groq"
+	} else if (runnerType == "gemini" || runnerType == "") && runners["gemini"] != nil {
+		legacyProvider = "gemini"
+	}
+	factoryTools := app.NewFactoryTools(uow, guard, runners, legacyProvider)
 
-	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, agentRunner, localSandbox, localPublisher)
+	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, factoryTools, localSandbox, localPublisher)
 	processCmdUC.WithStartBuild(startBuildUC)
 	getPipelineUC := app.NewGetCardPipelineUseCase(uow)
 
@@ -337,6 +345,8 @@ func main() {
 
 	// Conexões
 	mux.Handle("GET /v1/connectors", requireAuth(handlers.HandleListConnectors(listConnectorsUC)))
+	mux.Handle("GET /v1/factory/tools", requireAuth(handlers.HandleListFactoryTools(factoryTools)))
+	mux.Handle("PUT /v1/factory/tools/{id}", requireAuth(handlers.HandleSelectFactoryTool(factoryTools)))
 
 	// Fábrica Autônoma, Pipelines, Playbooks e Placar (Sprint 02: Fases 6 a 10)
 	mux.Handle("POST /v1/cards/{id}/pipeline/start", requireAuth(handlers.HandleStartBuild(startBuildUC)))

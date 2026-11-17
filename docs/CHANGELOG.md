@@ -439,3 +439,17 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seg
 - Usuário sem autenticador agora recebe QR Code e chave manual gerados pelo Supabase após autenticação por senha. Acesso só avança após validar os seis dígitos; fatores já verificados mantêm o fluxo anterior.
 - Corrigida a saída silenciosa do login sem MFA; falhas de listagem e cadastro são exibidas, e código inválido permite nova tentativa sem recriar o fator.
 - Segredo de cadastro mantido somente em memória e limpo ao concluir. Doze testes de voz/sessão/MFA passaram; build estático passou. Validação do cadastro real depende de leitura do QR Code pelo dono.
+
+## Correção 006 — 2026-11-16
+- Orquestrador interrompe agentes se a consulta da pausa de emergência falhar ou não retornar estado; quatro regressões reproduzidas antes e aprovadas depois.
+- Vet, testes Go com race detector, compilação da API e 12 testes de assistente/sessão/MFA passaram. Build web bloqueado pelo alerta de segurança do Next.js após compilar/gerar páginas. Integrações reais e publicação não executadas.
+
+## Ferramentas de criação — 2026-11-16 (local)
+- Área em Conexões para selecionar Gemini/Groq, com persistência na tabela de conectores existente, auditoria, AAL2, confirmação da cota gratuita e ExecutionGuard antes de cada etapa. Geração desligada impede iniciar o build antes de mudar o cartão.
+- Figma Make como apoio manual com briefing copiável. Demonstração bloqueia consulta e ativação real pelo novo painel.
+- Vet, testes Go com race, compilação Go, TypeScript, CSS e 16 testes web passaram. Build Next bloqueado por alerta de segurança após compilar/gerar páginas. Pesquisa e limites em `FERRAMENTAS_CRIACAO.md`. Nenhum serviço ativado, dado real alterado ou deploy executado.
+
+### Preparação da publicação autorizada
+- Resolvido bloqueio do build com Next.js 16.4.6 e correções transitivas compatíveis; auditoria zero vulnerabilidades e build estático aprovado.
+- Validada persistência PostgreSQL com ROLLBACK e geração real Gemini de landing page com arquivos/Git locais, sem gravar clientes reais.
+- Cabeçalho passa a quebrar controles no celular, eliminando transbordamento observado em 360/390 px. Novo teste do painel em ESM, sem erros no lint dos componentes da entrega.

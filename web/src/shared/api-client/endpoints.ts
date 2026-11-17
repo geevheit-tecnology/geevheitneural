@@ -1,5 +1,12 @@
 import { apiClient } from "./index";
 
+export interface FactoryToolItem {
+  id: "gemini" | "groq";
+  name: string;
+  configured: boolean;
+  active: boolean;
+}
+
 export interface MoneyWaitingResponse {
   total_cents: number;
   count: number;
@@ -124,6 +131,14 @@ export interface ConnectorItem {
 }
 
 export const api = {
+	listFactoryTools: async () => {
+		const result = await apiClient<{ tools: FactoryToolItem[] }>("/v1/factory/tools");
+		return result.tools;
+	},
+	selectFactoryTool: (id: string, active: boolean, freeTierConfirmed: boolean) =>
+		apiClient<{ success: boolean }>(`/v1/factory/tools/${encodeURIComponent(id)}`, {
+			method: "PUT", body: JSON.stringify({ active, free_tier_confirmed: freeTierConfirmed }),
+		}),
   getMoneyWaiting: () => apiClient<MoneyWaitingResponse>("/v1/money-waiting"),
   
   listCards: () => apiClient<{ cards: CardItem[]; count: number }>("/v1/cards"),
