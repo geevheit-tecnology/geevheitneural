@@ -1,5 +1,9 @@
 # GeevheitNeural
 
+> Migração da API para Vercel em preparação local: o servidor atual continua sendo o caminho de execução. A entrada experimental em `api/api/index.go` não deve ser habilitada em produção antes de concluir as etapas em [Migração da API](docs/MIGRACAO_VERCEL_API.md). Para validar a API localmente, execute `cd api && go test -race ./...`.
+
+> A migration `00012_factory_durable_storage.sql` é preparação local e ainda não está conectada à fábrica em execução. Os testes de isolamento em `db/tests/factory_durable.sql` devem rodar junto com o trecho Up da migration em transação revertida e em banco de testes.
+
 Central de operação de software house, mobile-first. Um único dono decide, aprova e dá ordens pelo celular; agentes de IA ficam preparados, mas desligados.
 
 ---

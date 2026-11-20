@@ -363,6 +363,19 @@ type GeevConnector struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type GeevFactoryJob struct {
+	ID             pgtype.UUID
+	OwnerID        pgtype.UUID
+	CardID         pgtype.UUID
+	IdempotencyKey pgtype.UUID
+	Status         string
+	LeaseToken     pgtype.UUID
+	LeaseExpiresAt pgtype.Timestamptz
+	Attempts       int32
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
 type GeevFactoryMetric struct {
 	ID                       pgtype.UUID
 	OwnerID                  pgtype.UUID
@@ -375,6 +388,14 @@ type GeevFactoryMetric struct {
 	OwnerDecisionTimeSeconds int64
 	MarginCents              int64
 	CreatedAt                pgtype.Timestamptz
+}
+
+type GeevFactoryWorkspaceFile struct {
+	OwnerID   pgtype.UUID
+	CardID    pgtype.UUID
+	Path      string
+	Content   string
+	UpdatedAt pgtype.Timestamptz
 }
 
 type GeevLedger struct {

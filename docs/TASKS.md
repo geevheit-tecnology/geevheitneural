@@ -1,5 +1,13 @@
 # Tasks — GeevheitNeural
 
+## Migração da API do Render para Vercel — 2026-11-20
+- [x] Identificar destino atual, projetos existentes e dependências que impedem uma simples troca de URL; registrar plano em `docs/MIGRACAO_VERCEL_API.md`.
+- [x] Separar montagem das rotas do servidor e preparar entrada Go experimental desativada por padrão; testes Go com detector de concorrência.
+- [x] Preparar base PostgreSQL de tarefas e arquivos com RLS, idempotência e leases; testes reais em transação revertida no Supabase local.
+- [ ] Integrar a base à execução e prévia, implementar retomada supervisionada e testar concorrência e limites; não ativar runtime Vercel enquanto não concluído.
+- [ ] Adaptar handler, execução durável, arquivos e eventos; testar com banco isolado e interrupções.
+- [ ] Publicar e validar API na Vercel antes de alterar o frontend; manter Render até confirmação e autorização para desativar.
+
 ## Diagnóstico de exclusões e fábrica — 2026-11-20
 - [x] Corrigir sucesso falso na exclusão, preservação de exclusões locais e dados de exemplo no painel real.
 - [x] Exibir estado não confirmado dos agentes e aumentar o prazo de resposta da API.

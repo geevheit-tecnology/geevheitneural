@@ -1,5 +1,10 @@
 # Memory — GeevheitNeural
 
+## Migração da API para Vercel — 2026-11-20
+- Dono pediu retirar dependência do Render e colocar tudo na Vercel. `web` já está na Vercel, mas API ainda é Render; não há projeto Vercel desta API entre os projetos listados. Ver `docs/MIGRACAO_VERCEL_API.md` para dependências e etapas; nenhuma alteração de URL ou desligamento ocorreu.
+- Rotas extraídas para `api/internal/bootstrap/handler.go`; servidor existente usa a mesma montagem. Entrada experimental `api/api/index.go` desativada por padrão, com verificação explícita de configuração e pool limitado. `go test -race ./...` passou, incluindo health e rota protegida; runtime Vercel, banco conectado e fábrica durável ainda não foram homologados.
+- Migration 00012 e repositório sqlc preparam tarefas com lease/idempotência e arquivos textuais de até 1 MiB com RLS e chave composta. Lease expirado é interrompido, nunca repetido automaticamente. Testes de SQL e adapter com dados sintéticos e ROLLBACK no Supabase local passaram. Nenhuma migration aplicada em produção; esteira e prévia continuam usando o modo local antigo; concorrência entre processos e recuperação seguem pendentes. Ver ADR-016.
+
 ## Diagnóstico de exclusões e fábrica — 2026-11-20
 - Publicação autorizada: função `geev.prevent_mutation` da migration 00011 estava ausente no projeto Supabase `tggzeapudgzswdojtndj`; aplicada por SQL e verificada por leitura. A aplicação manual da função não registra automaticamente a versão no histórico de migrations. Não apagou registros existentes.
 - Continuação: aprovação na tela e pelo assistente não mascara mais erros e, ao aprovar o prompt, chama a construção; falha no início preserva a aprovação e permite nova tentativa. Comando ambíguo não cria outra demanda.

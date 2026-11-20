@@ -126,6 +126,10 @@ Regras de dependência (verificadas em revisão e por teste de import):
 
 O caso de uso `FactoryTools` implementa a porta `AgentRunner` existente e encaminha etapas ao runner Gemini/Groq selecionado pelo dono. Preferência na tabela `connectors` já existente, auditoria na mesma UoW e validação via ExecutionGuard antes de cada etapa. Preserva seleção de ambiente anterior até a primeira escolha persistida. Alternativa rejeitada: criar outro orquestrador ou automatizar navegador para Figma; o dono escolheu APIs gratuitas e Figma manual. Sem dependência ou alteração de esquema. Confirmação de cota gratuita não substitui configuração de faturamento no provedor. Detalhes em `FERRAMENTAS_CRIACAO.md`.
 
+### ADR-016 — base persistente para tarefas e arquivos da fábrica (2026-11-20)
+
+Preparar tabelas PostgreSQL existentes no projeto para tarefas por cartão e arquivos de texto gerados, com chaves compostas por dono, RLS forçada, idempotência e lease com token. Um lease expirado passa a `interrupted` e não é repetido automaticamente, pois ainda não há garantia de idempotência das chamadas aos provedores de IA. O runtime atual não foi conectado a essa base; validação de concorrência real, recuperação, privacidade da prévia e limites de armazenamento continuam obrigatórias antes da migração. Arquivos são limitados a 1 MiB por item; binários e armazenamento de grande volume exigem decisão posterior.
+
 ## 7. Dependências
 
 Princípio: **stdlib primeiro**. Toda dependência nova precisa de linha nesta tabela.

@@ -523,6 +523,25 @@ type ProjectFile struct {
 	Content string `json:"content"`
 }
 
+// DurableFactoryJob descreve apenas o controle de execução, sem credenciais de sessão.
+type DurableFactoryJob struct {
+	ID             string
+	CardID         string
+	Status         string
+	LeaseToken     string
+	LeaseExpiresAt time.Time
+	Attempts       int32
+}
+
+type DurableFactoryRepository interface {
+	Queue(context.Context, string, string) (*DurableFactoryJob, error)
+	Claim(context.Context, string) (*DurableFactoryJob, error)
+	Finish(context.Context, string, string, string) (bool, error)
+	MarkExpired(context.Context) (int64, error)
+	PutFile(context.Context, string, ProjectFile) error
+	ListFiles(context.Context, string) ([]ProjectFile, error)
+}
+
 // ExecResult representa o resultado da execução de um comando ou teste na sandbox
 type ExecResult struct {
 	ExitCode int    `json:"exit_code"`
@@ -555,6 +574,7 @@ type WorkspacePublisher interface {
 
 type Repositories struct {
 	FactoryTools   FactoryToolSettingsRepository
+	DurableFactory DurableFactoryRepository
 	Cards          CardRepository
 	Apps           AppRepository
 	Finances       FinanceRepository

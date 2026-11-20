@@ -1,5 +1,10 @@
 # Changelog — GeevheitNeural
 
+## Migração da API para Vercel — diagnóstico
+- Registrados os requisitos para migrar API, tarefas assíncronas, arquivos e eventos sem perder o funcionamento da fábrica; frontend continua usando a API existente até homologação.
+- Montagem das rotas compartilhada com uma entrada experimental Go para Vercel, desativada por padrão; suíte Go com detector de concorrência validada.
+- Preparada base local de tarefas e arquivos da fábrica com isolamento por dono e lease; testes com dados sintéticos revertidos no PostgreSQL local.
+
 ## Diagnóstico de exclusões e fábrica — 2026-11-20
 - Aprovação do prompt na interface inicia a construção e informa erros reais; cartão permite nova tentativa. Corrigidos IDs de ativação e verificações de agentes desligados na fábrica.
 - Comando de aprovação também tenta iniciar a construção após salvar a decisão; tela deixa de inventar especificações e arquivos em caso de erro. Teste controlado com Gemini real gerou HTML em sandbox local.
