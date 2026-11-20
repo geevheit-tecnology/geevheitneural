@@ -32,6 +32,8 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
   const [agentActiveMap, setAgentActiveMap] = useState<Record<string, boolean>>({});
   const [agentIds, setAgentIds] = useState<Record<string, string>>({});
   const [agentError, setAgentError] = useState("");
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentUpdating, setAgentUpdating] = useState(false);
 
   // Placar da Fábrica (Fase 10)
   const [scoreboard, setScoreboard] = useState({
@@ -146,6 +148,28 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
   const [monitoringLoading, setMonitoringLoading] = useState(false);
   const [monitorFeedback, setMonitorFeedback] = useState<string | null>(null);
 
+  const loadAgents = React.useCallback(async () => {
+    setAgentsLoading(true);
+    try {
+      const res = await api.listOwnerAgents();
+      const map: Record<string, boolean> = {};
+      const ids: Record<string, string> = {};
+      (res.agents || []).forEach((a) => { map[a.role] = a.active; ids[a.role] = a.id; });
+      if (["requisitos", "arquiteto", "dev", "qa", "seguranca", "publicador", "suporte"].some((role) => !ids[role])) {
+        throw new Error("A lista de agentes está incompleta.");
+      }
+      setAgentActiveMap(map);
+      setAgentIds(ids);
+      setAgentError("");
+    } catch {
+      setAgentActiveMap({});
+      setAgentIds({});
+      setAgentError("Não foi possível consultar ou preparar todos os agentes. Verifique a API e tente novamente.");
+    } finally {
+      setAgentsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     api.getFactoryScoreboard()
       .then((sb) => {
@@ -165,21 +189,8 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
       })
       .catch(() => {});
 
-    api.listOwnerAgents()
-      .then((res) => {
-        if (res.agents && res.agents.length > 0) {
-          const map: Record<string, boolean> = {};
-          const ids: Record<string, string> = {};
-          res.agents.forEach((a) => {
-            map[a.role] = a.active;
-            ids[a.role] = a.id;
-          });
-          setAgentActiveMap((prev) => ({ ...prev, ...map }));
-          setAgentIds(ids);
-        }
-      })
-      .catch(() => setAgentError("Não foi possível consultar o estado dos agentes."));
-  }, []);
+    void loadAgents();
+  }, [loadAgents]);
 
   const agents: AgentTelemetry[] = [
     {
@@ -333,13 +344,17 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
     });
 
   const handleToggleAgent = async (role: string) => {
+    if (!agentIds[role] || agentUpdating) return;
     const nextVal = !agentActiveMap[role];
+    setAgentUpdating(true);
     try {
       await api.toggleOwnerAgent(agentIds[role], nextVal);
       setAgentActiveMap((prev) => ({ ...prev, [role]: nextVal }));
       setAgentError("");
     } catch {
       setAgentError("Não foi possível alterar o agente. Confira a conexão com a API.");
+    } finally {
+      setAgentUpdating(false);
     }
   };
 
@@ -567,7 +582,7 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
       </div>
 
       {/* Grade dos 7 Agentes de IA */}
-      {agentError && <p role="alert" className="text-sm text-red-500">{agentError}</p>}
+      {agentError && <p role="alert" className="text-sm text-red-500">{agentError} <button type="button" disabled={agentsLoading} onClick={() => void loadAgents()} className="underline">Tentar novamente</button></p>}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {agents.map((agent) => {
           const isSelected = selectedAgentId === agent.id;
@@ -600,7 +615,7 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
                       }`}
                     ></span>
                     <span className="text-[9px] font-semibold text-[var(--mute)]">
-                      {isPaused ? "Pausado" : !isAgentActive ? "Off" : isRunning ? "Ativo" : "Pronto"}
+                      {agentActiveMap[agent.role] === undefined ? "Não confirmado" : isPaused ? "Pausado" : !isAgentActive ? "Off" : isRunning ? "Ativo" : "Pronto"}
                     </span>
                   </span>
                 </div>
@@ -651,7 +666,7 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
             <button
               type="button"
               id={`btn-toggle-agent-${selectedAgent.role}`}
-              disabled={agentActiveMap[selectedAgent.role] === undefined}
+              disabled={agentsLoading || agentUpdating || !agentIds[selectedAgent.role] || agentActiveMap[selectedAgent.role] === undefined}
               onClick={() => handleToggleAgent(selectedAgent.role)}
               className={`px-3 py-2 rounded-xl font-bold text-xs border cursor-pointer transition-colors ${
                 agentActiveMap[selectedAgent.role] === true

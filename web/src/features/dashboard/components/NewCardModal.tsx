@@ -7,7 +7,7 @@ interface NewCardModalProps {
   isOpen: boolean;
   onClose: () => void;
   apps: AppItem[];
-  onCreateCard: (card: Omit<CardItem, "id" | "created_at" | "updated_at">) => void;
+  onCreateCard: (card: Omit<CardItem, "id" | "created_at" | "updated_at">) => Promise<void>;
   isProcessing?: boolean;
 }
 
@@ -29,6 +29,8 @@ export function NewCardModal({
   const [complexity, setComplexity] = useState("medium");
   const [estimating, setEstimating] = useState(false);
   const [estimateFeedback, setEstimateFeedback] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   if (!isOpen) return null;
 
@@ -65,14 +67,17 @@ export function NewCardModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !clientName.trim()) return;
 
     const priceNum = parseFloat(priceReais.replace(",", ".")) || 0;
     const costNum = parseFloat(costReais.replace(",", ".")) || 0;
 
-    onCreateCard({
+    setSubmitting(true);
+    setSubmitError("");
+    try {
+    await onCreateCard({
       title: title.trim(),
       client_name: clientName.trim(),
       client_id: `c_${Date.now()}`,
@@ -93,6 +98,11 @@ export function NewCardModal({
     setAppName("Novo");
     setStage("entrada");
     onClose();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Não foi possível salvar a demanda.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -120,6 +130,7 @@ export function NewCardModal({
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
+          {submitError && <p role="alert" className="text-sm text-red-500">{submitError}</p>}
           <div>
             <label
               htmlFor="input-card-title"
@@ -315,10 +326,10 @@ export function NewCardModal({
             </button>
             <button
               type="submit"
-              disabled={isProcessing}
+              disabled={isProcessing || submitting}
               className="px-4 py-2 text-xs font-semibold rounded-xl bg-[var(--acc)] text-white border-0 cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {isProcessing ? "Salvando..." : "Criar Demanda"}
+              {isProcessing || submitting ? "Salvando..." : "Criar Demanda"}
             </button>
           </div>
         </form>

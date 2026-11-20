@@ -339,6 +339,7 @@ type MoneyWaitingReader interface {
 // DTOs e interfaces do Sprint 02 (Fases 6 a 10)
 type PipelineDTO struct {
 	ID              string    `json:"id"`
+	JobID           string    `json:"job_id,omitempty"`
 	CardID          string    `json:"card_id"`
 	Stage           string    `json:"stage"`
 	ActiveRole      string    `json:"active_role"`
@@ -531,15 +532,23 @@ type DurableFactoryJob struct {
 	LeaseToken     string
 	LeaseExpiresAt time.Time
 	Attempts       int32
+	Created        bool
 }
 
 type DurableFactoryRepository interface {
 	Queue(context.Context, string, string) (*DurableFactoryJob, error)
 	Claim(context.Context, string) (*DurableFactoryJob, error)
+	ClaimByID(context.Context, string, string) (*DurableFactoryJob, error)
+	GetByID(context.Context, string) (*DurableFactoryJob, error)
+	ListQueuedIDs(context.Context, string, int32) ([]string, error)
 	Finish(context.Context, string, string, string) (bool, error)
+	MarkActivePipelineFailed(context.Context, string) error
+	LockValidLease(context.Context, string, string) (bool, error)
 	MarkExpired(context.Context) (int64, error)
+	MarkExpiredForCard(context.Context, string) (int64, error)
 	PutFile(context.Context, string, ProjectFile) error
 	ListFiles(context.Context, string) ([]ProjectFile, error)
+	ReplaceFiles(context.Context, string, []ProjectFile) error
 }
 
 // ExecResult representa o resultado da execução de um comando ou teste na sandbox

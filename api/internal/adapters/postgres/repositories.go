@@ -548,7 +548,7 @@ func (r *AppRepository) Create(ctx context.Context, cmd app.CreateAppCommand) (*
 
 	row, err := r.q.CreateApp(ctx, sqlcgen.CreateAppParams{
 		ID:         textToUUID(id),
-		OwnerID:    textToUUID("00000000-0000-0000-0000-000000000000"), // auth.uid()
+		OwnerID:    ownerUUID(ctx, DefaultOwnerID),
 		ClientID:   clientID,
 		Name:       cmd.Name,
 		Hosting:    cmd.Hosting,
@@ -582,7 +582,7 @@ func (r *AppRepository) Update(ctx context.Context, cmd app.UpdateAppCommand) er
 		clientID = textToUUID(*cmd.ClientID)
 	}
 
-	return r.q.UpdateApp(ctx, sqlcgen.UpdateAppParams{
+	count, err := r.q.UpdateApp(ctx, sqlcgen.UpdateAppParams{
 		ID:         textToUUID(cmd.ID),
 		ClientID:   clientID,
 		Name:       cmd.Name,
@@ -593,10 +593,24 @@ func (r *AppRepository) Update(ctx context.Context, cmd app.UpdateAppCommand) er
 		Status:     cmd.Status,
 		UpdatedAt:  timeToTimestamptz(time.Now()),
 	})
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("aplicativo não encontrado ou sem permissão para atualizar")
+	}
+	return nil
 }
 
 func (r *AppRepository) Delete(ctx context.Context, id string) error {
-	return r.q.DeleteApp(ctx, textToUUID(id))
+	count, err := r.q.DeleteApp(ctx, textToUUID(id))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("aplicativo não encontrado ou sem permissão para excluir")
+	}
+	return nil
 }
 
 // FinanceRepository implementação

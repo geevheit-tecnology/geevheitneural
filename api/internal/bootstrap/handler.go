@@ -49,16 +49,17 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	decideGateUC := app.NewDecideGateUseCase(uow, publisher, clk)
 	pauseSystemUC := app.NewPauseSystemUseCase(uow, publisher, clk)
 	resumeSystemUC := app.NewResumeSystemUseCase(uow, publisher, clk)
+	getSystemStateUC := app.NewGetSystemStateUseCase(uow)
 	getMoneyWaitingUC := app.NewGetMoneyWaitingUseCase(moneyReader)
 
 	listCardsUC := app.NewListCardsUseCase(cardRepo)
 	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo)
-	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher)
+	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher, uow)
 
-	listAppsUC := app.NewListAppsUseCase(appRepo)
-	createAppUC := app.NewCreateAppUseCase(appRepo, publisher)
-	updateAppUC := app.NewUpdateAppUseCase(appRepo, publisher)
-	deleteAppUC := app.NewDeleteAppUseCase(appRepo, publisher)
+	listAppsUC := app.NewListAppsUseCase(appRepo, uow)
+	createAppUC := app.NewCreateAppUseCase(appRepo, publisher, uow)
+	updateAppUC := app.NewUpdateAppUseCase(appRepo, publisher, uow)
+	deleteAppUC := app.NewDeleteAppUseCase(appRepo, publisher, uow)
 	appHandlers := handlers.NewAppHandlers(listAppsUC, createAppUC, updateAppUC, deleteAppUC)
 
 	overviewFinancesUC := app.NewGetFinancesOverviewUseCase(financeRepo)
@@ -130,9 +131,14 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	}
 	factoryTools := app.NewFactoryTools(uow, guard, runners, legacyProvider)
 
-	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, factoryTools, localSandbox, localPublisher)
+	buildOptions := []any{localSandbox, localPublisher}
+	durableWorkspace := os.Getenv("GEEV_DURABLE_WORKSPACE_EXPERIMENTAL") == "1"
+	if durableWorkspace {
+		buildOptions = append(buildOptions, app.PersistGeneratedFiles{})
+	}
+	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, factoryTools, buildOptions...)
 	processCmdUC.WithStartBuild(startBuildUC)
-	getPipelineUC := app.NewGetCardPipelineUseCase(uow)
+	getPipelineUC := app.NewGetCardPipelineUseCase(uow, os.Getenv("GEEV_DURABLE_STATUS_EXPERIMENTAL") == "1")
 
 	getCardSpecUC := app.NewGetCardSpecificationUseCase(uow)
 	getPublicScopeUC := app.NewGetPublicScopeUseCase(uow)
@@ -237,6 +243,7 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	mux.Handle("POST /v1/cards/{id}/decision", requireAuth(handlers.HandleDecideGate(decideGateUC)))
 	mux.Handle("POST /v1/system/pause", requireAuth(handlers.HandlePauseSystem(pauseSystemUC)))
 	mux.Handle("POST /v1/system/resume", requireAuth(handlers.HandleResumeSystem(resumeSystemUC)))
+	mux.Handle("GET /v1/system/state", requireAuth(handlers.HandleGetSystemState(getSystemStateUC)))
 	mux.Handle("GET /v1/money-waiting", requireAuth(handlers.HandleGetMoneyWaiting(getMoneyWaitingUC)))
 
 	// Comandos e Ações Destrutivas (F3-01, F3-02, F3-03)
@@ -317,7 +324,11 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	mux.Handle("POST /v1/agents/{id}/toggle", requireAuth(http.HandlerFunc(agentHandler.ToggleOwnerAgent)))
 	mux.Handle("POST /v1/apps/{id}/monitor", requireAuth(handlers.HandleMonitorAppHealth(monitorAppHealthUC)))
 	mux.HandleFunc("GET /v1/cards/{id}/preview", handlers.HandleGetCardPreview(localSandbox))
-	mux.Handle("GET /v1/cards/{id}/workspace", requireAuth(handlers.HandleGetCardWorkspace(localSandbox)))
+	if durableWorkspace {
+		mux.Handle("GET /v1/cards/{id}/workspace", requireAuth(handlers.HandleGetDurableWorkspace(app.NewGetDurableWorkspaceUseCase(uow))))
+	} else {
+		mux.Handle("GET /v1/cards/{id}/workspace", requireAuth(handlers.HandleGetCardWorkspace(localSandbox)))
+	}
 
 	// Cobrança PIX (Fase 11)
 	mux.Handle("POST /v1/cards/{id}/pix", requireAuth(handlers.HandleGeneratePix(generatePixUC, cfg.OwnerUserID)))

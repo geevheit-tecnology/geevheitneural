@@ -460,6 +460,25 @@ paths:
         "200":
           description: Lista fixa de conectores (desligados por padrão)
 
+  /v1/system/state:
+    get:
+      summary: Consultar estado de pausa do sistema
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Estado de pausa confirmado
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [paused]
+                properties:
+                  paused:
+                    type: boolean
+        "503":
+          description: Estado indisponível
+
   /v1/system/pause:
     post:
       summary: Parar Sistema de Emergência

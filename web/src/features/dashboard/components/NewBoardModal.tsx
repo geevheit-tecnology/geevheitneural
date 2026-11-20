@@ -6,7 +6,7 @@ import { CreateAppInput } from "@/shared/api-client/endpoints";
 interface NewBoardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateBoard: (data: CreateAppInput) => void;
+  onCreateBoard: (data: CreateAppInput) => Promise<void>;
   isProcessing?: boolean;
 }
 
@@ -21,14 +21,17 @@ export function NewBoardModal({
   const [database, setDatabase] = useState("Supabase");
   const [domain, setDomain] = useState("");
   const [repository, setRepository] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    onCreateBoard({
+    setSubmitError("");
+    try {
+    await onCreateBoard({
       name: name.trim(),
       hosting,
       database,
@@ -40,6 +43,9 @@ export function NewBoardModal({
     setDomain("");
     setRepository("");
     onClose();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Não foi possível salvar o quadro.");
+    }
   };
 
   return (
@@ -67,6 +73,7 @@ export function NewBoardModal({
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
+          {submitError && <p role="alert" className="text-sm text-red-500">{submitError}</p>}
           <div>
             <label
               htmlFor="input-board-name"

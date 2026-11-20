@@ -1,11 +1,30 @@
 # Changelog — GeevheitNeural
 
 ## Migração da API para Vercel — diagnóstico
+- Entregas repetidas não confirmam tarefa ainda em execução; lease expirado é marcado como interrupção, sem executar novamente. Validado em PostgreSQL local com rollback.
+- Exercitado roteamento no emulador com banco fictício, incluindo autenticação ausente; removido parâmetro de captura interno para preservar query do usuário. Prévia atualizada sem credenciais.
+- Preparados rewrites para a entrada Go e testes locais de caminho e parâmetros; prévia Vercel compilada, sem validação HTTP de roteamento.
+- Criada prévia isolada da API na Vercel e ajustada fachada de importação do runtime Go; build READY sem credenciais e com entrada desativada. O primeiro envio foi rotulado Production e falhou na compilação; nenhum domínio do painel foi alterado.
+- Teste integrado local ligou fila, pipeline e persistência PostgreSQL com agentes simulados e verificou HTML sintético, portão de entrega e duplicidade; todos os dados revertidos.
+- Painel mostra workspace disponível mesmo sem metadados de publicação e o recarrega após a conclusão, mantendo estados separados por cartão; build web passou.
+- Consulta experimental do pipeline atualiza interrupções expiradas do cartão consultado antes de retornar o estado, com flag desligada por padrão; isolamento e escopo testados no PostgreSQL local.
+- Preparada indicação de execução interrompida e bloqueio de nova construção enquanto aguardando ou interrompida; marcação ainda sem agendamento e sem publicação.
+- Falha do worker experimental atualiza tarefa e pipeline ativo na mesma transação, preservando estado pausado; validado em banco local e com fakes.
+- Corrigida a preparação de cada etapa: falhas de leitura ou gravação interrompem a execução antes da chamada ao agente, inclusive em perda de lease. Testado localmente; fila continua experimental.
 - Registrados os requisitos para migrar API, tarefas assíncronas, arquivos e eventos sem perder o funcionamento da fábrica; frontend continua usando a API existente até homologação.
 - Montagem das rotas compartilhada com uma entrada experimental Go para Vercel, desativada por padrão; suíte Go com detector de concorrência validada.
 - Preparada base local de tarefas e arquivos da fábrica com isolamento por dono e lease; testes com dados sintéticos revertidos no PostgreSQL local.
+- Integração experimental grava os arquivos da etapa dev em transação e permite leitura autenticada do workspace durável; em falha de gravação a execução não anuncia prévia pronta.
+- Preparados casos de uso da fila e visualização isolada de HTML único; execução serverless e retomada permanecem pendentes.
+- Ligação experimental do pipeline à fila com verificação de lease e prazo em transações; testada com agentes simulados, ainda sem acionamento serverless.
 
 ## Diagnóstico de exclusões e fábrica — 2026-11-20
+- Modo demonstração não inicia consultas e fluxo de eventos reais; aviso de pausa verificado em navegador local móvel.
+- Painel permite repetir a consulta de agentes após erro e não mostra estado desconhecido como desligado; teste HTTP local confirmou preparação e ativação sintética com rollback.
+- Consulta autenticada de estado de pausa e tratamento de falhas de pausar/retomar; o painel deixa de anunciar sucesso quando a API falha.
+- CRUD de apps passa a aplicar identidade e RLS por transação; atualização e exclusão sem linhas retornam erro. Consulta remota somente leitura encontrou zero apps no momento; teste local cobriu isolamento.
+- Corrigida identidade do dono ao criar app e confirmação de linhas afetadas ao excluir; teste HTTP local conferiu criação, exclusão e nova listagem. Registros antigos não foram alterados.
+- Exclusão de cartão usa transação com contexto autenticado e RLS; teste HTTP com PostgreSQL local e dados revertidos cobriu histórico, repetição e isolamento entre donos.
 - Aprovação do prompt na interface inicia a construção e informa erros reais; cartão permite nova tentativa. Corrigidos IDs de ativação e verificações de agentes desligados na fábrica.
 - Comando de aprovação também tenta iniciar a construção após salvar a decisão; tela deixa de inventar especificações e arquivos em caso de erro. Teste controlado com Gemini real gerou HTML em sandbox local.
 - Excluído cartão sintético e seus vínculos com RLS em transação revertida no Supabase local, após aplicar temporariamente a função da migration 00011; outro usuário não conseguiu excluir. A migration não estava aplicada no banco local.

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/healthz", "destination": "/api/index?__geev_route=healthz" },
+    { "source": "/readyz", "destination": "/api/index?__geev_route=readyz" },
+    { "source": "/v1/:__geev_capture*", "destination": "/api/index?__geev_route=v1/:__geev_capture*" }
+  ]
+}

@@ -7,11 +7,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/geevheit/neuralcenter/api/config"
-	"github.com/geevheit/neuralcenter/api/internal/bootstrap"
+	"github.com/geevheit/neuralcenter/api/serverless"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -47,11 +49,42 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
-		appHandler = bootstrap.NewHandler(cfg, pool, slog.Default())
+		appHandler = serverless.NewHandler(cfg, pool, slog.Default())
 	})
 	if appHandler == nil {
 		http.Error(w, "Configuração da API serverless indisponível", http.StatusServiceUnavailable)
 		return
 	}
-	appHandler.ServeHTTP(w, r)
+	forwarded, ok := forwardVercelRoute(r)
+	if !ok {
+		http.Error(w, "Rota inválida", http.StatusBadRequest)
+		return
+	}
+	appHandler.ServeHTTP(w, forwarded)
+}
+
+// forwardVercelRoute restaura o caminho capturado pelo rewrite quando o runtime
+// entrega /api/index. A autenticação continua sendo aplicada pelo handler da API.
+func forwardVercelRoute(r *http.Request) (*http.Request, bool) {
+	query := r.URL.Query()
+	values := query["__geev_route"]
+	query.Del("__geev_route")
+	query.Del("__geev_capture")
+	copyRequest := r.Clone(r.Context())
+	copyURL := *r.URL
+	copyURL.RawQuery = query.Encode()
+	copyRequest.URL = &copyURL
+	if r.URL.Path != "/api/index" {
+		return copyRequest, true
+	}
+	if len(values) != 1 || strings.ContainsAny(values[0], "\\?#\x00") {
+		return nil, false
+	}
+	target := "/" + values[0]
+	if path.Clean(target) != target || !(target == "/healthz" || target == "/readyz" || strings.HasPrefix(target, "/v1/")) {
+		return nil, false
+	}
+	copyURL.Path = target
+	copyURL.RawPath = ""
+	return copyRequest, true
 }

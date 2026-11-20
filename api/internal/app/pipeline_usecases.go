@@ -24,6 +24,7 @@ type StartBuildCommand struct {
 	Title           string `json:"title,omitempty"`
 	ClientName      string `json:"client_name,omitempty"`
 	PriceCents      int64  `json:"price_cents,omitempty"`
+	RequestKey      string `json:"request_key,omitempty"`
 }
 
 // RequiresMandatoryHumanReview verifica se o projeto lida com código sensível (Princípio 4 - sprit02):
@@ -54,14 +55,25 @@ func RouteModelForRole(role pipeline.Role) string {
 }
 
 type StartBuildUseCase struct {
-	uow       UnitOfWork
-	events    EventPublisher
-	guard     *system.ExecutionGuard
-	runner    pipeline.AgentRunner
-	sandbox   SandboxManager
-	publisher WorkspacePublisher
-	active    sync.Map
+	uow                   UnitOfWork
+	events                EventPublisher
+	guard                 *system.ExecutionGuard
+	runner                pipeline.AgentRunner
+	sandbox               SandboxManager
+	publisher             WorkspacePublisher
+	active                sync.Map
+	persistGeneratedFiles bool
+	enqueueDurable        bool
 }
+
+// PersistGeneratedFiles ativa gravação adicional transacional no armazenamento durável.
+// O pipeline ainda exige o sandbox e o publicador locais até a migração completa.
+type PersistGeneratedFiles struct{}
+
+// EnqueueDurable prepara o pipeline e a tarefa na mesma transação, sem goroutine.
+type EnqueueDurable struct{}
+
+func (uc *StartBuildUseCase) DurableQueueEnabled() bool { return uc != nil && uc.enqueueDurable }
 
 func NewStartBuildUseCase(
 	uow UnitOfWork,
@@ -77,7 +89,11 @@ func NewStartBuildUseCase(
 		runner: runner,
 	}
 	for _, opt := range opts {
-		if sm, ok := opt.(SandboxManager); ok {
+		if _, ok := opt.(EnqueueDurable); ok {
+			uc.enqueueDurable = true
+		} else if _, ok := opt.(PersistGeneratedFiles); ok {
+			uc.persistGeneratedFiles = true
+		} else if sm, ok := opt.(SandboxManager); ok {
 			uc.sandbox = sm
 		} else if pub, ok := opt.(WorkspacePublisher); ok {
 			uc.publisher = pub
@@ -87,6 +103,14 @@ func NewStartBuildUseCase(
 }
 
 func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.OwnerPrincipal, cmd StartBuildCommand) (*PipelineDTO, error) {
+	if uc.enqueueDurable {
+		if err := requireDurableOwner(principal); err != nil {
+			return nil, err
+		}
+		if _, err := uuid.Parse(cmd.RequestKey); err != nil {
+			return nil, fmt.Errorf("chave de solicitação inválida ou ausente")
+		}
+	}
 	if uc.runner == nil {
 		return nil, fmt.Errorf("provedor de IA não configurado; verifique AGENT_RUNNER_TYPE e a chave do provedor")
 	}
@@ -109,6 +133,7 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 	var cardTitle string
 	var cardClientID string
 	var cardPriceCents int64
+	var durableJobID string
 
 	// 1. Iniciar ou recuperar Pipeline e mudar cartão para 'em_execucao'
 	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
@@ -122,6 +147,9 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 
 		c, err := tx.Cards.GetByID(ctx, cmd.CardID)
 		if err != nil {
+			if uc.enqueueDurable {
+				return fmt.Errorf("cartão não encontrado: %w", err)
+			}
 			// Se o cartão veio do estado local do frontend e ainda não foi sincronizado no banco,
 			// provisiona automaticamente o cliente e o cartão caso o título tenha sido informado.
 			if cmd.Title != "" && tx.Clients != nil {
@@ -166,10 +194,41 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 				return fmt.Errorf("cartão não encontrado: %w", err)
 			}
 		}
+		if c == nil {
+			return fmt.Errorf("cartão indisponível")
+		}
+		if uc.enqueueDurable && c.Stage != card.StageEmExecucao {
+			return fmt.Errorf("cartão precisa estar autorizado para execução")
+		}
 		cardTitle = c.Title
 		cardClientID = c.ClientID
 		cardPriceCents = c.Price.Cents
 
+		if uc.enqueueDurable {
+			if tx.DurableFactory == nil || tx.Pipelines == nil {
+				return fmt.Errorf("fila durável indisponível")
+			}
+			job, err := tx.DurableFactory.Queue(ctx, cmd.CardID, cmd.RequestKey)
+			if err != nil {
+				return fmt.Errorf("falha ao enfileirar: %w", err)
+			}
+			if job == nil {
+				return fmt.Errorf("fila não retornou a tarefa")
+			}
+			durableJobID = job.ID
+			if !job.Created {
+				existing, err := tx.Pipelines.GetByCardID(ctx, cmd.CardID)
+				if err != nil {
+					return fmt.Errorf("pipeline da solicitação indisponível: %w", err)
+				}
+				if existing == nil {
+					return fmt.Errorf("pipeline da solicitação indisponível")
+				}
+				pipelineDTO = *existing
+				pipelineDTO.JobID = job.ID
+				return nil
+			}
+		}
 		c.Stage = card.StageEmExecucao
 		c.UpdatedAt = time.Now()
 		if err := tx.Cards.Update(ctx, c); err != nil {
@@ -190,12 +249,17 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 			Status:          string(pipeline.StatusRunning),
 			CurrentTask:     "Iniciando pipeline de fábrica autônoma",
 		}
+		if uc.enqueueDurable {
+			pipelineDTO.JobID = durableJobID
+			pipelineDTO.Status = "queued"
+			pipelineDTO.CurrentTask = "Aguardando processamento pela fila"
+		}
 
 		if err := tx.Pipelines.Upsert(ctx, &pipelineDTO); err != nil {
 			return err
 		}
 
-		_ = tx.CardEvents.Create(ctx, CardEventDTO{
+		if err := tx.CardEvents.Create(ctx, CardEventDTO{
 			CardID:    cmd.CardID,
 			ActorType: "owner",
 			Kind:      "build_started",
@@ -203,9 +267,11 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 				"spend_limit_cents": limit,
 			},
 			At: time.Now(),
-		})
+		}); err != nil {
+			return fmt.Errorf("falha ao registrar início: %w", err)
+		}
 
-		_ = tx.Audit.Record(ctx, AuditLogDTO{
+		if err := tx.Audit.Record(ctx, AuditLogDTO{
 			Action:     "build_pipeline_started",
 			ActorType:  "owner",
 			TargetType: "card",
@@ -213,7 +279,9 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 			Meta: map[string]any{
 				"spend_limit_cents": limit,
 			},
-		})
+		}); err != nil {
+			return fmt.Errorf("falha ao auditar início: %w", err)
+		}
 
 		return nil
 	})
@@ -223,6 +291,9 @@ func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.Owner
 
 	_ = uc.events.Publish(ctx, TopicPipelineChanged, pipelineDTO)
 	_ = uc.events.Publish(ctx, TopicCardsChanged, map[string]string{"id": cmd.CardID, "stage": string(card.StageEmExecucao)})
+	if uc.enqueueDurable {
+		return &pipelineDTO, nil
+	}
 
 	// 2. Execução assíncrona do Pipeline de Agentes
 	launched = true
@@ -325,15 +396,22 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 		routedModel := RouteModelForRole(role)
 
 		// Atualiza papel ativo
-		_ = uc.uow.RunInTx(ctx, func(tx Repositories) error {
-			p, _ := tx.Pipelines.GetByCardID(ctx, cardID)
-			if p != nil {
-				p.ActiveRole = string(role)
-				p.CurrentTask = fmt.Sprintf("Agente %s em execução [%s]", role, routedModel)
-				_ = tx.Pipelines.Upsert(ctx, p)
+		err = uc.uow.RunInTx(ctx, func(tx Repositories) error {
+			p, err := tx.Pipelines.GetByCardID(ctx, cardID)
+			if err != nil {
+				return err
 			}
-			return nil
+			if p == nil {
+				return fmt.Errorf("pipeline indisponível")
+			}
+			p.ActiveRole = string(role)
+			p.CurrentTask = fmt.Sprintf("Agente %s em execução [%s]", role, routedModel)
+			return tx.Pipelines.Upsert(ctx, p)
 		})
+		if err != nil {
+			uc.failPipeline(ctx, cardID, role, fmt.Errorf("falha ao preparar etapa: %w", err))
+			return
+		}
 		_ = uc.events.Publish(ctx, TopicPipelineChanged, map[string]any{"card_id": cardID, "active_role": string(role), "status": string(pipeline.StatusRunning)})
 
 		// Executa agente via AgentRunner
@@ -455,6 +533,14 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 				generatedFiles = extractProjectFiles(res.Artifacts["files"], title)
 				if len(generatedFiles) == 0 {
 					return fmt.Errorf("agente dev não produziu arquivos")
+				}
+				if uc.persistGeneratedFiles {
+					if tx.DurableFactory == nil {
+						return fmt.Errorf("armazenamento durável indisponível")
+					}
+					if err := tx.DurableFactory.ReplaceFiles(ctx, cardID, generatedFiles); err != nil {
+						return fmt.Errorf("falha ao persistir arquivos: %w", err)
+					}
 				}
 				if uc.sandbox == nil {
 					return fmt.Errorf("sandbox não configurada")
@@ -643,16 +729,28 @@ func minLen(a, b int) int {
 }
 
 type GetCardPipelineUseCase struct {
-	uow UnitOfWork
+	uow              UnitOfWork
+	checkInterrupted bool
 }
 
-func NewGetCardPipelineUseCase(uow UnitOfWork) *GetCardPipelineUseCase {
-	return &GetCardPipelineUseCase{uow: uow}
+func NewGetCardPipelineUseCase(uow UnitOfWork, checkInterrupted ...bool) *GetCardPipelineUseCase {
+	return &GetCardPipelineUseCase{uow: uow, checkInterrupted: len(checkInterrupted) > 0 && checkInterrupted[0]}
 }
 
 func (uc *GetCardPipelineUseCase) Execute(ctx context.Context, cardID string) (*PipelineDTO, error) {
 	var dto *PipelineDTO
 	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		if uc.checkInterrupted {
+			if _, err := uuid.Parse(cardID); err != nil {
+				return fmt.Errorf("cartão inválido")
+			}
+			if tx.DurableFactory == nil {
+				return fmt.Errorf("repositório da fábrica indisponível")
+			}
+			if _, err := tx.DurableFactory.MarkExpiredForCard(ctx, cardID); err != nil {
+				return err
+			}
+		}
 		p, err := tx.Pipelines.GetByCardID(ctx, cardID)
 		if err != nil {
 			return err

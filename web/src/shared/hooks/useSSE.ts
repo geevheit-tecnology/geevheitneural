@@ -6,11 +6,12 @@ import { supabase } from "@/shared/auth/supabase";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
 
-export function useSSE(onSystemStateChange?: (paused: boolean) => void) {
+export function useSSE(onSystemStateChange?: (paused: boolean) => void, enabled = true) {
   const queryClient = useQueryClient();
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let active = true;
 
     async function connect() {
@@ -74,5 +75,5 @@ export function useSSE(onSystemStateChange?: (paused: boolean) => void) {
         esRef.current = null;
       }
     };
-  }, [queryClient, onSystemStateChange]);
+  }, [queryClient, onSystemStateChange, enabled]);
 }

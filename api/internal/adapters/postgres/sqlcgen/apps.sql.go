@@ -64,14 +64,17 @@ func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (GeevApp, 
 	return i, err
 }
 
-const deleteApp = `-- name: DeleteApp :exec
+const deleteApp = `-- name: DeleteApp :execrows
 DELETE FROM geev.apps
 WHERE id = $1
 `
 
-func (q *Queries) DeleteApp(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteApp, id)
-	return err
+func (q *Queries) DeleteApp(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteApp, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAppByID = `-- name: GetAppByID :one
@@ -178,7 +181,7 @@ func (q *Queries) ListAppsWithFinancials(ctx context.Context) ([]ListAppsWithFin
 	return items, nil
 }
 
-const updateApp = `-- name: UpdateApp :exec
+const updateApp = `-- name: UpdateApp :execrows
 UPDATE geev.apps
 SET client_id = $2,
     name = $3,
@@ -203,8 +206,8 @@ type UpdateAppParams struct {
 	UpdatedAt  pgtype.Timestamptz
 }
 
-func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) error {
-	_, err := q.db.Exec(ctx, updateApp,
+func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateApp,
 		arg.ID,
 		arg.ClientID,
 		arg.Name,
@@ -215,5 +218,8 @@ func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) error {
 		arg.Status,
 		arg.UpdatedAt,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

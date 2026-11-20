@@ -4,7 +4,12 @@
 - [x] Identificar destino atual, projetos existentes e dependências que impedem uma simples troca de URL; registrar plano em `docs/MIGRACAO_VERCEL_API.md`.
 - [x] Separar montagem das rotas do servidor e preparar entrada Go experimental desativada por padrão; testes Go com detector de concorrência.
 - [x] Preparar base PostgreSQL de tarefas e arquivos com RLS, idempotência e leases; testes reais em transação revertida no Supabase local.
-- [ ] Integrar a base à execução e prévia, implementar retomada supervisionada e testar concorrência e limites; não ativar runtime Vercel enquanto não concluído.
+- [x] Integrar experimentalmente a escrita transacional de arquivos à etapa dev e a leitura do workspace autenticado; testar erro e rollback no PostgreSQL local.
+- [x] Preparar casos de uso da fila com idempotência, pausa e lease; oferecer visualização isolada de HTML único a partir do workspace carregado.
+- [x] Conectar experimentalmente um processador do pipeline à fila com lease conferido em transações; testes de sucesso e perda de lease com fakes.
+- [x] Compilar entrada Go em prévia Vercel isolada, sem credenciais ou ativação da API; roteamento e execução continuam pendentes.
+- [ ] Implementar acionamento serverless com identidade de serviço, validar fencing e custo de efeitos externos, duração, concorrência entre instâncias e recuperação antes de ativar.
+- [ ] Integrar fila/worker duráveis e prévia segura, implementar retomada supervisionada e testar concorrência e limites; não ativar runtime Vercel enquanto não concluído.
 - [ ] Adaptar handler, execução durável, arquivos e eventos; testar com banco isolado e interrupções.
 - [ ] Publicar e validar API na Vercel antes de alterar o frontend; manter Render até confirmação e autorização para desativar.
 

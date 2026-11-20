@@ -46,6 +46,50 @@ func (q *Queries) ClaimFactoryJob(ctx context.Context, leaseToken pgtype.UUID) (
 	return i, err
 }
 
+const claimFactoryJobByID = `-- name: ClaimFactoryJobByID :one
+UPDATE geev.factory_jobs AS job
+SET status = 'running', lease_token = $2, lease_expires_at = clock_timestamp() + interval '5 minutes',
+    attempts = attempts + 1, updated_at = clock_timestamp()
+WHERE job.id = $1 AND job.owner_id = auth.uid() AND job.status = 'queued'
+RETURNING job.id, job.card_id, job.lease_token, job.lease_expires_at, job.attempts
+`
+
+type ClaimFactoryJobByIDParams struct {
+	ID         pgtype.UUID
+	LeaseToken pgtype.UUID
+}
+
+type ClaimFactoryJobByIDRow struct {
+	ID             pgtype.UUID
+	CardID         pgtype.UUID
+	LeaseToken     pgtype.UUID
+	LeaseExpiresAt pgtype.Timestamptz
+	Attempts       int32
+}
+
+// A mensagem identifica exatamente uma tarefa; repetição ou tarefa de outro dono não assume outra.
+func (q *Queries) ClaimFactoryJobByID(ctx context.Context, arg ClaimFactoryJobByIDParams) (ClaimFactoryJobByIDRow, error) {
+	row := q.db.QueryRow(ctx, claimFactoryJobByID, arg.ID, arg.LeaseToken)
+	var i ClaimFactoryJobByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CardID,
+		&i.LeaseToken,
+		&i.LeaseExpiresAt,
+		&i.Attempts,
+	)
+	return i, err
+}
+
+const deleteFactoryWorkspaceFiles = `-- name: DeleteFactoryWorkspaceFiles :exec
+DELETE FROM geev.factory_workspace_files WHERE owner_id = auth.uid() AND card_id = $1
+`
+
+func (q *Queries) DeleteFactoryWorkspaceFiles(ctx context.Context, cardID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteFactoryWorkspaceFiles, cardID)
+	return err
+}
+
 const finishFactoryJob = `-- name: FinishFactoryJob :execrows
 UPDATE geev.factory_jobs
 SET status = $3, lease_token = NULL, lease_expires_at = NULL, updated_at = clock_timestamp()
@@ -65,6 +109,56 @@ func (q *Queries) FinishFactoryJob(ctx context.Context, arg FinishFactoryJobPara
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getFactoryJobByID = `-- name: GetFactoryJobByID :one
+SELECT id, card_id, status, attempts, lease_expires_at FROM geev.factory_jobs
+WHERE owner_id = auth.uid() AND id = $1
+`
+
+type GetFactoryJobByIDRow struct {
+	ID             pgtype.UUID
+	CardID         pgtype.UUID
+	Status         string
+	Attempts       int32
+	LeaseExpiresAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetFactoryJobByID(ctx context.Context, id pgtype.UUID) (GetFactoryJobByIDRow, error) {
+	row := q.db.QueryRow(ctx, getFactoryJobByID, id)
+	var i GetFactoryJobByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CardID,
+		&i.Status,
+		&i.Attempts,
+		&i.LeaseExpiresAt,
+	)
+	return i, err
+}
+
+const getFactoryJobByKey = `-- name: GetFactoryJobByKey :one
+SELECT id, card_id, status, attempts FROM geev.factory_jobs
+WHERE owner_id = auth.uid() AND idempotency_key = $1
+`
+
+type GetFactoryJobByKeyRow struct {
+	ID       pgtype.UUID
+	CardID   pgtype.UUID
+	Status   string
+	Attempts int32
+}
+
+func (q *Queries) GetFactoryJobByKey(ctx context.Context, idempotencyKey pgtype.UUID) (GetFactoryJobByKeyRow, error) {
+	row := q.db.QueryRow(ctx, getFactoryJobByKey, idempotencyKey)
+	var i GetFactoryJobByKeyRow
+	err := row.Scan(
+		&i.ID,
+		&i.CardID,
+		&i.Status,
+		&i.Attempts,
+	)
+	return i, err
 }
 
 const listFactoryWorkspaceFiles = `-- name: ListFactoryWorkspaceFiles :many
@@ -97,18 +191,125 @@ func (q *Queries) ListFactoryWorkspaceFiles(ctx context.Context, cardID pgtype.U
 	return items, nil
 }
 
-const markExpiredFactoryJobs = `-- name: MarkExpiredFactoryJobs :execrows
-UPDATE geev.factory_jobs
-SET status = 'interrupted', lease_token = NULL, lease_expires_at = NULL, updated_at = clock_timestamp()
-WHERE owner_id = auth.uid() AND status = 'running' AND lease_expires_at <= clock_timestamp()
+const listQueuedFactoryJobIDs = `-- name: ListQueuedFactoryJobIDs :many
+SELECT id FROM geev.factory_jobs
+WHERE owner_id = auth.uid() AND status = 'queued' AND id > $1
+ORDER BY id LIMIT $2
+`
+
+type ListQueuedFactoryJobIDsParams struct {
+	ID    pgtype.UUID
+	Limit int32
+}
+
+// Varredura paginada para reenviar sinais perdidos; nunca inclui tarefas em execução.
+func (q *Queries) ListQueuedFactoryJobIDs(ctx context.Context, arg ListQueuedFactoryJobIDsParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listQueuedFactoryJobIDs, arg.ID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockFactoryWorkspace = `-- name: LockFactoryWorkspace :one
+SELECT id FROM geev.cards WHERE owner_id = auth.uid() AND id = $1 FOR UPDATE
+`
+
+// Serializa substituições completas e confirma que o cartão pertence ao dono.
+func (q *Queries) LockFactoryWorkspace(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockFactoryWorkspace, id)
+	var id_2 pgtype.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
+const lockValidFactoryJob = `-- name: LockValidFactoryJob :one
+SELECT id FROM geev.factory_jobs
+WHERE id = $1 AND owner_id = auth.uid() AND status = 'running' AND lease_token = $2
+  AND lease_expires_at > clock_timestamp()
+FOR UPDATE
+`
+
+type LockValidFactoryJobParams struct {
+	ID         pgtype.UUID
+	LeaseToken pgtype.UUID
+}
+
+func (q *Queries) LockValidFactoryJob(ctx context.Context, arg LockValidFactoryJobParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockValidFactoryJob, arg.ID, arg.LeaseToken)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const markActiveFactoryPipelineFailed = `-- name: MarkActiveFactoryPipelineFailed :exec
+UPDATE geev.card_pipelines
+SET status = 'failed', current_task = 'A execução não foi concluída. Confira a configuração dos agentes e o histórico antes de tentar novamente.'
+WHERE owner_id = auth.uid() AND card_id = $1 AND status IN ('queued', 'running')
+`
+
+// Preserva pausas e resultados finais alterados concorrentemente.
+func (q *Queries) MarkActiveFactoryPipelineFailed(ctx context.Context, cardID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markActiveFactoryPipelineFailed, cardID)
+	return err
+}
+
+const markExpiredFactoryJobForCard = `-- name: MarkExpiredFactoryJobForCard :one
+WITH expired AS (
+    UPDATE geev.factory_jobs AS job
+    SET status = 'interrupted', lease_token = NULL, lease_expires_at = NULL, updated_at = clock_timestamp()
+    WHERE job.owner_id = auth.uid() AND job.card_id = $1 AND job.status = 'running' AND job.lease_expires_at <= clock_timestamp()
+    RETURNING job.card_id
+), pipelines AS (
+    UPDATE geev.card_pipelines AS p
+    SET status = 'interrupted', current_task = 'Execução interrompida. Revise o histórico e os custos antes de solicitar nova tentativa.'
+    FROM expired e
+    WHERE p.owner_id = auth.uid() AND p.card_id = e.card_id AND p.status IN ('queued', 'running')
+    RETURNING p.card_id
+)
+SELECT count(*)::bigint FROM expired
+`
+
+func (q *Queries) MarkExpiredFactoryJobForCard(ctx context.Context, cardID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, markExpiredFactoryJobForCard, cardID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const markExpiredFactoryJobs = `-- name: MarkExpiredFactoryJobs :one
+WITH expired AS (
+    UPDATE geev.factory_jobs AS job
+    SET status = 'interrupted', lease_token = NULL, lease_expires_at = NULL, updated_at = clock_timestamp()
+    WHERE owner_id = auth.uid() AND status = 'running' AND lease_expires_at <= clock_timestamp()
+    RETURNING card_id
+), pipelines AS (
+    UPDATE geev.card_pipelines AS p
+    SET status = 'interrupted', current_task = 'Execução interrompida. Revise o histórico e os custos antes de solicitar nova tentativa.'
+    FROM expired e
+    WHERE p.owner_id = auth.uid() AND p.card_id = e.card_id AND p.status IN ('queued', 'running')
+    RETURNING p.card_id
+)
+SELECT count(*)::bigint FROM expired
 `
 
 func (q *Queries) MarkExpiredFactoryJobs(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, markExpiredFactoryJobs)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+	row := q.db.QueryRow(ctx, markExpiredFactoryJobs)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const putFactoryWorkspaceFile = `-- name: PutFactoryWorkspaceFile :exec

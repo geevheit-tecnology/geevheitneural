@@ -36,7 +36,7 @@ INSERT INTO geev.apps (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 ) RETURNING id, owner_id, client_id, name, hosting, database, repository, domain, status, created_at, updated_at;
 
--- name: UpdateApp :exec
+-- name: UpdateApp :execrows
 UPDATE geev.apps
 SET client_id = $2,
     name = $3,
@@ -48,6 +48,6 @@ SET client_id = $2,
     updated_at = $9
 WHERE id = $1;
 
--- name: DeleteApp :exec
+-- name: DeleteApp :execrows
 DELETE FROM geev.apps
 WHERE id = $1;
