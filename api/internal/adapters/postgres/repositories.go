@@ -273,7 +273,14 @@ func (r *CardRepository) Create(ctx context.Context, c *app.CardListItemDTO) err
 }
 
 func (r *CardRepository) Delete(ctx context.Context, id string) error {
-	return r.q.DeleteCard(ctx, textToUUID(id))
+	count, err := r.q.DeleteCard(ctx, textToUUID(id))
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("cartão não encontrado ou sem permissão para excluir")
+	}
+	return nil
 }
 
 type ApprovalRepository struct {
@@ -892,11 +899,11 @@ func (r *ProposalRepository) Create(ctx context.Context, p *app.ProposalDTO) err
 	}
 	p.ID = pID.String()
 	now := time.Now()
-	ownerUUID := textToUUID("00000000-0000-0000-0000-000000000001")
+	ownerID := textToUUID("00000000-0000-0000-0000-000000000001")
 
 	_, err := r.q.CreateProposal(ctx, sqlcgen.CreateProposalParams{
 		ID:              uuidToPgUUID(pID),
-		OwnerID:         ownerUUID,
+		OwnerID:         ownerID,
 		CardID:          textToUUID(p.CardID),
 		AmountCents:     p.AmountCents,
 		Currency:        p.Currency,
@@ -986,11 +993,11 @@ func (r *AgentRepository) List(ctx context.Context) ([]app.AgentDTO, error) {
 func (r *AgentRepository) Create(ctx context.Context, role, scope string, spendLimitCents int64, tokenHash string) (*app.AgentDTO, error) {
 	now := time.Now()
 	newID := uuid.New()
-	ownerUUID := textToUUID("00000000-0000-0000-0000-000000000001")
+	ownerID := ownerUUID(ctx, "00000000-0000-0000-0000-000000000001")
 
 	row, err := r.q.CreateAgent(ctx, sqlcgen.CreateAgentParams{
 		ID:                uuidToPgUUID(newID),
-		OwnerID:           ownerUUID,
+		OwnerID:           ownerID,
 		Role:              role,
 		Active:            false, // Invariante: agentes sempre iniciam desligados
 		SpendLimitCents:   spendLimitCents,
@@ -1025,11 +1032,18 @@ func (r *AgentRepository) AddSpend(ctx context.Context, id string, cents int64) 
 }
 
 func (r *AgentRepository) Toggle(ctx context.Context, id string, active bool) error {
-	return r.q.ToggleAgent(ctx, sqlcgen.ToggleAgentParams{
+	count, err := r.q.ToggleAgent(ctx, sqlcgen.ToggleAgentParams{
 		ID:        textToUUID(id),
 		Active:    active,
 		UpdatedAt: timeToTimestamptz(time.Now()),
 	})
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("agente não encontrado ou sem permissão")
+	}
+	return nil
 }
 
 // PaymentOrderRepository implementa app.PaymentOrderRepository via sqlc.

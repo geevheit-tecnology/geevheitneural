@@ -149,13 +149,44 @@ func (uc *FactoryTools) selectedRunner(ctx context.Context) (pipeline.AgentRunne
 
 // Ready rejeita um build sem ferramenta habilitada antes de mudar o cartão.
 func (uc *FactoryTools) Ready(ctx context.Context) error {
-	_, err := uc.selectedRunner(ctx)
-	return err
+	if _, err := uc.selectedRunner(ctx); err != nil {
+		return err
+	}
+	for _, role := range []pipeline.Role{pipeline.RoleRequisitos, pipeline.RoleArquiteto, pipeline.RoleDev, pipeline.RoleQA, pipeline.RoleSeguranca, pipeline.RolePublicador, pipeline.RoleSuporte} {
+		if err := uc.checkAgent(ctx, role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (uc *FactoryTools) checkAgent(ctx context.Context, role pipeline.Role) error {
+	return uc.uow.RunInTx(ctx, func(tx Repositories) error {
+		if tx.Agents == nil {
+			return fmt.Errorf("estado dos agentes indisponível")
+		}
+		agents, err := tx.Agents.List(ctx)
+		if err != nil {
+			return fmt.Errorf("falha ao consultar agentes: %w", err)
+		}
+		for _, agent := range agents {
+			if agent.Role == string(role) {
+				if !agent.Active {
+					return fmt.Errorf("agente %s desligado: %w", role, system.ErrActorInactive)
+				}
+				return nil
+			}
+		}
+		return fmt.Errorf("agente %s não encontrado", role)
+	})
 }
 
 func (uc *FactoryTools) RunStep(ctx context.Context, role pipeline.Role, prompt string, meta map[string]any) (*pipeline.RunnerResult, error) {
 	runner, err := uc.selectedRunner(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := uc.checkAgent(ctx, role); err != nil {
 		return nil, err
 	}
 	// Não troca automaticamente de provedor ao esgotar cota ou receber erro.

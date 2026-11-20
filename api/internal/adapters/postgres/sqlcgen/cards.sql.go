@@ -57,17 +57,21 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) error {
 	return err
 }
 
-const deleteCard = `-- name: DeleteCard :exec
+const deleteCard = `-- name: DeleteCard :execrows
 WITH allow_delete AS (
     SELECT set_config('geev.allow_card_delete', 'on', true)
 )
 DELETE FROM geev.cards
-WHERE id = $1
+USING allow_delete
+WHERE id = $1 AND allow_delete.set_config = 'on'
 `
 
-func (q *Queries) DeleteCard(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteCard, id)
-	return err
+func (q *Queries) DeleteCard(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCard, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getCardByID = `-- name: GetCardByID :one

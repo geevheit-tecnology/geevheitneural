@@ -15,6 +15,20 @@ type factorySettingsFake struct {
 	err       error
 }
 
+type activeFactoryAgents struct {
+	app.AgentRepository
+	inactive string
+}
+
+func (a activeFactoryAgents) List(context.Context) ([]app.AgentDTO, error) {
+	roles := []string{"requisitos", "arquiteto", "dev", "qa", "seguranca", "publicador", "suporte"}
+	result := make([]app.AgentDTO, 0, len(roles))
+	for _, role := range roles {
+		result = append(result, app.AgentDTO{Role: role, Active: role != a.inactive})
+	}
+	return result, nil
+}
+
 func (s *factorySettingsFake) Get(context.Context) (*app.FactoryToolSelection, error) {
 	return s.selection, s.err
 }
@@ -33,6 +47,7 @@ func TestFactoryToolsSelectionControlsRealRunner(t *testing.T) {
 	uow := correctionUOW(func(ctx context.Context, fn func(app.Repositories) error) error {
 		return (&mockSprint02UOW{m: m}).RunInTx(ctx, func(tx app.Repositories) error {
 			tx.FactoryTools = settings
+			tx.Agents = activeFactoryAgents{}
 			return fn(tx)
 		})
 	})
@@ -107,7 +122,11 @@ func TestFactoryToolsMissingKeyAndProviderErrors(t *testing.T) {
 	m := newMockSprint02Repos()
 	settings := &factorySettingsFake{}
 	uow := correctionUOW(func(ctx context.Context, fn func(app.Repositories) error) error {
-		return (&mockSprint02UOW{m: m}).RunInTx(ctx, func(tx app.Repositories) error { tx.FactoryTools = settings; return fn(tx) })
+		return (&mockSprint02UOW{m: m}).RunInTx(ctx, func(tx app.Repositories) error {
+			tx.FactoryTools = settings
+			tx.Agents = activeFactoryAgents{}
+			return fn(tx)
+		})
 	})
 	providerErr := errors.New("quota exhausted")
 	calls := 0
@@ -130,6 +149,33 @@ func TestFactoryToolsMissingKeyAndProviderErrors(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("unexpected retries/fallback: %d", calls)
+	}
+}
+
+func TestFactoryToolsRejectsInactiveAgent(t *testing.T) {
+	m := newMockSprint02Repos()
+	settings := &factorySettingsFake{selection: &app.FactoryToolSelection{Provider: "gemini", Active: true}}
+	uow := correctionUOW(func(ctx context.Context, fn func(app.Repositories) error) error {
+		return (&mockSprint02UOW{m: m}).RunInTx(ctx, func(tx app.Repositories) error {
+			tx.FactoryTools = settings
+			tx.Agents = activeFactoryAgents{inactive: "dev"}
+			return fn(tx)
+		})
+	})
+	calls := 0
+	runner := correctionRunner(func(context.Context, pipeline.Role, string, map[string]any) (*pipeline.RunnerResult, error) {
+		calls++
+		return &pipeline.RunnerResult{}, nil
+	})
+	uc := app.NewFactoryTools(uow, system.NewExecutionGuard(), map[string]pipeline.AgentRunner{"gemini": runner}, "")
+	if err := uc.Ready(context.Background()); !errors.Is(err, system.ErrActorInactive) {
+		t.Fatalf("build accepted disabled agent: %v", err)
+	}
+	if _, err := uc.RunStep(context.Background(), pipeline.RoleDev, "", nil); !errors.Is(err, system.ErrActorInactive) {
+		t.Fatalf("disabled agent executed: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("runner called %d times", calls)
 	}
 }
 

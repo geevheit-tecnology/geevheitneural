@@ -1,5 +1,16 @@
 # Tasks — GeevheitNeural
 
+## Diagnóstico de exclusões e fábrica — 2026-11-20
+- [x] Corrigir sucesso falso na exclusão, preservação de exclusões locais e dados de exemplo no painel real.
+- [x] Exibir estado não confirmado dos agentes e aumentar o prazo de resposta da API.
+- [ ] Investigar e validar execução autenticada da fábrica e exclusão persistente no ambiente real; publicar correções após autorização específica.
+- [x] Remover sucesso falso na aprovação, tentar iniciar a fábrica ao aprovar o prompt na interface e oferecer tentativa novamente.
+- [x] Corrigir ID usado ao ligar agentes, persistência do dono e verificação do estado dos sete papéis antes e durante a execução; testes locais com fakes.
+- [x] Validar SQL de exclusão com dependências e RLS em transação revertida no Supabase local, com função da migration 00011 aplicada temporariamente.
+- [x] Verificar função da migration 00011 e aplicar o ajuste ausente no banco de produção, sem exclusão de registros.
+- [ ] Executar exclusão e geração pelo fluxo autenticado completo em produção após publicação autorizada.
+- [x] Validar sete etapas com Gemini real e projeto fictício em sandbox local, sem clientes; corrigir comando ambíguo e falsa prévia.
+
 ## Ferramentas de criação — APIs gratuitas e Figma manual
 - [x] Integrar seleção persistente de Gemini/Groq na área Conexões e no runner existente, com pausa e ativação exclusiva do dono.
 - [x] Acrescentar briefing copiável para Figma Make e documentar cotas/pesquisa, sem automatizar o navegador ou ativar serviços.

@@ -31,7 +31,11 @@ func TestFactoryToolsLiveLandingPage(t *testing.T) {
 	m.setCard(&card.Card{ID: id, ClientID: "synthetic-client", Title: "Landing page de demonstração para uma agência de veículos fictícia, com catálogo de três veículos claramente ilustrativos, filtro JavaScript e botão de contato sem número inventado. Não usar depoimentos ou preços reais. Entregar index.html funcional."})
 	settings := &factorySettingsFake{selection: &app.FactoryToolSelection{Provider: "gemini", Active: true}}
 	uow := correctionUOW(func(ctx context.Context, fn func(app.Repositories) error) error {
-		return (&mockSprint02UOW{m: m}).RunInTx(ctx, func(tx app.Repositories) error { tx.FactoryTools = settings; return fn(tx) })
+		return (&mockSprint02UOW{m: m}).RunInTx(ctx, func(tx app.Repositories) error {
+			tx.FactoryTools = settings
+			tx.Agents = activeFactoryAgents{}
+			return fn(tx)
+		})
 	})
 	dir, err := os.MkdirTemp("", "geevheit-release-landing-")
 	if err != nil {

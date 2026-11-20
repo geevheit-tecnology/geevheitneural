@@ -22,7 +22,7 @@ SET spend_current_cents = spend_current_cents + $2,
     updated_at = $3
 WHERE id = $1;
 
--- name: ToggleAgent :exec
+-- name: ToggleAgent :execrows
 UPDATE geev.agents
 SET active = $2,
     updated_at = $3

@@ -29,15 +29,9 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
   const [selectedAgentId, setSelectedAgentId] = useState<string>("dev");
 
   // Ligar/desligar por agente (invariante sprit02: preparados mas desligados por padrão até ativados pelo dono)
-  const [agentActiveMap, setAgentActiveMap] = useState<Record<string, boolean>>({
-    requisitos: true,
-    arquiteto: true,
-    dev: true,
-    qa: true,
-    seguranca: true,
-    publicador: true,
-    suporte: true,
-  });
+  const [agentActiveMap, setAgentActiveMap] = useState<Record<string, boolean>>({});
+  const [agentIds, setAgentIds] = useState<Record<string, string>>({});
+  const [agentError, setAgentError] = useState("");
 
   // Placar da Fábrica (Fase 10)
   const [scoreboard, setScoreboard] = useState({
@@ -175,13 +169,16 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
       .then((res) => {
         if (res.agents && res.agents.length > 0) {
           const map: Record<string, boolean> = {};
+          const ids: Record<string, string> = {};
           res.agents.forEach((a) => {
             map[a.role] = a.active;
+            ids[a.role] = a.id;
           });
           setAgentActiveMap((prev) => ({ ...prev, ...map }));
+          setAgentIds(ids);
         }
       })
-      .catch(() => {});
+      .catch(() => setAgentError("Não foi possível consultar o estado dos agentes."));
   }, []);
 
   const agents: AgentTelemetry[] = [
@@ -337,11 +334,12 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
 
   const handleToggleAgent = async (role: string) => {
     const nextVal = !agentActiveMap[role];
-    setAgentActiveMap((prev) => ({ ...prev, [role]: nextVal }));
     try {
-      await api.toggleOwnerAgent(role, nextVal);
+      await api.toggleOwnerAgent(agentIds[role], nextVal);
+      setAgentActiveMap((prev) => ({ ...prev, [role]: nextVal }));
+      setAgentError("");
     } catch {
-      // persiste em estado local
+      setAgentError("Não foi possível alterar o agente. Confira a conexão com a API.");
     }
   };
 
@@ -569,16 +567,13 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
       </div>
 
       {/* Grade dos 7 Agentes de IA */}
+      {agentError && <p role="alert" className="text-sm text-red-500">{agentError}</p>}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
         {agents.map((agent) => {
           const isSelected = selectedAgentId === agent.id;
-          const isAgentActive = agentActiveMap[agent.role] !== false;
-          const isRunning =
-            !isPaused &&
-            isAgentActive &&
-            ((agent.id === "dev" && activeExecutionCards.length > 0) ||
-              (agent.id === "requisitos" && cards.some((c) => c.stage === "entrada")) ||
-              (agent.id === "qa" && cards.some((c) => c.stage === "entrega_aprovar")));
+          const isAgentActive = agentActiveMap[agent.role] === true;
+          // O estágio do cartão não comprova que um agente esteja executando agora.
+          const isRunning = false;
 
           return (
             <button
@@ -656,14 +651,15 @@ export function AgentsCockpit({ cards, isPaused, onOpenCard, onCardCreated }: Ag
             <button
               type="button"
               id={`btn-toggle-agent-${selectedAgent.role}`}
+              disabled={agentActiveMap[selectedAgent.role] === undefined}
               onClick={() => handleToggleAgent(selectedAgent.role)}
               className={`px-3 py-2 rounded-xl font-bold text-xs border cursor-pointer transition-colors ${
-                agentActiveMap[selectedAgent.role] !== false
+                agentActiveMap[selectedAgent.role] === true
                   ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                   : "border-red-500/40 bg-red-500/15 text-red-500"
               }`}
             >
-              {agentActiveMap[selectedAgent.role] !== false ? "🟢 Agente Ligado (Ativo)" : "🔴 Agente Desligado"}
+              {agentActiveMap[selectedAgent.role] === undefined ? "Estado não confirmado" : agentActiveMap[selectedAgent.role] ? "🟢 Agente Ligado (Ativo)" : "🔴 Agente Desligado"}
             </button>
 
             <div className="bg-[var(--bg)]/70 border border-[var(--line)] rounded-xl p-2 sm:text-right flex-none">

@@ -29,9 +29,9 @@ export async function apiClient<T>(
 
   const url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 
-  // Timeout resiliente de 3.5s para não travar o mobile em cold sleep do Render
+  // A API hospedada pode precisar de tempo para despertar após inatividade.
   const controller = new AbortController();
-  const timeoutMs = 3500;
+  const timeoutMs = 60000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {

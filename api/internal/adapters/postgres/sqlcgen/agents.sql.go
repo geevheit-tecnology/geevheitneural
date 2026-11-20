@@ -158,7 +158,7 @@ func (q *Queries) ListAgents(ctx context.Context) ([]ListAgentsRow, error) {
 	return items, nil
 }
 
-const toggleAgent = `-- name: ToggleAgent :exec
+const toggleAgent = `-- name: ToggleAgent :execrows
 UPDATE geev.agents
 SET active = $2,
     updated_at = $3
@@ -171,9 +171,12 @@ type ToggleAgentParams struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
-func (q *Queries) ToggleAgent(ctx context.Context, arg ToggleAgentParams) error {
-	_, err := q.db.Exec(ctx, toggleAgent, arg.ID, arg.Active, arg.UpdatedAt)
-	return err
+func (q *Queries) ToggleAgent(ctx context.Context, arg ToggleAgentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, toggleAgent, arg.ID, arg.Active, arg.UpdatedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateAgentSpend = `-- name: UpdateAgentSpend :exec

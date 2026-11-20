@@ -165,77 +165,20 @@ export function CardDetailSheet({
         .catch(() => setPortalStatus(null));
 
       const cardId = cardDetails.card.id;
-      const cardTitle = cardDetails.card.title;
-      const cardPrice = cardDetails.card.price_cents || 350000;
 
       // Fase 7: Carrega Especificação Executável (BDD Given-When-Then)
       api.getCardSpecification(cardId)
         .then((sp) => setSpecData(sp))
-        .catch(() => {
-          setSpecData({
-            user_stories: [
-              {
-                title: `Autenticação & Controle de Acesso — ${cardTitle}`,
-                given: "O usuário acessa a tela de login com credenciais válidas",
-                when: "Submete credenciais e código de verificação",
-                then: "O acesso ao painel principal é liberado com sessão autenticada e trilha de auditoria",
-                passed: true,
-              },
-              {
-                title: `Fluxo Principal de Negócio — ${cardTitle}`,
-                given: "O usuário autenticado preenche os dados da operação principal",
-                when: "Confirma o envio do formulário",
-                then: "Os dados são validados, persistidos com segurança (RLS) e exibidos em tempo real",
-                passed: true,
-              },
-              {
-                title: "Responsividade Mobile-First (360px) & LGPD",
-                given: "O cliente acessa o sistema pelo smartphone (360px)",
-                when: "Navega pelas telas principais e solicita exportação de dados",
-                then: "O layout adapta-se sem quebras horizontais e respeita os direitos LGPD",
-                passed: true,
-              },
-            ],
-            tests_code: "func TestAcceptanceBDD_Suite(t *testing.T) { /* Todos os 3 cenários Given-When-Then aprovados */ }",
-            tests_passed: true,
-            client_approved: cardDetails.card.stage === "em_execucao" || cardDetails.card.stage === "entrega_aprovar" || cardDetails.card.stage === "entregue",
-            payment_signal_cents: Math.round(cardPrice * 0.3),
-            payment_signal_paid: cardDetails.card.stage === "em_execucao" || cardDetails.card.stage === "entrega_aprovar" || cardDetails.card.stage === "entregue",
-            public_token: `scope-${cardId}`,
-          });
-        });
+        .catch(() => setSpecData(null));
 
       // Fase 9: Carrega Prévia ao Vivo & Plano de Reversão
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
       api.getCardPreviewInfo(cardId)
         .then((pr) => setPreviewInfo(pr))
-        .catch(() => {
-          setPreviewInfo({
-            preview_url: `${apiBase}/v1/cards/${cardId}/preview`,
-            status: "ready",
-            rollback_plan: {
-              strategy: "blue_green_instant_rollback",
-              image_backup: `geevheit/app:${cardId.slice(0, 6)}-prev`,
-              database_tag: "goose_safe_point",
-              steps: `1. git revert --no-edit HEAD (workspace ${cardId})\n2. goose -dir db/migrations down-to PRE_RELEASE\n3. Restaurar snapshot estável anterior`,
-            },
-          });
-        });
+        .catch(() => setPreviewInfo(null));
 
       api.getCardWorkspace(cardId)
         .then((ws) => setWorkspaceFiles(ws.files || []))
-        .catch(() => {
-          setWorkspaceFiles([
-            {
-              path: "index.html",
-              content: `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"/><title>${cardTitle}</title></head><body><h1>Prévia ao Vivo — ${cardTitle}</h1><p>Build validado pela Fábrica Autônoma Geevheit.</p></body></html>`,
-            },
-            {
-              path: "acceptance_test.go",
-              content: `package main\n\nimport "testing"\n\nfunc TestBDD_${cardId.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8)}(t *testing.T) {\n\t// Critérios Given-When-Then verificados e aprovados\n}`,
-            },
-          ]);
-        });
+        .catch(() => setWorkspaceFiles([]));
 
       // Fase 9 (F9-05): Carrega Memória Viva do Projeto
       api.getCardMemory(cardId)
@@ -256,22 +199,7 @@ export function CardDetailSheet({
           } catch {
             // ignore
           }
-          setMemories([
-            {
-              id: "mem-1",
-              key: "requisitos_bdd",
-              category: "requisito",
-              content: `Escopo estruturado para "${cardTitle}" com cenários BDD Given-When-Then verificáveis e mobile-first (360px).`,
-              created_at: new Date().toISOString(),
-            },
-            {
-              id: "mem-2",
-              key: "decisao_arquitetura",
-              category: "decisao",
-              content: "Isolamento de dados via RLS no PostgreSQL, zero segredos expostos e plano de reversão automático anexado.",
-              created_at: new Date().toISOString(),
-            },
-          ]);
+          setMemories([]);
         });
     }
   }, [cardDetails?.card?.id, cardDetails?.card?.price_cents, cardDetails?.card?.title, cardDetails?.card?.stage]);
@@ -288,8 +216,8 @@ export function CardDetailSheet({
   }, [isOpen, cardDetails?.card?.id, pipelineData?.status]);
 
   const handleCopyScopeLink = () => {
-    if (!cardDetails?.card) return;
-    const token = specData?.public_token || `scope-${cardDetails.card.id}`;
+    if (!cardDetails?.card || !specData?.public_token) return;
+    const token = specData.public_token;
     const url = `${window.location.origin}/escopo?token=${encodeURIComponent(token)}&title=${encodeURIComponent(cardDetails.card.title)}&price=${cardDetails.card.price_cents || 350000}`;
     navigator.clipboard.writeText(url);
     setCopiedScopeLink(true);
@@ -801,7 +729,7 @@ export function CardDetailSheet({
               </b>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            {specData.public_token && <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 id="btn-copy-scope-link"
@@ -813,7 +741,7 @@ export function CardDetailSheet({
               </button>
               <a
                 id="btn-open-scope-page"
-                href={`/escopo?token=${encodeURIComponent(specData.public_token || `scope-${card.id}`)}&title=${encodeURIComponent(card.title)}&price=${card.price_cents || 350000}`}
+                href={`/escopo?token=${encodeURIComponent(specData.public_token)}&title=${encodeURIComponent(card.title)}&price=${card.price_cents || 350000}`}
                 target="_blank"
                 rel="noreferrer"
                 className="py-2 px-2.5 rounded-lg font-semibold text-xs border border-teal-500/40 bg-teal-500/10 text-teal-600 dark:text-teal-400 hover:bg-teal-500/20 no-underline flex items-center justify-center gap-1"
@@ -821,7 +749,7 @@ export function CardDetailSheet({
                 <span>Abrir /escopo</span>
                 <span>↗</span>
               </a>
-            </div>
+            </div>}
           </div>
         )}
 
@@ -983,7 +911,7 @@ export function CardDetailSheet({
         {/* Botões de Ação */}
         <div className="grid gap-2">
           {/* Botão de Construção Autônoma com Teto de Gasto (Fase 6 - sprit02) */}
-          {onBuild && card.stage !== "em_execucao" && card.stage !== "entregue" && card.stage !== "recusado" && (
+          {onBuild && card.stage !== "entregue" && card.stage !== "recusado" && card.stage !== "entrega_aprovar" && pipelineData?.status !== "running" && (
             <div className="p-2.5 rounded-xl border border-[var(--acc)]/30 bg-[var(--accs)]/20 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[var(--mute)] font-medium">Teto de gasto de IA para este cartão:</span>

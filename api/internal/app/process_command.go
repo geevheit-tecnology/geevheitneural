@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -111,7 +112,6 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 		if err != nil {
 			return nil, err
 		}
-
 		err = uc.decideGateUC.Execute(ctx, DecideGateInput{
 			Owner:    in.Owner,
 			CardID:   match.CardID,
@@ -120,6 +120,16 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 		})
 		if err != nil {
 			return nil, err
+		}
+		if match.Stage == string(card.StagePromptAprovar) {
+			if uc.startBuildUC == nil {
+				return &CommandResult{Intent: string(parsed.Intent), Message: "Prompt aprovado, mas a fábrica não está disponível. Abra a demanda para iniciar a construção.", Data: map[string]any{"card_id": match.CardID}}, nil
+			}
+			_, buildErr := uc.startBuildUC.Execute(ctx, in.Owner, StartBuildCommand{CardID: match.CardID, SpendLimitCents: 5000})
+			if buildErr != nil {
+				return &CommandResult{Intent: string(parsed.Intent), Message: fmt.Sprintf("Prompt aprovado, mas a construção não iniciou: %v. Abra a demanda para tentar novamente.", buildErr), Data: map[string]any{"card_id": match.CardID}}, nil
+			}
+			return &CommandResult{Intent: string(parsed.Intent), Message: "Prompt aprovado e construção iniciada na fábrica.", Data: map[string]any{"card_id": match.CardID}}, nil
 		}
 
 		return &CommandResult{
@@ -137,6 +147,9 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 
 		match, err := uc.resolveTargetCard(ctx, parsed.Target)
 		if err != nil {
+			if !errors.Is(err, command.ErrTargetNotFound) || strings.TrimSpace(parsed.Target) == "" {
+				return nil, err
+			}
 			// Se o cartão não existe previamente, cria automaticamente e inicia o pipeline (sprit02)
 			if uc.createCardUC != nil {
 				title := parsed.Target

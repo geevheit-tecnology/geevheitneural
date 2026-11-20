@@ -1,5 +1,15 @@
 # Memory — GeevheitNeural
 
+## Diagnóstico de exclusões e fábrica — 2026-11-20
+- Publicação autorizada: função `geev.prevent_mutation` da migration 00011 estava ausente no projeto Supabase `tggzeapudgzswdojtndj`; aplicada por SQL e verificada por leitura. A aplicação manual da função não registra automaticamente a versão no histórico de migrations. Não apagou registros existentes.
+- Continuação: aprovação na tela e pelo assistente não mascara mais erros e, ao aprovar o prompt, chama a construção; falha no início preserva a aprovação e permite nova tentativa. Comando ambíguo não cria outra demanda.
+- Teste controlado atual com Gemini, sete agentes habilitados simulados, repositórios em memória e sandbox/Git reais gerou HTML de 3.773 bytes em 33 segundos, com cartão em entrega para aprovação. Não comprova banco nem sessão de produção. API /healthz e página pública responderam HTTP 200. Tela não fabrica mais especificações, arquivos ou prévia quando a API falha.
+- Tela passa ID real do agente ao alternar; criação usa identidade do dono e falhas de leitura/criação não inventam agentes. FactoryTools exige os sete papéis ligados no início e verifica novamente cada papel antes da chamada. Teste com agente desligado garante que o runner não é chamado.
+- DELETE de cartão força avaliação da configuração usada pelos triggers e verifica quantidade de registros afetados. Em 2026-11-20, Supabase local estava sem a função da migration 00011: exclusão com histórico falhou. Em transação revertida, aplicou-se temporariamente essa função e dados sintéticos: outro dono teve DELETE 0, dono DELETE 1, eventos/aprovações em cascata removidos; ROLLBACK preservou o banco. Não prova que a migration esteja aplicada em produção, nem o endpoint inteiro. Suíte Go com race e build web passaram; não houve publicação ou teste autenticado de produção.
+- Exclusões de cartões e apps engoliam erros da API e registravam sucesso local; limpeza sobrescrevia IDs previamente ocultados. A interface agora informa falha e preserva a lista; limpeza remove apenas dados locais e não apaga dados no servidor.
+- Dados de exemplo não são mais inseridos inicialmente na sessão real. Estado dos agentes começa desconhecido até resposta da API; o estágio do cartão não prova execução. Prazo da API ampliado para 60 segundos.
+- Alterações locais ainda não comprovam exclusão ou geração em produção. Há necessidade de conferir provedor habilitado, estado da fábrica, histórico e execução com sessão real; exclusões anteriormente ocultadas podem continuar no servidor.
+
 ## Publicação confirmada — 2026-11-16
 - Commit de implementação `7dcc1ea` enviado à `origin/main`. Render publicou automaticamente: `/v1/factory/tools` passou de 404 a 401 (rota existe e exige autenticação); `/healthz` e `/readyz` responderam 200.
 - Preflight PUT para `/v1/factory/tools/gemini` com origem `https://geevheit.vercel.app`: HTTP 204, origem exata permitida, métodos e cabeçalhos Authorization/Content-Type autorizados.

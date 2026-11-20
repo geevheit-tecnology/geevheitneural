@@ -200,7 +200,7 @@ export default function HomePage() {
 
   // 2. Cartões com estado local reativo (mostra os cartões reais oficiais por padrão)
   const [localCards, setLocalCards] = useState<CardItem[]>(() => {
-    if (typeof window === "undefined") return REAL_CARDS;
+    if (typeof window === "undefined") return [];
     const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
     const deletedRaw = localStorage.getItem("geev_deleted_card_ids");
     const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
@@ -217,7 +217,7 @@ export default function HomePage() {
     if (isCleared) return [];
 
     const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
-    const initial = isDemo ? DEMO_CARDS : REAL_CARDS;
+    const initial = isDemo ? DEMO_CARDS : [];
     return initial.filter((c) => !deletedSet.has(c.id));
   });
 
@@ -264,7 +264,7 @@ export default function HomePage() {
 
   // 3. Meus Apps (mostra os apps reais desenvolvidos)
   const [localApps, setLocalApps] = useState<AppItem[]>(() => {
-    if (typeof window === "undefined") return REAL_APPS;
+    if (typeof window === "undefined") return [];
     const isCleared = localStorage.getItem("geev_cleared_legacy") === "true";
     const deletedRaw = localStorage.getItem("geev_deleted_app_ids");
     const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
@@ -281,7 +281,7 @@ export default function HomePage() {
     if (isCleared) return [];
 
     const isDemo = new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true";
-    const initial = isDemo ? DEMO_APPS : REAL_APPS;
+    const initial = isDemo ? DEMO_APPS : [];
     return initial.filter((a) => !deletedSet.has(a.id));
   });
 
@@ -387,13 +387,10 @@ export default function HomePage() {
 
   const decideMutation = useMutation({
     mutationFn: async ({ id, decision, note }: { id: string; decision: "aprovado" | "mais_info" | "recusado"; note?: string }) => {
-      try {
-        return await api.decideGate(id, decision, note);
-      } catch {
-        return { success: true, message: "Decisão registrada com sucesso" };
-      }
+      return api.decideGate(id, decision, note);
     },
-    onSuccess: (_, vars) => {
+    onSuccess: async (_, vars) => {
+      const approvedPrompt = vars.decision === "aprovado" && cards.find((c) => c.id === vars.id)?.stage === "prompt_aprovar";
       setLocalCards((prev) => {
         const updated = prev.map((c) => {
           if (c.id !== vars.id) return c;
@@ -413,7 +410,15 @@ export default function HomePage() {
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
       setIsSheetOpen(false);
-      if (vars.decision === "aprovado") showToast("Portão aprovado e registrado com sucesso!");
+      if (approvedPrompt) {
+        try {
+          await api.startBuild(vars.id, 5000);
+          queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+          showToast("Prompt aprovado e construção iniciada.");
+        } catch (err) {
+          showToast(`Prompt aprovado, mas a construção não iniciou: ${err instanceof Error ? err.message : "verifique a fábrica"}. Abra a demanda para tentar novamente.`);
+        }
+      } else if (vars.decision === "aprovado") showToast("Portão aprovado e registrado com sucesso!");
       if (vars.decision === "mais_info") showToast("Pedido de informações registrado no histórico.");
       if (vars.decision === "recusado") showToast("Cartão recusado e arquivado com segurança.");
     },
@@ -424,26 +429,13 @@ export default function HomePage() {
 
   const deleteCardMutation = useMutation({
     mutationFn: async (id: string) => {
-      // 1. Marca imediatamente no localStorage para não voltar nunca mais (nem em recarregamento)
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem("geev_deleted_card_ids");
-          const list: string[] = raw ? JSON.parse(raw) : [];
-          if (!list.includes(id)) {
-            list.push(id);
-            localStorage.setItem("geev_deleted_card_ids", JSON.stringify(list));
-          }
-        } catch {}
-      }
-
-      try {
-        return await api.deleteCard(id);
-      } catch (err) {
-        console.warn("Falha na exclusão remota do cartão:", err);
-        return { success: true, id };
-      }
+      if (!cardsData) throw new Error("Não foi possível confirmar os dados no servidor. Tente novamente.");
+      const localOnly = [...REAL_CARDS, ...DEMO_CARDS].some((card) => card.id === id) && !cardsData.cards?.some((card) => card.id === id);
+      if (!localOnly) await api.deleteCard(id);
     },
     onSuccess: (_, cardId) => {
+      const deleted = JSON.parse(localStorage.getItem("geev_deleted_card_ids") || "[]") as string[];
+      localStorage.setItem("geev_deleted_card_ids", JSON.stringify([...new Set([...deleted, cardId])]));
       setLocalCards((prev) => {
         const updated = prev.filter((c) => c.id !== cardId);
         try {
@@ -465,7 +457,7 @@ export default function HomePage() {
   const handleClearLegacyData = () => {
     if (typeof window !== "undefined") {
       const confirmClear = window.confirm(
-        "Deseja limpar todos os dados legados/demonstração e zerar o painel para uso real?\n\nEssa ação deixará o sistema 100% limpo, sem re-injetar os dados de exemplo."
+        "Deseja remover os dados locais legados e de demonstração deste navegador? Os dados salvos no servidor não serão excluídos."
       );
       if (!confirmClear) return;
 
@@ -476,15 +468,17 @@ export default function HomePage() {
       localStorage.setItem("geev_cleared_legacy", "true");
       localStorage.setItem("geev_local_cards", JSON.stringify([]));
       localStorage.setItem("geev_local_apps", JSON.stringify([]));
-      localStorage.setItem("geev_deleted_card_ids", JSON.stringify(legacyCardIds));
-      localStorage.setItem("geev_deleted_app_ids", JSON.stringify(legacyAppIds));
+      const deletedCards = JSON.parse(localStorage.getItem("geev_deleted_card_ids") || "[]") as string[];
+      const deletedApps = JSON.parse(localStorage.getItem("geev_deleted_app_ids") || "[]") as string[];
+      localStorage.setItem("geev_deleted_card_ids", JSON.stringify([...new Set([...deletedCards, ...legacyCardIds])]));
+      localStorage.setItem("geev_deleted_app_ids", JSON.stringify([...new Set([...deletedApps, ...legacyAppIds])]));
       setLocalCards([]);
       setLocalApps([]);
       setIsDemoMode(false);
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       queryClient.invalidateQueries({ queryKey: ["apps"] });
       queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
-      showToast("🧹 Sistema zerado! Todos os dados legados foram excluídos com sucesso.");
+      showToast("Dados locais removidos. Os dados do servidor foram preservados.");
     }
   };
 
@@ -573,26 +567,13 @@ export default function HomePage() {
 
   const deleteAppMutation = useMutation({
     mutationFn: async (id: string) => {
-      // 1. Marca imediatamente no localStorage para não voltar nunca mais (nem em recarregamento)
-      if (typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem("geev_deleted_app_ids");
-          const list: string[] = raw ? JSON.parse(raw) : [];
-          if (!list.includes(id)) {
-            list.push(id);
-            localStorage.setItem("geev_deleted_app_ids", JSON.stringify(list));
-          }
-        } catch {}
-      }
-
-      try {
-        return await api.deleteApp(id);
-      } catch (err) {
-        console.warn("Falha na exclusão remota do app:", err);
-        return { success: true, id };
-      }
+      if (!appsData) throw new Error("Não foi possível confirmar os dados no servidor. Tente novamente.");
+      const localOnly = [...REAL_APPS, ...DEMO_APPS].some((app) => app.id === id) && !appsData.apps?.some((app) => app.id === id);
+      if (!localOnly) await api.deleteApp(id);
     },
     onSuccess: (_, appId) => {
+      const deleted = JSON.parse(localStorage.getItem("geev_deleted_app_ids") || "[]") as string[];
+      localStorage.setItem("geev_deleted_app_ids", JSON.stringify([...new Set([...deleted, appId])]));
       setLocalApps((prev) => {
         const updated = prev.filter((a) => a.id !== appId);
         try {
@@ -603,6 +584,7 @@ export default function HomePage() {
       queryClient.invalidateQueries({ queryKey: ["apps"] });
       showToast("App removido com sucesso!");
     },
+    onError: (err: Error) => showToast(err.message || "Falha ao excluir app"),
   });
 
   const createFinanceEntryMutation = useMutation({
@@ -630,7 +612,7 @@ export default function HomePage() {
 
         // Se a API remota retornou o card criado, insere no estado local imediatamente
         const resData = res.data as Record<string, unknown> | undefined;
-        if (resData && resData.card_id) {
+        if ((res.intent === "create" || res.intent === "build") && resData && resData.card_id) {
           const createdCard: CardItem = {
             id: String(resData.card_id),
             title: String(resData.title || "Nova Demanda"),

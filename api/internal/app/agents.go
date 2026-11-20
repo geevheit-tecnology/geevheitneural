@@ -248,9 +248,13 @@ func (uc *AgentUseCases) ListOwnerAgents(ctx context.Context) ([]AgentDTO, error
 	var list []AgentDTO
 	err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
 		items, err := tx.Agents.List(ctx)
-		if err == nil && len(items) > 0 {
-			list = items
-			return nil
+		if err != nil {
+			return fmt.Errorf("erro ao listar agentes: %w", err)
+		}
+		list = items
+		existing := make(map[string]bool, len(items))
+		for _, item := range items {
+			existing[item.Role] = true
 		}
 
 		// Se o banco ainda não tiver os 7 agentes semeados, inicializa os 7 papéis do sprit02 desligados por padrão
@@ -269,20 +273,14 @@ func (uc *AgentUseCases) ListOwnerAgents(ctx context.Context) ([]AgentDTO, error
 		}
 
 		for _, dr := range defaultRoles {
-			created, errCreate := tx.Agents.Create(ctx, dr.role, dr.scope, dr.limit, hashToken("agent-token-"+dr.role))
+			if existing[dr.role] {
+				continue
+			}
+			created, errCreate := tx.Agents.Create(ctx, dr.role, dr.scope, dr.limit, hashToken(generateSecureToken()))
 			if errCreate == nil && created != nil {
 				list = append(list, *created)
 			} else {
-				list = append(list, AgentDTO{
-					ID:                uuid.NewMD5(uuid.Nil, []byte("agent-"+dr.role)).String(),
-					Role:              dr.role,
-					Active:            false,
-					SpendLimitCents:   dr.limit,
-					SpendCurrentCents: 0,
-					Scope:             dr.scope,
-					CreatedAt:         time.Now(),
-					UpdatedAt:         time.Now(),
-				})
+				return fmt.Errorf("erro ao cadastrar agente %s: %w", dr.role, errCreate)
 			}
 		}
 		return nil

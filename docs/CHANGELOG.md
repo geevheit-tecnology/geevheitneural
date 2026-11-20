@@ -1,5 +1,12 @@
 # Changelog — GeevheitNeural
 
+## Diagnóstico de exclusões e fábrica — 2026-11-20
+- Aprovação do prompt na interface inicia a construção e informa erros reais; cartão permite nova tentativa. Corrigidos IDs de ativação e verificações de agentes desligados na fábrica.
+- Comando de aprovação também tenta iniciar a construção após salvar a decisão; tela deixa de inventar especificações e arquivos em caso de erro. Teste controlado com Gemini real gerou HTML em sandbox local.
+- Excluído cartão sintético e seus vínculos com RLS em transação revertida no Supabase local, após aplicar temporariamente a função da migration 00011; outro usuário não conseguiu excluir. A migration não estava aplicada no banco local.
+- Corrigidas mensagens de exclusão diante de falhas da API e preservados IDs ocultados durante limpeza local; exemplos deixam de aparecer por padrão na sessão real.
+- Estado de agentes não confirmado deixa de aparecer como ativo; comandos aguardam mais tempo pelo despertar da API. Validação autenticada e publicação continuam pendentes.
+
 Todas as mudanças notáveis deste projeto serão documentadas neste arquivo seguindo o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Sprint 02/03 - Homologação Completa para Deploy] - Integração Ponta a Ponta `sprit02` (Fases 6 a 10) — 2026-10-29
