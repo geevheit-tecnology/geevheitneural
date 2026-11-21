@@ -5,13 +5,14 @@ import { AppItem, CreateAppInput } from "@/shared/api-client/endpoints";
 
 interface MeusAppsTabProps {
   apps: AppItem[];
-  onCreateApp: (data: CreateAppInput) => void;
+  onCreateApp: (data: CreateAppInput) => Promise<void>;
   onDeleteApp: (id: string) => void;
   isProcessing: boolean;
 }
 
 export function MeusAppsTab({ apps, onCreateApp, onDeleteApp, isProcessing }: MeusAppsTabProps) {
   const [showModal, setShowModal] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [name, setName] = useState("");
   const [hosting, setHosting] = useState("Render");
   const [database, setDatabase] = useState("Supabase");
@@ -24,16 +25,21 @@ export function MeusAppsTab({ apps, onCreateApp, onDeleteApp, isProcessing }: Me
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onCreateApp({
+    setSubmitError("");
+    try {
+    await onCreateApp({
       name: name.trim(),
       hosting,
       database,
     });
     setName("");
     setShowModal(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Não foi possível salvar o app.");
+    }
   };
 
   return (
@@ -146,6 +152,7 @@ export function MeusAppsTab({ apps, onCreateApp, onDeleteApp, isProcessing }: Me
             className="bg-[var(--surf)] border border-[var(--line)] rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-3"
           >
             <h3 className="text-base font-bold text-[var(--ink)] m-0">Cadastrar Novo App</h3>
+            {submitError && <p role="alert" className="text-sm text-red-500">{submitError}</p>}
             <div>
               <label className="text-xs text-[var(--mute)] block mb-1">Nome do app</label>
               <input

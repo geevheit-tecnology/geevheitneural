@@ -12,6 +12,22 @@ type PauseRequest struct {
 	Reason string `json:"reason"`
 }
 
+func HandleGetSystemState(uc *app.GetSystemStateUseCase) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := middleware.GetOwnerPrincipal(r.Context())
+		if !ok {
+			middleware.WriteError(w, http.StatusUnauthorized, "unauthorized", "identidade do dono ausente")
+			return
+		}
+		paused, err := uc.Execute(r.Context(), owner)
+		if err != nil {
+			middleware.WriteError(w, http.StatusServiceUnavailable, "system_state_unavailable", "não foi possível consultar o estado do sistema")
+			return
+		}
+		middleware.WriteJSON(w, http.StatusOK, map[string]any{"paused": paused})
+	}
+}
+
 func HandlePauseSystem(uc *app.PauseSystemUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		owner, ok := middleware.GetOwnerPrincipal(r.Context())

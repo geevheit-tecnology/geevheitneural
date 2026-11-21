@@ -135,7 +135,7 @@ export default function HomePage() {
   const [session, setSession] = useState<unknown>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<TabKey>("hoje");
-  const [isPaused, setIsPaused] = useState(false);
+  const [isPaused, setIsPaused] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Bottom Sheet
@@ -157,13 +157,33 @@ export default function HomePage() {
   const queryClient = useQueryClient();
 
   // Inicia SSE para atualização em tempo real
-  useSSE((paused) => setIsPaused(paused));
+  useSSE(React.useCallback((paused: boolean) => {
+    setIsPaused(paused);
+    queryClient.setQueryData(["system-state"], { paused });
+  }, [queryClient]), !!session && !isDemoMode);
+
+  const systemStateQuery = useQuery({
+    queryKey: ["system-state"],
+    queryFn: api.getSystemState,
+    enabled: !!session && !isDemoMode,
+    retry: false,
+    refetchInterval: 15000,
+  });
+  const systemStateKnown = isDemoMode || (typeof systemStateQuery.data?.paused === "boolean" && !systemStateQuery.isError);
+  useEffect(() => {
+    if (!isDemoMode && typeof systemStateQuery.data?.paused === "boolean" && !systemStateQuery.isError) {
+      setIsPaused(systemStateQuery.data.paused);
+    } else if (!isDemoMode) {
+      setIsPaused(true);
+    }
+  }, [isDemoMode, systemStateQuery.data?.paused, systemStateQuery.isError]);
 
   useEffect(() => {
     const forceDemo = typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("demo") === "true" || localStorage.getItem("geev_demo_mode") === "true");
     setIsDemoMode(!!forceDemo);
 
     if (forceDemo) {
+      setIsPaused(false);
       if (typeof window !== "undefined") sessionStorage.removeItem("geevheit_logged_out");
       setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
       setLoadingAuth(false);
@@ -195,7 +215,7 @@ export default function HomePage() {
   const { data: moneyWaiting } = useQuery({
     queryKey: ["money-waiting"],
     queryFn: () => api.getMoneyWaiting().catch(() => null),
-    enabled: !!session,
+    enabled: !!session && !isDemoMode,
   });
 
   // 2. Cartões com estado local reativo (mostra os cartões reais oficiais por padrão)
@@ -221,11 +241,13 @@ export default function HomePage() {
     return initial.filter((c) => !deletedSet.has(c.id));
   });
 
-  const { data: cardsData } = useQuery({
+  const cardsQuery = useQuery({
     queryKey: ["cards"],
-    queryFn: () => api.listCards().catch(() => null),
-    enabled: !!session,
+    queryFn: api.listCards,
+    enabled: !!session && !isDemoMode,
+    retry: false,
   });
+  const cardsData = cardsQuery.data;
 
   const cards: CardItem[] = useMemo(() => {
     let baseList: CardItem[] = [];
@@ -285,11 +307,13 @@ export default function HomePage() {
     return initial.filter((a) => !deletedSet.has(a.id));
   });
 
-  const { data: appsData } = useQuery({
+  const appsQuery = useQuery({
     queryKey: ["apps"],
-    queryFn: () => api.listApps().catch(() => null),
-    enabled: !!session,
+    queryFn: api.listApps,
+    enabled: !!session && !isDemoMode,
+    retry: false,
   });
+  const appsData = appsQuery.data;
 
   const apps: AppItem[] = useMemo(() => {
     let baseList: AppItem[] = [];
@@ -330,7 +354,7 @@ export default function HomePage() {
   const { data: financesData } = useQuery({
     queryKey: ["finances"],
     queryFn: () => api.getFinances().catch(() => null),
-    enabled: !!session,
+    enabled: !!session && !isDemoMode,
   });
 
   const finances: FinancesOverview = financesData || {
@@ -355,34 +379,31 @@ export default function HomePage() {
   const { data: connectorsData } = useQuery({
     queryKey: ["connectors"],
     queryFn: () => api.listConnectors().catch(() => null),
-    enabled: !!session,
+    enabled: !!session && !isDemoMode,
   });
 
   const connectors: ConnectorItem[] = connectorsData?.connectors || [];
 
-  // Mutações resilientes (com fallback local para Vercel preview)
   const pauseMutation = useMutation({
-    mutationFn: async () => {
-      try { return await api.pauseSystem(); }
-      catch { return { paused: true }; }
-    },
+    mutationFn: async () => isDemoMode ? { paused: true } : api.pauseSystem(),
     onSuccess: () => {
       setIsPaused(true);
+      if (!isDemoMode) queryClient.setQueryData(["system-state"], { paused: true });
       showToast("Agentes e conexões pausados. Nenhuma execução externa ocorrerá.");
       queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
     },
+    onError: (err) => showToast(err.message || "Não foi possível pausar o sistema."),
   });
 
   const resumeMutation = useMutation({
-    mutationFn: async () => {
-      try { return await api.resumeSystem(); }
-      catch { return { paused: false }; }
-    },
+    mutationFn: async () => isDemoMode ? { paused: false } : api.resumeSystem(),
     onSuccess: () => {
       setIsPaused(false);
+      if (!isDemoMode) queryClient.setQueryData(["system-state"], { paused: false });
       showToast("Sistema retomado. Os conectores seguem desligados até você ligar.");
       queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
     },
+    onError: (err) => showToast(err.message || "Não foi possível retomar o sistema."),
   });
 
   const decideMutation = useMutation({
@@ -429,8 +450,9 @@ export default function HomePage() {
 
   const deleteCardMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (isDemoMode) return;
       if (!cardsData) throw new Error("Não foi possível confirmar os dados no servidor. Tente novamente.");
-      const localOnly = [...REAL_CARDS, ...DEMO_CARDS].some((card) => card.id === id) && !cardsData.cards?.some((card) => card.id === id);
+      const localOnly = localCards.some((card) => card.id === id) && !cardsData.cards?.some((card) => card.id === id);
       if (!localOnly) await api.deleteCard(id);
     },
     onSuccess: (_, cardId) => {
@@ -445,7 +467,7 @@ export default function HomePage() {
         return updated;
       });
       setIsSheetOpen(false);
-      showToast("Demanda excluída permanentemente com sucesso!");
+      showToast(isDemoMode ? "Demanda removida da demonstração." : "Demanda excluída com sucesso!");
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
     },
@@ -502,39 +524,30 @@ export default function HomePage() {
     },
   });
 
-  const handleCreateCard = (cardData: Omit<CardItem, "id" | "created_at" | "updated_at">) => {
-    const newCard: CardItem = {
-      ...cardData,
-      id: `card_${Date.now()}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    setLocalCards((prev) => {
-      const updated = [newCard, ...prev];
-      try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
-      return updated;
-    });
-    api.createCard({
-      title: newCard.title,
-      client_name: newCard.client_name,
-      app_name: newCard.app_name,
-      type: newCard.type,
-      price_cents: newCard.price_cents,
-      est_cost_cents: newCard.est_cost_cents,
-      stage: newCard.stage,
-      priority: newCard.priority,
-    }).catch(() => {});
-    showToast("✨ Nova demanda cadastrada com sucesso!");
-    queryClient.invalidateQueries({ queryKey: ["cards"] });
-    queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+  const handleCreateCard = async (cardData: Omit<CardItem, "id" | "created_at" | "updated_at">) => {
+    if (isDemoMode) {
+      const newCard: CardItem = { ...cardData, id: `card_${Date.now()}`, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      setLocalCards((prev) => {
+        const updated = [newCard, ...prev];
+        try { localStorage.setItem("geev_local_cards", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Demanda criada na demonstração.");
+      return;
+    }
+    try {
+      await api.createCard({ title: cardData.title, client_name: cardData.client_name, app_name: cardData.app_name, type: cardData.type, price_cents: cardData.price_cents, est_cost_cents: cardData.est_cost_cents, stage: cardData.stage, priority: cardData.priority });
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["cards"] }), queryClient.invalidateQueries({ queryKey: ["money-waiting"] })]);
+      showToast("Demanda salva no servidor.");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Não foi possível salvar a demanda.");
+      throw err;
+    }
   };
 
   const createAppMutation = useMutation({
     mutationFn: async (data: Parameters<typeof api.createApp>[0]) => {
-      try {
-        return await api.createApp(data);
-      } catch (err) {
-        // Fallback local se API offline
+      if (isDemoMode) {
         const newApp: AppItem = {
           id: `app_${Date.now()}`,
           client_name: "Minha Software House",
@@ -558,17 +571,20 @@ export default function HomePage() {
         });
         return { success: true };
       }
+      return api.createApp(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["apps"] });
-      showToast("App cadastrado com sucesso!");
+      showToast(isDemoMode ? "App criado na demonstração." : "App salvo no servidor.");
     },
+    onError: (err: Error) => showToast(err.message || "Não foi possível salvar o app."),
   });
 
   const deleteAppMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (isDemoMode) return;
       if (!appsData) throw new Error("Não foi possível confirmar os dados no servidor. Tente novamente.");
-      const localOnly = [...REAL_APPS, ...DEMO_APPS].some((app) => app.id === id) && !appsData.apps?.some((app) => app.id === id);
+      const localOnly = localApps.some((app) => app.id === id) && !appsData.apps?.some((app) => app.id === id);
       if (!localOnly) await api.deleteApp(id);
     },
     onSuccess: (_, appId) => {
@@ -582,7 +598,7 @@ export default function HomePage() {
         return updated;
       });
       queryClient.invalidateQueries({ queryKey: ["apps"] });
-      showToast("App removido com sucesso!");
+      showToast(isDemoMode ? "App removido da demonstração." : "App removido com sucesso!");
     },
     onError: (err: Error) => showToast(err.message || "Falha ao excluir app"),
   });
@@ -790,6 +806,7 @@ export default function HomePage() {
               localStorage.setItem("geev_demo_mode", "true");
             }
             setIsDemoMode(true);
+            setIsPaused(false);
             setSession({ user: { email: "dono@geevheit.com", id: "owner-demo" } });
           }}
         />
@@ -809,7 +826,7 @@ export default function HomePage() {
           if (isPaused) resumeMutation.mutate();
           else pauseMutation.mutate();
         }}
-        isTogglingPause={pauseMutation.isPending || resumeMutation.isPending}
+        isTogglingPause={pauseMutation.isPending || resumeMutation.isPending || !systemStateKnown}
         userEmail={userEmail}
         onLogout={handleLogout}
         onNavigateHome={() => setActiveTab("hoje")}
@@ -819,7 +836,9 @@ export default function HomePage() {
       />
 
       {/* Banner de Sistema Pausado */}
-      <PausedBanner isPaused={isPaused} onResume={() => resumeMutation.mutate()} />
+      <PausedBanner isPaused={systemStateKnown && isPaused} onResume={() => resumeMutation.mutate()} />
+      {!systemStateKnown && <div role="alert" className="mx-4 mb-3 rounded-xl border border-amber-500/40 p-3 text-sm">Não foi possível confirmar o estado do sistema. Verifique a conexão e tente novamente. <button className="underline" onClick={() => systemStateQuery.refetch()}>Atualizar estado</button></div>}
+      {!isDemoMode && (cardsQuery.isError || appsQuery.isError) && <div role="alert" className="mx-4 mb-3 rounded-xl border border-amber-500/40 p-3 text-sm">Não foi possível atualizar {cardsQuery.isError && appsQuery.isError ? "demandas e apps" : cardsQuery.isError ? "as demandas" : "os apps"}. A lista pode estar desatualizada. <button className="underline" onClick={() => { if (cardsQuery.isError) void cardsQuery.refetch(); if (appsQuery.isError) void appsQuery.refetch(); }}>Tentar novamente</button></div>}
 
       {/* Banner de Modo Demonstração */}
       {isDemoMode && (
@@ -890,7 +909,7 @@ export default function HomePage() {
         {activeTab === "apps" && (
           <MeusAppsTab
             apps={apps}
-            onCreateApp={(data) => createAppMutation.mutate(data)}
+            onCreateApp={async (data) => { await createAppMutation.mutateAsync(data); }}
             onDeleteApp={(id) => deleteAppMutation.mutate(id)}
             isProcessing={createAppMutation.isPending}
           />
@@ -926,6 +945,7 @@ export default function HomePage() {
 
       {/* Bottom Sheet de Detalhe do Cartão */}
       <CardDetailSheet
+        key={selectedCardDetails?.card?.id ?? "none"}
         cardDetails={selectedCardDetails}
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
@@ -975,7 +995,7 @@ export default function HomePage() {
       <NewBoardModal
         isOpen={isNewBoardModalOpen}
         onClose={() => setIsNewBoardModalOpen(false)}
-        onCreateBoard={(data) => createAppMutation.mutate(data)}
+        onCreateBoard={async (data) => { await createAppMutation.mutateAsync(data); }}
         isProcessing={createAppMutation.isPending}
       />
 

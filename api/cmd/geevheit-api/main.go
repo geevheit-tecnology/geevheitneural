@@ -92,18 +92,19 @@ func main() {
 
 	// Casos de Uso
 	decideGateUC := app.NewDecideGateUseCase(uow, publisher, clk)
+	getSystemStateUC := app.NewGetSystemStateUseCase(uow)
 	pauseSystemUC := app.NewPauseSystemUseCase(uow, publisher, clk)
 	resumeSystemUC := app.NewResumeSystemUseCase(uow, publisher, clk)
 	getMoneyWaitingUC := app.NewGetMoneyWaitingUseCase(moneyReader)
 
 	listCardsUC := app.NewListCardsUseCase(cardRepo)
 	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo)
-	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher)
+	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher, uow)
 
-	listAppsUC := app.NewListAppsUseCase(appRepo)
-	createAppUC := app.NewCreateAppUseCase(appRepo, publisher)
-	updateAppUC := app.NewUpdateAppUseCase(appRepo, publisher)
-	deleteAppUC := app.NewDeleteAppUseCase(appRepo, publisher)
+	listAppsUC := app.NewListAppsUseCase(appRepo, uow)
+	createAppUC := app.NewCreateAppUseCase(appRepo, publisher, uow)
+	updateAppUC := app.NewUpdateAppUseCase(appRepo, publisher, uow)
+	deleteAppUC := app.NewDeleteAppUseCase(appRepo, publisher, uow)
 	appHandlers := handlers.NewAppHandlers(listAppsUC, createAppUC, updateAppUC, deleteAppUC)
 
 	overviewFinancesUC := app.NewGetFinancesOverviewUseCase(financeRepo)
@@ -280,6 +281,7 @@ func main() {
 
 	// Decisões e Sistema
 	mux.Handle("POST /v1/cards/{id}/decision", requireAuth(handlers.HandleDecideGate(decideGateUC)))
+	mux.Handle("GET /v1/system/state", requireAuth(handlers.HandleGetSystemState(getSystemStateUC)))
 	mux.Handle("POST /v1/system/pause", requireAuth(handlers.HandlePauseSystem(pauseSystemUC)))
 	mux.Handle("POST /v1/system/resume", requireAuth(handlers.HandleResumeSystem(resumeSystemUC)))
 	mux.Handle("GET /v1/money-waiting", requireAuth(handlers.HandleGetMoneyWaiting(getMoneyWaitingUC)))

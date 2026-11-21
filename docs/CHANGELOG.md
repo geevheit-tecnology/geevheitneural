@@ -1,5 +1,11 @@
 # Changelog — GeevheitNeural
 
+## Correções de produção (RLS, estado de pausa e painel) — 2026-11-21
+- Adicionada rota autenticada `GET /v1/system/state` e leitura real do estado de pausa na interface, impedindo ações quando o estado não está confirmado.
+- Exclusão de cartões (`DELETE /v1/cards/{id}`) e CRUD de apps passam a usar `UnitOfWork` com contexto RLS/claims, dono autenticado na criação de apps e verificação de linhas afetadas em atualização/exclusão.
+- Painel de agentes permite tentar novamente em falha de carga, não exibe estado desconhecido como desligado e bloqueia alternância sem ID confirmado.
+- Detalhe do cartão exibe arquivos do workspace mesmo sem metadados de prévia publicada; modo demonstração não dispara consultas/SSE reais.
+
 ## Diagnóstico de exclusões e fábrica — 2026-11-20
 - Aprovação do prompt na interface inicia a construção e informa erros reais; cartão permite nova tentativa. Corrigidos IDs de ativação e verificações de agentes desligados na fábrica.
 - Comando de aprovação também tenta iniciar a construção após salvar a decisão; tela deixa de inventar especificações e arquivos em caso de erro. Teste controlado com Gemini real gerou HTML em sandbox local.

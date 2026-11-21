@@ -113,7 +113,9 @@ export function CardDetailSheet({
     rollback_plan?: Record<string, unknown>;
   } | null>(null);
   const [workspaceFiles, setWorkspaceFiles] = React.useState<Array<{ path: string; content: string }>>([]);
+  const workspaceRequestRef = React.useRef(0);
   const [showWorkspace, setShowWorkspace] = React.useState(false);
+  const [showPrivatePreview, setShowPrivatePreview] = React.useState(false);
   const [rollingBack, setRollingBack] = React.useState(false);
 
   const [memories, setMemories] = React.useState<
@@ -176,9 +178,10 @@ export function CardDetailSheet({
         .then((pr) => setPreviewInfo(pr))
         .catch(() => setPreviewInfo(null));
 
+      const workspaceRequest = ++workspaceRequestRef.current;
       api.getCardWorkspace(cardId)
-        .then((ws) => setWorkspaceFiles(ws.files || []))
-        .catch(() => setWorkspaceFiles([]));
+        .then((ws) => { if (workspaceRequest === workspaceRequestRef.current) setWorkspaceFiles(ws.files || []); })
+        .catch(() => { if (workspaceRequest === workspaceRequestRef.current) setWorkspaceFiles([]); });
 
       // Fase 9 (F9-05): Carrega Memória Viva do Projeto
       api.getCardMemory(cardId)
@@ -206,13 +209,28 @@ export function CardDetailSheet({
 
   // Atualiza pipeline em tempo real enquanto estiver rodando
   React.useEffect(() => {
-    if (!isOpen || !cardDetails?.card?.id || pipelineData?.status !== "running") return;
+    if (!isOpen || !cardDetails?.card?.id || !["queued", "running"].includes(pipelineData?.status ?? "")) return;
     const timer = setInterval(() => {
       api.getPipeline(cardDetails.card.id)
         .then((p) => setPipelineData(p))
         .catch(() => {});
     }, 1800);
     return () => clearInterval(timer);
+  }, [isOpen, cardDetails?.card?.id, pipelineData?.status]);
+
+  // O workspace pode ficar pronto depois da primeira abertura do cartão.
+  React.useEffect(() => {
+    if (!isOpen || !cardDetails?.card?.id || pipelineData?.status !== "completed") return;
+    let active = true;
+    const cardId = cardDetails.card.id;
+    const workspaceRequest = ++workspaceRequestRef.current;
+    api.getCardWorkspace(cardId)
+      .then((ws) => { if (active && workspaceRequest === workspaceRequestRef.current) setWorkspaceFiles(ws.files || []); })
+      .catch(() => { if (active && workspaceRequest === workspaceRequestRef.current) setWorkspaceFiles([]); });
+    api.getCardPreviewInfo(cardId)
+      .then((preview) => { if (active) setPreviewInfo(preview); })
+      .catch(() => { if (active) setPreviewInfo(null); });
+    return () => { active = false; };
   }, [isOpen, cardDetails?.card?.id, pipelineData?.status]);
 
   const handleCopyScopeLink = () => {
@@ -597,11 +615,11 @@ export function CardDetailSheet({
           <div className="bg-[var(--surf)] border border-[var(--line)] rounded-xl p-3 mb-4 text-xs">
             <div className="flex items-center justify-between mb-2">
               <b className="text-[var(--ink)] flex items-center gap-1.5 text-sm">
-                <span className="w-2 h-2 rounded-full bg-[var(--acc)] animate-pulse" />
+                <span className={`w-2 h-2 rounded-full bg-[var(--acc)] ${pipelineData.status === "running" ? "animate-pulse" : ""}`} />
                 Pipeline da Fábrica Autônoma
               </b>
               <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-[var(--accs)] text-[var(--acc)]">
-                {pipelineData.status}
+                {({ queued: "Na fila", running: "Em execução", interrupted: "Interrompido", failed: "Falhou", completed: "Concluído", paused_spend_limit: "Pausado por limite" } as Record<string, string>)[pipelineData.status] ?? pipelineData.status}
               </span>
             </div>
             <div className="space-y-1 text-[var(--mute)]">
@@ -754,13 +772,13 @@ export function CardDetailSheet({
         )}
 
         {/* Prévia ao Vivo, Código do Workspace & Plano de Reversão Automático (Fase 9 - sprit02) */}
-        {previewInfo && (
+        {(previewInfo || workspaceFiles.length > 0) && (
           <div className="bg-[var(--surf)] border border-purple-500/30 rounded-xl p-3.5 mb-4 text-xs">
             <div className="flex items-center justify-between mb-2">
               <b className="text-[var(--ink)] flex items-center gap-1.5 text-sm font-bold">
-                <span>🚀</span> Prévia ao Vivo & Plano de Reversão
+                <span>🚀</span> Arquivos e prévia
               </b>
-              <span
+              {previewInfo && <span
                 className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                   previewInfo.status === "rolled_back"
                     ? "bg-amber-500/20 text-amber-500"
@@ -768,11 +786,11 @@ export function CardDetailSheet({
                 }`}
               >
                 {previewInfo.status === "rolled_back" ? "Revertido ⏪" : "Staging Ativo"}
-              </span>
+              </span>}
             </div>
 
             <div className="grid grid-cols-2 gap-2 mb-2.5">
-              <a
+              {previewInfo && <a
                 id="btn-open-live-preview"
                 href={previewInfo.preview_url || `/v1/cards/${card.id}/preview`}
                 target="_blank"
@@ -781,7 +799,7 @@ export function CardDetailSheet({
               >
                 <span>🌐 Abrir Prévia ao Vivo</span>
                 <span>↗</span>
-              </a>
+              </a>}
               <button
                 type="button"
                 id="btn-toggle-workspace-files"
@@ -807,7 +825,32 @@ export function CardDetailSheet({
               </div>
             )}
 
-            <div className="p-2.5 rounded-lg bg-[var(--bg)]/60 border border-[var(--line)] mb-2 text-[11px]">
+            {workspaceFiles.some((file) => file.path.toLowerCase() === "index.html") && (
+              <div className="mt-2 space-y-2">
+                <button
+                  type="button"
+                  id="btn-private-workspace-preview"
+                  onClick={() => setShowPrivatePreview((current) => !current)}
+                  className="w-full py-2 px-3 rounded-lg font-semibold text-xs border border-purple-500/40 text-purple-600 dark:text-purple-300"
+                >
+                  {showPrivatePreview ? "Fechar prévia protegida" : "Abrir prévia protegida"}
+                </button>
+                {showPrivatePreview && (
+                  <>
+                    <p className="text-[var(--mute)]">Prévia do index.html; arquivos externos do projeto não são carregados nesta visualização.</p>
+                    <iframe
+                      title="Prévia protegida da página"
+                      sandbox="allow-scripts"
+                      referrerPolicy="no-referrer"
+                      srcDoc={workspaceFiles.find((file) => file.path.toLowerCase() === "index.html")?.content}
+                      className="w-full h-80 rounded-lg border border-[var(--line)] bg-white"
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
+            {previewInfo && <div className="p-2.5 rounded-lg bg-[var(--bg)]/60 border border-[var(--line)] mb-2 text-[11px]">
               <b className="text-[var(--ink)] block mb-1">Plano de Reversão Automático (Rollback):</b>
               <div className="font-mono text-[10px] text-[var(--mute)] whitespace-pre-line">
                 {String(
@@ -815,9 +858,9 @@ export function CardDetailSheet({
                     `Estratégia: ${previewInfo.rollback_plan?.strategy || "blue_green_instant_rollback"} · Tag DB: ${previewInfo.rollback_plan?.database_tag || "goose_safe_point"}`
                 )}
               </div>
-            </div>
+            </div>}
 
-            <button
+            {previewInfo && <button
               type="button"
               id="btn-execute-rollback"
               disabled={rollingBack || previewInfo.status === "rolled_back"}
@@ -829,7 +872,7 @@ export function CardDetailSheet({
                 : previewInfo.status === "rolled_back"
                 ? "✓ Versão Revertida para Snapshot Estável Anterior"
                 : "⏪ Executar Reversão Automática (Rollback Instantâneo)"}
-            </button>
+            </button>}
           </div>
         )}
 
@@ -911,7 +954,7 @@ export function CardDetailSheet({
         {/* Botões de Ação */}
         <div className="grid gap-2">
           {/* Botão de Construção Autônoma com Teto de Gasto (Fase 6 - sprit02) */}
-          {onBuild && card.stage !== "entregue" && card.stage !== "recusado" && card.stage !== "entrega_aprovar" && pipelineData?.status !== "running" && (
+          {onBuild && card.stage !== "entregue" && card.stage !== "recusado" && card.stage !== "entrega_aprovar" && !["running", "queued", "interrupted"].includes(pipelineData?.status ?? "") && (
             <div className="p-2.5 rounded-xl border border-[var(--acc)]/30 bg-[var(--accs)]/20 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-[var(--mute)] font-medium">Teto de gasto de IA para este cartão:</span>

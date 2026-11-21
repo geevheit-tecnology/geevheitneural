@@ -1,5 +1,10 @@
 # Memory — GeevheitNeural
 
+## Publicação das correções de produção — 2026-11-21
+- Dono autorizou levar para `main` apenas as correções prontas (mantendo a migração da API para a Vercel isolada na branch `trabalho/migracao-api-vercel`).
+- Portadas para `main`: rota `GET /v1/system/state` com bloqueio no painel quando o estado de pausa não é confirmado; `DELETE /v1/cards/{id}` e CRUD de apps via `UnitOfWork` com claims RLS e verificação de linhas afetadas (dono autenticado ao criar app); retry/bloqueio seguro no painel de agentes (`AgentsCockpit`); exibição de arquivos do workspace e prévia isolada em `CardDetailSheet`; desativação de consultas/SSE reais no modo demonstração.
+- Validados localmente: `go vet ./...`, `go test -race ./...`, `go build ./...` e build estático Next.js (`out/`).
+
 ## Diagnóstico de exclusões e fábrica — 2026-11-20
 - Publicação autorizada: função `geev.prevent_mutation` da migration 00011 estava ausente no projeto Supabase `tggzeapudgzswdojtndj`; aplicada por SQL e verificada por leitura. A aplicação manual da função não registra automaticamente a versão no histórico de migrations. Não apagou registros existentes.
 - Continuação: aprovação na tela e pelo assistente não mascara mais erros e, ao aprovar o prompt, chama a construção; falha no início preserva a aprovação e permite nova tentativa. Comando ambíguo não cria outra demanda.

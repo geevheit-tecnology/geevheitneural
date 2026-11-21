@@ -172,6 +172,7 @@ export const api = {
       method: "DELETE",
     }),
 
+  getSystemState: () => apiClient<{ paused: boolean }>("/v1/system/state"),
   pauseSystem: (reason?: string) =>
     apiClient<{ success: boolean; paused: boolean }>("/v1/system/pause", {
       method: "POST",
