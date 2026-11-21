@@ -1,6 +1,7 @@
 # Changelog — GeevheitNeural
 
 ## Correções de produção (RLS, estado de pausa e painel) — 2026-11-21
+- Preparados provedores pagos sob demanda (desligados por padrão) em `Conexões → Ferramentas de criação`: OpenAI (GPT), Anthropic (Claude) e OpenRouter (multi-modelo), com adaptadores Go stdlib e chaves exclusivas em variáveis de ambiente do servidor (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`).
 - `ListCardsUseCase` e `GetCardDetailsUseCase` agora usam `UnitOfWork` com RLS/claims, alinhando leitura e exclusão de cartões ao dono autenticado.
 - `ProcessCommandUseCase` (`IntentBuild`) valida prontidão da fábrica (`CheckReady`: pausa, provedor e 7 agentes) antes de criar cartão, evitando cartões órfãos presos em `em_execucao`; conclusão do pipeline atualiza `current_task` corretamente.
 - Frontend em sessão real usa a resposta da API como fonte de verdade para cartões e apps, impedindo que `geev_local_cards`/`geev_local_apps` ressuscitem itens excluídos ao reabrir o app.

@@ -4,9 +4,12 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/api-client/endpoints";
 
-const details = {
-  gemini: { purpose: "Gerar páginas, sites e código com contexto do projeto.", url: "https://aistudio.google.com/", limits: "Cota gratuita varia por modelo, região e conta.", key: "GEMINI_API_KEY" },
-  groq: { purpose: "Gerar e revisar código usando os modelos disponíveis na Groq.", url: "https://console.groq.com/", limits: "Plano Free limitado por requisições e tokens; confira a cota da sua conta.", key: "GROQ_API_KEY" },
+const details: Record<string, { purpose: string; url: string; limits: string; key: string; billing: "free" | "paid" }> = {
+  gemini: { purpose: "Gerar páginas, sites e código com contexto do projeto.", url: "https://aistudio.google.com/", limits: "Cota gratuita varia por modelo, região e conta.", key: "GEMINI_API_KEY", billing: "free" },
+  groq: { purpose: "Gerar e revisar código usando os modelos disponíveis na Groq.", url: "https://console.groq.com/", limits: "Plano Free limitado por requisições e tokens; confira a cota da sua conta.", key: "GROQ_API_KEY", billing: "free" },
+  openai: { purpose: "Usar modelos pagos da OpenAI (ex.: GPT-4.1 mini / GPT-4.1) sob demanda.", url: "https://platform.openai.com/api-keys", limits: "Cobrança por uso na sua conta OpenAI; respeita o teto de gasto por projeto.", key: "OPENAI_API_KEY", billing: "paid" },
+  anthropic: { purpose: "Usar modelos Claude da Anthropic (ex.: Claude Sonnet) sob demanda.", url: "https://console.anthropic.com/", limits: "Cobrança por uso na sua conta Anthropic; respeita o teto de gasto por projeto.", key: "ANTHROPIC_API_KEY", billing: "paid" },
+  openrouter: { purpose: "Acessar vários modelos pagos (Claude, GPT, Gemini Pro) com uma única chave.", url: "https://openrouter.ai/keys", limits: "Cobrança pré-paga por créditos na OpenRouter; defina o modelo em OPENROUTER_MODEL.", key: "OPENROUTER_API_KEY", billing: "paid" },
 };
 
 export function FactoryToolsPanel({ onShowToast, isDemoMode = false }: { onShowToast: (message: string) => void; isDemoMode?: boolean }) {
@@ -41,7 +44,7 @@ export function FactoryToolsPanel({ onShowToast, isDemoMode = false }: { onShowT
         <p className="text-xs text-[var(--mute)] m-0">Uma chave configurada não confirma saldo ou disponibilidade. Confira o plano gratuito no provedor. Se a cota acabar, a fábrica informa a falha e aguarda sua decisão.</p>
         <label className="flex items-start gap-2 text-sm text-[var(--ink)]">
           <input id="factory-free-tier-confirmation" type="checkbox" disabled={isDemoMode} checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1" />
-          Confirmei que a conta e o modelo que vou ativar usam a cota gratuita, sem cobrança habilitada.
+          Confirmei o plano/custo do provedor escolhido (cota gratuita ou cobrança sob demanda com teto por projeto).
         </label>
       </div>
 
@@ -54,11 +57,23 @@ export function FactoryToolsPanel({ onShowToast, isDemoMode = false }: { onShowT
       {selection.isError && <p role="alert" className="text-sm text-red-500">{selection.error.message}</p>}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {(isDemoMode ? [{ id: "gemini" as const, name: "Google Gemini", configured: false, active: false }, { id: "groq" as const, name: "Groq", configured: false, active: false }] : query.data ?? []).map(tool => {
+        {(isDemoMode ? [
+          { id: "gemini" as const, name: "Google Gemini", configured: false, active: false },
+          { id: "groq" as const, name: "Groq", configured: false, active: false },
+          { id: "openai" as const, name: "OpenAI (GPT)", configured: false, active: false },
+          { id: "anthropic" as const, name: "Anthropic (Claude)", configured: false, active: false },
+          { id: "openrouter" as const, name: "OpenRouter (Multi-modelo)", configured: false, active: false },
+        ] : query.data ?? []).map(tool => {
           const info = details[tool.id];
+          if (!info) return null;
           return <article key={tool.id} className="min-w-0 rounded-2xl border border-[var(--line)] bg-[var(--surf)] p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h4 className="m-0 font-bold text-[var(--ink)]">{tool.name}</h4>
+              <div className="flex items-center gap-2">
+                <h4 className="m-0 font-bold text-[var(--ink)]">{tool.name}</h4>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${info.billing === "paid" ? "bg-amber-500/15 text-amber-600 dark:text-amber-300" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"}`}>
+                  {info.billing === "paid" ? "Pago (sob demanda)" : "Gratuito"}
+                </span>
+              </div>
               <span className="text-xs text-[var(--mute)]">{tool.active ? "Selecionado para geração" : "Desligado"}</span>
             </div>
             <p className="text-sm text-[var(--ink)] m-0">{info.purpose}</p>

@@ -168,6 +168,27 @@ func main() {
 			Model:  os.Getenv("GEMINI_MODEL"),
 		})
 	}
+	if openaiKey := os.Getenv("OPENAI_API_KEY"); openaiKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "openai"), slog.String("model", os.Getenv("OPENAI_MODEL")))
+		runners["openai"] = agents.NewOpenAIAgentRunner(agents.OpenAICompatConfig{
+			APIKey: openaiKey,
+			Model:  os.Getenv("OPENAI_MODEL"),
+		})
+	}
+	if anthropicKey := os.Getenv("ANTHROPIC_API_KEY"); anthropicKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "anthropic"), slog.String("model", os.Getenv("ANTHROPIC_MODEL")))
+		runners["anthropic"] = agents.NewAnthropicAgentRunner(agents.AnthropicConfig{
+			APIKey: anthropicKey,
+			Model:  os.Getenv("ANTHROPIC_MODEL"),
+		})
+	}
+	if openrouterKey := os.Getenv("OPENROUTER_API_KEY"); openrouterKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "openrouter"), slog.String("model", os.Getenv("OPENROUTER_MODEL")))
+		runners["openrouter"] = agents.NewOpenRouterAgentRunner(agents.OpenAICompatConfig{
+			APIKey: openrouterKey,
+			Model:  os.Getenv("OPENROUTER_MODEL"),
+		})
+	}
 	guard := system.NewExecutionGuard()
 	legacyProvider := ""
 	if (runnerType == "groq" || runnerType == "") && runners["groq"] != nil {

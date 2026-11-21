@@ -1,7 +1,7 @@
 import { apiClient } from "./index";
 
 export interface FactoryToolItem {
-  id: "gemini" | "groq";
+  id: "gemini" | "groq" | "openai" | "anthropic" | "openrouter";
   name: string;
   configured: boolean;
   active: boolean;
