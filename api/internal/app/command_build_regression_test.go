@@ -12,8 +12,15 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/domain/clock"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
 	"github.com/geevheit/neuralcenter/api/internal/domain/money"
+	"github.com/geevheit/neuralcenter/api/internal/domain/pipeline"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
 )
+
+type stubReadyRunner struct{}
+
+func (stubReadyRunner) RunStep(context.Context, pipeline.Role, string, map[string]any) (*pipeline.RunnerResult, error) {
+	return &pipeline.RunnerResult{Output: "ok"}, nil
+}
 
 func TestCommandApprovesBeforeReportingFactoryUnavailable(t *testing.T) {
 	now := time.Now()
@@ -47,5 +54,42 @@ func TestBuildCommandDoesNotCreateOnAmbiguousTarget(t *testing.T) {
 	_, err := uc.Execute(context.Background(), app.ProcessCommandInput{Text: "construir Landing"})
 	if !errors.Is(err, command.ErrAmbiguousTarget) {
 		t.Fatalf("expected ambiguous target, got %v", err)
+	}
+}
+
+func TestBuildCommandDoesNotCreateOrphanCardWhenSystemPaused(t *testing.T) {
+	owner, _ := system.NewOwnerPrincipal("owner-1", "aal2")
+	cards := &fakeCardRepo{cards: map[string]*card.Card{}}
+	uow := &fakeUnitOfWork{repos: app.Repositories{
+		Cards:       cards,
+		SystemState: &fakeSystemStateRepo{state: &system.SystemState{Paused: true}},
+	}}
+	startBuild := app.NewStartBuildUseCase(uow, &fakePublisher{}, system.NewExecutionGuard(), stubReadyRunner{})
+	uc := app.NewProcessCommandUseCase(cards, nil, nil, nil, nil, nil, nil).
+		WithCreateCard(app.NewCreateCardUseCase(uow, &fakePublisher{})).
+		WithStartBuild(startBuild)
+
+	_, err := uc.Execute(context.Background(), app.ProcessCommandInput{Owner: owner, Text: "construir Landing Page Nova"})
+	if !errors.Is(err, card.ErrSystemPaused) {
+		t.Fatalf("expected ErrSystemPaused, got %v", err)
+	}
+	if len(cards.cards) != 0 {
+		t.Fatalf("expected 0 orphan cards created when paused, got %d", len(cards.cards))
+	}
+}
+
+func TestListCardsUseCaseUsesUnitOfWorkWhenProvided(t *testing.T) {
+	now := time.Now()
+	c1, _ := card.New("card-1", "owner-1", "client-1", card.TypeOrcamento, "Landing", money.NewBRL(10000), money.NewBRL(1000), now)
+	txCards := &fakeCardRepo{cards: map[string]*card.Card{c1.ID: c1}}
+	uow := &fakeUnitOfWork{repos: app.Repositories{Cards: txCards}}
+	uc := app.NewListCardsUseCase(&fakeCardRepo{cards: map[string]*card.Card{}}, uow)
+
+	items, err := uc.Execute(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if len(items) != 1 || items[0].ID != c1.ID {
+		t.Fatalf("expected card from UoW transaction, got %+v", items)
 	}
 }

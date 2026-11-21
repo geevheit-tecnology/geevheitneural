@@ -52,8 +52,8 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	getSystemStateUC := app.NewGetSystemStateUseCase(uow)
 	getMoneyWaitingUC := app.NewGetMoneyWaitingUseCase(moneyReader)
 
-	listCardsUC := app.NewListCardsUseCase(cardRepo)
-	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo)
+	listCardsUC := app.NewListCardsUseCase(cardRepo, uow)
+	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo, uow)
 	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher, uow)
 
 	listAppsUC := app.NewListAppsUseCase(appRepo, uow)
@@ -120,6 +120,27 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 		runners["gemini"] = agents.NewGeminiAgentRunner(agents.GeminiConfig{
 			APIKey: geminiKey,
 			Model:  os.Getenv("GEMINI_MODEL"),
+		})
+	}
+	if openaiKey := os.Getenv("OPENAI_API_KEY"); openaiKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "openai"), slog.String("model", os.Getenv("OPENAI_MODEL")))
+		runners["openai"] = agents.NewOpenAIAgentRunner(agents.OpenAICompatConfig{
+			APIKey: openaiKey,
+			Model:  os.Getenv("OPENAI_MODEL"),
+		})
+	}
+	if anthropicKey := os.Getenv("ANTHROPIC_API_KEY"); anthropicKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "anthropic"), slog.String("model", os.Getenv("ANTHROPIC_MODEL")))
+		runners["anthropic"] = agents.NewAnthropicAgentRunner(agents.AnthropicConfig{
+			APIKey: anthropicKey,
+			Model:  os.Getenv("ANTHROPIC_MODEL"),
+		})
+	}
+	if openrouterKey := os.Getenv("OPENROUTER_API_KEY"); openrouterKey != "" {
+		logger.Info("factory_provider_configured", slog.String("provider", "openrouter"), slog.String("model", os.Getenv("OPENROUTER_MODEL")))
+		runners["openrouter"] = agents.NewOpenRouterAgentRunner(agents.OpenAICompatConfig{
+			APIKey: openrouterKey,
+			Model:  os.Getenv("OPENROUTER_MODEL"),
 		})
 	}
 	guard := system.NewExecutionGuard()

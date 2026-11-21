@@ -1,5 +1,15 @@
 # Changelog — GeevheitNeural
 
+## Correções de produção (RLS, estado de pausa e painel) — 2026-11-21
+- Preparados provedores pagos sob demanda (desligados por padrão) em `Conexões → Ferramentas de criação`: OpenAI (GPT), Anthropic (Claude) e OpenRouter (multi-modelo), com adaptadores Go stdlib e chaves exclusivas em variáveis de ambiente do servidor (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`).
+- `ListCardsUseCase` e `GetCardDetailsUseCase` agora usam `UnitOfWork` com RLS/claims, alinhando leitura e exclusão de cartões ao dono autenticado.
+- `ProcessCommandUseCase` (`IntentBuild`) valida prontidão da fábrica (`CheckReady`: pausa, provedor e 7 agentes) antes de criar cartão, evitando cartões órfãos presos em `em_execucao`; conclusão do pipeline atualiza `current_task` corretamente.
+- Frontend em sessão real usa a resposta da API como fonte de verdade para cartões e apps, impedindo que `geev_local_cards`/`geev_local_apps` ressuscitem itens excluídos ao reabrir o app.
+- Adicionada rota autenticada `GET /v1/system/state` e leitura real do estado de pausa na interface, impedindo ações quando o estado não está confirmado.
+- Exclusão de cartões (`DELETE /v1/cards/{id}`) e CRUD de apps passam a usar `UnitOfWork` com contexto RLS/claims, dono autenticado na criação de apps e verificação de linhas afetadas em atualização/exclusão.
+- Painel de agentes permite tentar novamente em falha de carga, não exibe estado desconhecido como desligado e bloqueia alternância sem ID confirmado.
+- Detalhe do cartão exibe arquivos do workspace mesmo sem metadados de prévia publicada; modo demonstração não dispara consultas/SSE reais.
+
 ## Migração da API para Vercel — diagnóstico
 - Entregas repetidas não confirmam tarefa ainda em execução; lease expirado é marcado como interrupção, sem executar novamente. Validado em PostgreSQL local com rollback.
 - Exercitado roteamento no emulador com banco fictício, incluindo autenticação ausente; removido parâmetro de captura interno para preservar query do usuário. Prévia atualizada sem credenciais.

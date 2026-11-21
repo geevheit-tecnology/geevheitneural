@@ -10,7 +10,16 @@ import (
 )
 
 var ErrFactoryToolUnavailable = errors.New("ferramenta indisponível: configure a chave no servidor")
-var ErrFactoryToolSelection = errors.New("selecione Gemini ou Groq e confirme o uso de uma conta e modelo na cota gratuita")
+var ErrFactoryToolSelection = errors.New("selecione um provedor suportado e confirme a ciência do plano/custo antes de ativar")
+
+func isSupportedFactoryProvider(provider string) bool {
+	switch provider {
+	case "gemini", "groq", "openai", "anthropic", "openrouter":
+		return true
+	default:
+		return false
+	}
+}
 
 // FactoryToolSelection usa a tabela de conectores existente, sem armazenar chaves.
 type FactoryToolSelection struct {
@@ -67,7 +76,13 @@ func (uc *FactoryTools) List(ctx context.Context) ([]FactoryToolDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	items := []FactoryToolDTO{{ID: "gemini", Name: "Google Gemini"}, {ID: "groq", Name: "Groq"}}
+	items := []FactoryToolDTO{
+		{ID: "gemini", Name: "Google Gemini"},
+		{ID: "groq", Name: "Groq"},
+		{ID: "openai", Name: "OpenAI (GPT)"},
+		{ID: "anthropic", Name: "Anthropic (Claude)"},
+		{ID: "openrouter", Name: "OpenRouter (Multi-modelo)"},
+	}
 	for i := range items {
 		items[i].Configured = uc.runners[items[i].ID] != nil
 		items[i].Active = selected.Active && selected.Provider == items[i].ID
@@ -79,7 +94,7 @@ func (uc *FactoryTools) Select(ctx context.Context, owner system.OwnerPrincipal,
 	if owner.ID == "" || owner.AAL != "aal2" {
 		return system.ErrOwnerRequired
 	}
-	if provider != "gemini" && provider != "groq" {
+	if !isSupportedFactoryProvider(provider) {
 		return ErrFactoryToolSelection
 	}
 	if active && !freeTierConfirmed {

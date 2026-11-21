@@ -10,10 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/geevheit/neuralcenter/api/config"
-	"github.com/geevheit/neuralcenter/api/internal/bootstrap"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/geevheit/neuralcenter/api/config"
+	"github.com/geevheit/neuralcenter/api/internal/bootstrap"
 )
 
 func main() {

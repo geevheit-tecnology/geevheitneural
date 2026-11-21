@@ -150,6 +150,12 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 			if !errors.Is(err, command.ErrTargetNotFound) || strings.TrimSpace(parsed.Target) == "" {
 				return nil, err
 			}
+			// Verifica se a fábrica está pronta (não pausada, provedor e 7 agentes ativos) antes de criar o cartão
+			if uc.startBuildUC != nil {
+				if readyErr := uc.startBuildUC.CheckReady(ctx); readyErr != nil {
+					return nil, readyErr
+				}
+			}
 			// Se o cartão não existe previamente, cria automaticamente e inicia o pipeline (sprit02)
 			if uc.createCardUC != nil {
 				title := parsed.Target
@@ -165,7 +171,7 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 					Title:      title,
 					ClientName: client,
 					PriceCents: 350000,
-					Stage:      string(card.StageEmExecucao),
+					Stage:      string(card.StagePromptAprovar),
 				})
 				if createErr != nil {
 					return nil, fmt.Errorf("falha ao criar cartão para construção: %w", createErr)
