@@ -3,6 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/geevheit/neuralcenter/api/internal/adapters/http/middleware"
 	"github.com/geevheit/neuralcenter/api/internal/app"
@@ -32,8 +35,14 @@ func HandleStartBuild(uc *app.StartBuildUseCase) http.HandlerFunc {
 		var req StartBuildRequest
 		_ = json.NewDecoder(r.Body).Decode(&req)
 
+		reqKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+		if reqKey == "" {
+			reqKey = uuid.NewString()
+		}
+
 		p, err := uc.Execute(r.Context(), owner, app.StartBuildCommand{
 			CardID:          cardID,
+			RequestKey:      reqKey,
 			SpendLimitCents: req.SpendLimitCents,
 			Title:           req.Title,
 			ClientName:      req.ClientName,

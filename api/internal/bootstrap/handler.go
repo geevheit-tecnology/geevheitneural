@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/geevheit/neuralcenter/api/config"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/agents"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/auth"
@@ -25,7 +27,6 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
 	"github.com/geevheit/neuralcenter/api/internal/domain/pipeline"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewHandler monta as rotas usando o pool gerenciado pelo chamador.
@@ -152,14 +153,27 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	}
 	factoryTools := app.NewFactoryTools(uow, guard, runners, legacyProvider)
 
-	buildOptions := []any{localSandbox, localPublisher}
-	durableWorkspace := os.Getenv("GEEV_DURABLE_WORKSPACE_EXPERIMENTAL") == "1"
-	if durableWorkspace {
-		buildOptions = append(buildOptions, app.PersistGeneratedFiles{})
+	serverlessMode := os.Getenv("GEEV_SERVERLESS_EXPERIMENTAL") == "1"
+	durableWorkspace := serverlessMode || os.Getenv("GEEV_DURABLE_WORKSPACE_EXPERIMENTAL") == "1"
+	durableStatus := serverlessMode || os.Getenv("GEEV_DURABLE_STATUS_EXPERIMENTAL") == "1"
+
+	var buildOptions []any
+	if serverlessMode {
+		buildOptions = []any{
+			localpub.NewDurablePublisher(cfg.APIBaseURL),
+			app.PersistGeneratedFiles{},
+			app.EnqueueDurable{},
+		}
+	} else {
+		buildOptions = []any{localSandbox, localPublisher}
+		if durableWorkspace {
+			buildOptions = append(buildOptions, app.PersistGeneratedFiles{})
+		}
 	}
 	startBuildUC := app.NewStartBuildUseCase(uow, publisher, guard, factoryTools, buildOptions...)
+	durableQueue := app.NewDurableFactoryQueue(uow, app.NewDurablePipelineProcessor(startBuildUC))
 	processCmdUC.WithStartBuild(startBuildUC)
-	getPipelineUC := app.NewGetCardPipelineUseCase(uow, os.Getenv("GEEV_DURABLE_STATUS_EXPERIMENTAL") == "1")
+	getPipelineUC := app.NewGetCardPipelineUseCase(uow, durableStatus)
 
 	getCardSpecUC := app.NewGetCardSpecificationUseCase(uow)
 	getPublicScopeUC := app.NewGetPublicScopeUseCase(uow)
@@ -205,7 +219,8 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 	notificationWebhooksUC := app.NewNotificationWebhooksUseCases(uow, multiNotifier, webhookDispatcher, false)
 	notificationWebhooksHandlers := handlers.NewNotificationWebhookHandlers(notificationWebhooksUC)
 
-	// Listener em background para despachar eventos de negócio a notificações e webhooks
+	// Listener em background para despachar eventos de negócio a notificações e webhooks (somente em servidor persistente)
+	if !serverlessMode {
 	go func() {
 		cardCh := publisher.Subscribe(app.TopicCardsChanged)
 		financeCh := publisher.Subscribe(app.TopicFinancesChanged)
@@ -232,6 +247,7 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 			}
 		}
 	}()
+	}
 
 	// 4. Roteamento (net/http padrão do Go 1.22+)
 	mux := http.NewServeMux()
@@ -333,6 +349,7 @@ func NewHandler(cfg *config.Config, pool *pgxpool.Pool, logger *slog.Logger) htt
 
 	// Fábrica Autônoma, Pipelines, Playbooks e Placar (Sprint 02: Fases 6 a 10)
 	mux.Handle("POST /v1/cards/{id}/pipeline/start", requireAuth(handlers.HandleStartBuild(startBuildUC)))
+	mux.Handle("POST /v1/factory/jobs/{id}/run", requireAuth(handlers.HandleRunDurableJob(durableQueue)))
 	mux.Handle("GET /v1/cards/{id}/pipeline", requireAuth(handlers.HandleGetCardPipeline(getPipelineUC)))
 	mux.Handle("GET /v1/playbooks", requireAuth(handlers.HandleListPlaybooks(listPlaybooksUC)))
 	mux.Handle("POST /v1/playbooks", requireAuth(handlers.HandleCreatePlaybook(createPlaybookUC)))

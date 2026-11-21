@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/shared/auth/supabase";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-neural-api-vercel.vercel.app";
 
 export function useSSE(onSystemStateChange?: (paused: boolean) => void, enabled = true) {
   const queryClient = useQueryClient();

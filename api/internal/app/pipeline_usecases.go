@@ -569,21 +569,22 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 						return fmt.Errorf("falha ao persistir arquivos: %w", err)
 					}
 				}
-				if uc.sandbox == nil {
+				if uc.sandbox != nil {
+					if _, err := uc.sandbox.InitWorkspace(cardID); err != nil {
+						return err
+					}
+					if err := uc.sandbox.WriteFiles(cardID, generatedFiles); err != nil {
+						return err
+					}
+					stored, err := uc.sandbox.ReadFiles(cardID)
+					if err != nil {
+						return err
+					}
+					if len(stored) == 0 {
+						return fmt.Errorf("workspace vazio após gravação")
+					}
+				} else if !uc.persistGeneratedFiles {
 					return fmt.Errorf("sandbox não configurada")
-				}
-				if _, err := uc.sandbox.InitWorkspace(cardID); err != nil {
-					return err
-				}
-				if err := uc.sandbox.WriteFiles(cardID, generatedFiles); err != nil {
-					return err
-				}
-				stored, err := uc.sandbox.ReadFiles(cardID)
-				if err != nil {
-					return err
-				}
-				if len(stored) == 0 {
-					return fmt.Errorf("workspace vazio após gravação")
 				}
 
 			case pipeline.RoleQA:

@@ -14,7 +14,7 @@ export default function IntakePage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-neural-api-vercel.vercel.app";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

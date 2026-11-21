@@ -421,7 +421,17 @@ export default function HomePage() {
       setIsSheetOpen(false);
       if (approvedPrompt) {
         try {
-          await api.startBuild(vars.id, 5000);
+          const started = await api.startBuild(vars.id, 5000);
+          if (started?.job_id) {
+            void api.runFactoryJob(started.job_id)
+              .then(() => {
+                queryClient.invalidateQueries({ queryKey: ["cards"] });
+                queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+              })
+              .catch(() => {
+                queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+              });
+          }
           queryClient.invalidateQueries({ queryKey: ["pipeline"] });
           showToast("Prompt aprovado e construção iniciada.");
         } catch (err) {
@@ -501,7 +511,18 @@ export default function HomePage() {
         price_cents: targetCard?.price_cents,
       });
     },
-    onSuccess: () => {
+    onSuccess: (started) => {
+      if (started?.job_id) {
+        void api.runFactoryJob(started.job_id)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ["cards"] });
+            queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+            queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+          })
+          .catch(() => {
+            queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+          });
+      }
       queryClient.invalidateQueries({ queryKey: ["cards"] });
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       showToast("Pipeline iniciado. Acompanhe o resultado na fábrica.");
@@ -616,6 +637,17 @@ export default function HomePage() {
 
         // Se a API remota retornou o card criado, insere no estado local imediatamente
         const resData = res.data as Record<string, unknown> | undefined;
+        if (resData && typeof resData.job_id === "string" && resData.job_id) {
+          void api.runFactoryJob(resData.job_id)
+            .then(() => {
+              queryClient.invalidateQueries({ queryKey: ["cards"] });
+              queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+              queryClient.invalidateQueries({ queryKey: ["money-waiting"] });
+            })
+            .catch(() => {
+              queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+            });
+        }
         if ((res.intent === "create" || res.intent === "build") && resData && resData.card_id) {
           const createdCard: CardItem = {
             id: String(resData.card_id),

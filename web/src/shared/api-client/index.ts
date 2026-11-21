@@ -1,6 +1,6 @@
 import { supabase } from "@/shared/auth/supabase";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-neural-api-vercel.vercel.app";
 
 export interface ApiError {
   code: string;
@@ -16,11 +16,12 @@ export class ApiException extends Error {
 
 export async function apiClient<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & { timeoutMs?: number } = {}
 ): Promise<T> {
+  const { timeoutMs: customTimeoutMs, ...fetchOptions } = options;
   const { data: { session } } = await supabase.auth.getSession();
 
-  const headers = new Headers(options.headers);
+  const headers = new Headers(fetchOptions.headers);
   headers.set("Content-Type", "application/json");
 
   if (session?.access_token) {
@@ -31,14 +32,14 @@ export async function apiClient<T>(
 
   // A API hospedada pode precisar de tempo para despertar após inatividade.
   const controller = new AbortController();
-  const timeoutMs = 60000;
+  const timeoutMs = customTimeoutMs ?? 60000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(url, {
-      ...options,
+      ...fetchOptions,
       headers,
-      signal: options.signal || controller.signal,
+      signal: fetchOptions.signal || controller.signal,
     });
     clearTimeout(timeoutId);
 

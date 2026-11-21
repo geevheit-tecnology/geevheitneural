@@ -1,5 +1,10 @@
 # Changelog — GeevheitNeural
 
+## Migração da API para Vercel (Produção) — 2026-11-21
+- Modo serverless (`GEEV_SERVERLESS_EXPERIMENTAL=1`) com `DurablePublisher` (sem disco/Git local), persistência de arquivos em `geev.factory_workspace_files` (migration `00012` aplicada), execução durável via `POST /v1/factory/jobs/{id}/run` (`maxDuration: 300`) e acionamento automático pelo frontend.
+- API publicada em `https://geevheit-neural-api-vercel.vercel.app` conectada ao pooler IPv4 do Supabase (`/healthz` 200, `/readyz` 200, `/v1/system/state` 401, CORS 204).
+- Frontend `web` atualizado para usar `https://geevheit-neural-api-vercel.vercel.app` em produção, eliminando dependência do Render.
+
 ## Correções de produção (RLS, estado de pausa e painel) — 2026-11-21
 - Preparados provedores pagos sob demanda (desligados por padrão) em `Conexões → Ferramentas de criação`: OpenAI (GPT), Anthropic (Claude) e OpenRouter (multi-modelo), com adaptadores Go stdlib e chaves exclusivas em variáveis de ambiente do servidor (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`).
 - `ListCardsUseCase` e `GetCardDetailsUseCase` agora usam `UnitOfWork` com RLS/claims, alinhando leitura e exclusão de cartões ao dono autenticado.

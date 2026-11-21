@@ -243,6 +243,7 @@ export const api = {
   ) =>
     apiClient<{
       id: string;
+      job_id?: string;
       card_id: string;
       stage: string;
       active_role: string;
@@ -256,6 +257,12 @@ export const api = {
         spend_limit_cents: spendLimitCents,
         ...(meta || {}),
       }),
+    }),
+
+  runFactoryJob: (jobId: string) =>
+    apiClient<{ id: string; card_id?: string; status: string }>(`/v1/factory/jobs/${encodeURIComponent(jobId)}/run`, {
+      method: "POST",
+      timeoutMs: 300000,
     }),
 
   getCardSpecification: (cardId: string) =>

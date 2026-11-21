@@ -35,7 +35,7 @@ export default function TransportSimPage() {
     setSubmitting(true);
     setErrorMessage(null);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-neural-api-vercel.vercel.app";
     const payload = {
       client_name: clientName.trim(),
       contact: contact.trim(),

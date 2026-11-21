@@ -1,5 +1,11 @@
 # Memory — GeevheitNeural
 
+## Migração da API para Vercel concluída — 2026-11-21
+- Migration `00012_factory_durable_storage.sql` aplicada no Supabase (`geev.factory_jobs` e `geev.factory_workspace_files` com RLS).
+- Modo serverless (`GEEV_SERVERLESS_EXPERIMENTAL=1`) usa `DurablePublisher` sem disco/Git local, grava arquivos no Postgres, enfileira tarefas duráveis (`EnqueueDurable`) e executa via `POST /v1/factory/jobs/{id}/run` (AAL2, `maxDuration: 300` em `api/vercel.json`).
+- Projeto Vercel `geevheit-neural-api-vercel` publicado em produção (`https://geevheit-neural-api-vercel.vercel.app`) usando o pooler IPv4 do Supabase (`aws-1-us-west-2.pooler.supabase.com:6543`). Validado ao vivo: `/healthz` 200, `/readyz` 200, `/v1/system/state` 401, CORS preflight 204 para `https://geevheit.vercel.app`.
+- Frontend `web` apontado para `https://geevheit-neural-api-vercel.vercel.app` (sem dependência do Render).
+
 ## Publicação das correções de produção — 2026-11-21
 - Dono autorizou levar para `main` apenas as correções prontas (mantendo a migração da API para a Vercel isolada na branch `trabalho/migracao-api-vercel`).
 - Portadas para `main` (`1275761`, confirmadas em produção na Vercel e Render): rota `GET /v1/system/state` com bloqueio no painel quando o estado de pausa não é confirmado; `DELETE /v1/cards/{id}` e CRUD de apps via `UnitOfWork` com claims RLS e verificação de linhas afetadas (dono autenticado ao criar app); retry/bloqueio seguro no painel de agentes (`AgentsCockpit`); exibição de arquivos do workspace e prévia isolada em `CardDetailSheet`; desativação de consultas/SSE reais no modo demonstração.

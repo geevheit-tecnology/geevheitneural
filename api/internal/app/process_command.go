@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/geevheit/neuralcenter/api/internal/domain/card"
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
@@ -125,11 +127,15 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 			if uc.startBuildUC == nil {
 				return &CommandResult{Intent: string(parsed.Intent), Message: "Prompt aprovado, mas a fábrica não está disponível. Abra a demanda para iniciar a construção.", Data: map[string]any{"card_id": match.CardID}}, nil
 			}
-			_, buildErr := uc.startBuildUC.Execute(ctx, in.Owner, StartBuildCommand{CardID: match.CardID, SpendLimitCents: 5000})
+			pRes, buildErr := uc.startBuildUC.Execute(ctx, in.Owner, StartBuildCommand{CardID: match.CardID, RequestKey: uuid.NewString(), SpendLimitCents: 5000})
 			if buildErr != nil {
 				return &CommandResult{Intent: string(parsed.Intent), Message: fmt.Sprintf("Prompt aprovado, mas a construção não iniciou: %v. Abra a demanda para tentar novamente.", buildErr), Data: map[string]any{"card_id": match.CardID}}, nil
 			}
-			return &CommandResult{Intent: string(parsed.Intent), Message: "Prompt aprovado e construção iniciada na fábrica.", Data: map[string]any{"card_id": match.CardID}}, nil
+			data := map[string]any{"card_id": match.CardID}
+			if pRes != nil && pRes.JobID != "" {
+				data["job_id"] = pRes.JobID
+			}
+			return &CommandResult{Intent: string(parsed.Intent), Message: "Prompt aprovado e construção iniciada na fábrica.", Data: data}, nil
 		}
 
 		return &CommandResult{
@@ -188,9 +194,11 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 			clientName = match.ClientName
 		}
 
+		var jobID string
 		if uc.startBuildUC != nil {
-			_, err := uc.startBuildUC.Execute(ctx, in.Owner, StartBuildCommand{
+			pRes, err := uc.startBuildUC.Execute(ctx, in.Owner, StartBuildCommand{
 				CardID:          cardID,
+				RequestKey:      uuid.NewString(),
 				SpendLimitCents: 5000,
 				Title:           cardTitle,
 				ClientName:      clientName,
@@ -199,14 +207,21 @@ func (uc *ProcessCommandUseCase) Execute(ctx context.Context, in ProcessCommandI
 			if err != nil {
 				return nil, err
 			}
+			if pRes != nil {
+				jobID = pRes.JobID
+			}
 		}
 
+		data := map[string]any{
+			"card_id": cardID,
+		}
+		if jobID != "" {
+			data["job_id"] = jobID
+		}
 		return &CommandResult{
 			Intent:  string(parsed.Intent),
-			Message: fmt.Sprintf("Pipeline da Fábrica Autônoma iniciado para '%s' (%s)! Os 7 agentes estão construindo a solução no sandbox isolado.", cardTitle, clientName),
-			Data: map[string]any{
-				"card_id": cardID,
-			},
+			Message: fmt.Sprintf("Pipeline da Fábrica Autônoma iniciado para '%s' (%s)! Os 7 agentes estão construindo a solução.", cardTitle, clientName),
+			Data:    data,
 		}, nil
 
 	case command.IntentCreate:

@@ -1,5 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/index.go": {
+      "maxDuration": 300
+    }
+  },
   "rewrites": [
     { "source": "/healthz", "destination": "/api/index?__geev_route=healthz" },
     { "source": "/readyz", "destination": "/api/index?__geev_route=readyz" },

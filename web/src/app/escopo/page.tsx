@@ -35,7 +35,7 @@ function EscopoContent() {
   const [sendingChange, setSendingChange] = useState(false);
   const [changeFeedback, setChangeFeedback] = useState<string | null>(null);
 
-  const apiURL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-api.onrender.com";
+  const apiURL = process.env.NEXT_PUBLIC_API_URL || "https://geevheit-neural-api-vercel.vercel.app";
 
   useEffect(() => {
     if (!token) {
