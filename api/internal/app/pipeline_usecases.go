@@ -86,6 +86,33 @@ func NewStartBuildUseCase(
 	return uc
 }
 
+func (uc *StartBuildUseCase) CheckReady(ctx context.Context) error {
+	if uc.runner == nil {
+		return fmt.Errorf("provedor de IA não configurado; verifique AGENT_RUNNER_TYPE e a chave do provedor")
+	}
+	if availability, ok := uc.runner.(interface{ Ready(context.Context) error }); ok {
+		if err := availability.Ready(ctx); err != nil {
+			return err
+		}
+	}
+	if uc.uow != nil {
+		return uc.uow.RunInTx(ctx, func(tx Repositories) error {
+			if tx.SystemState == nil {
+				return nil
+			}
+			sysState, err := tx.SystemState.Get(ctx)
+			if err != nil {
+				return fmt.Errorf("falha ao verificar estado do sistema: %w", err)
+			}
+			if sysState != nil && sysState.Paused {
+				return card.ErrSystemPaused
+			}
+			return nil
+		})
+	}
+	return nil
+}
+
 func (uc *StartBuildUseCase) Execute(ctx context.Context, principal system.OwnerPrincipal, cmd StartBuildCommand) (*PipelineDTO, error) {
 	if uc.runner == nil {
 		return nil, fmt.Errorf("provedor de IA não configurado; verifique AGENT_RUNNER_TYPE e a chave do provedor")
@@ -623,6 +650,7 @@ func (uc *StartBuildUseCase) runFactoryPipeline(ctx context.Context, cardID, tit
 			return err
 		}
 		p.Status = string(pipeline.StatusCompleted)
+		p.CurrentTask = "Construção concluída! Prévia pronta para aprovação do Dono."
 		return tx.Pipelines.Upsert(ctx, p)
 	}); err != nil {
 		uc.failPipeline(ctx, cardID, pipeline.RoleSuporte, err)

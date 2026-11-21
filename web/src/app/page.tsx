@@ -250,6 +250,9 @@ export default function HomePage() {
   const cardsData = cardsQuery.data;
 
   const cards: CardItem[] = useMemo(() => {
+    if (!isDemoMode && Array.isArray(cardsData?.cards)) {
+      return cardsData.cards;
+    }
     let baseList: CardItem[] = [];
     if (typeof window !== "undefined") {
       try {
@@ -257,16 +260,7 @@ export default function HomePage() {
         const deletedRaw = localStorage.getItem("geev_deleted_card_ids");
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
 
-        const remoteCards = (cardsData?.cards && Array.isArray(cardsData.cards)) ? cardsData.cards : [];
-        const cardMap = new Map<string, CardItem>();
-
-        // 1. Insere primeiro locais do dono
-        localCards.forEach((c) => cardMap.set(c.id, c));
-
-        // 2. Mescla com remotos
-        remoteCards.forEach((c) => cardMap.set(c.id, c));
-
-        baseList = Array.from(cardMap.values());
+        baseList = localCards;
 
         if (isCleared) {
           const legacyIds = new Set(REAL_CARDS.map((c) => c.id).concat(DEMO_CARDS.map((c) => c.id)));
@@ -282,7 +276,7 @@ export default function HomePage() {
       baseList = localCards;
     }
     return baseList;
-  }, [cardsData?.cards, localCards]);
+  }, [isDemoMode, cardsData?.cards, localCards]);
 
   // 3. Meus Apps (mostra os apps reais desenvolvidos)
   const [localApps, setLocalApps] = useState<AppItem[]>(() => {
@@ -316,6 +310,9 @@ export default function HomePage() {
   const appsData = appsQuery.data;
 
   const apps: AppItem[] = useMemo(() => {
+    if (!isDemoMode && Array.isArray(appsData?.apps)) {
+      return appsData.apps;
+    }
     let baseList: AppItem[] = [];
     if (typeof window !== "undefined") {
       try {
@@ -323,16 +320,7 @@ export default function HomePage() {
         const deletedRaw = localStorage.getItem("geev_deleted_app_ids");
         const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
 
-        const remoteApps = (appsData?.apps && Array.isArray(appsData.apps)) ? appsData.apps : [];
-        const appMap = new Map<string, AppItem>();
-
-        // 1. Insere primeiro locais do dono
-        localApps.forEach((a) => appMap.set(a.id, a));
-
-        // 2. Mescla com remotos
-        remoteApps.forEach((a) => appMap.set(a.id, a));
-
-        baseList = Array.from(appMap.values());
+        baseList = localApps;
 
         if (isCleared) {
           const legacyIds = new Set(REAL_APPS.map((a) => a.id).concat(DEMO_APPS.map((a) => a.id)));
@@ -348,7 +336,7 @@ export default function HomePage() {
       baseList = localApps;
     }
     return baseList;
-  }, [appsData?.apps, localApps]);
+  }, [isDemoMode, appsData?.apps, localApps]);
 
   // 4. Finanças
   const { data: financesData } = useQuery({

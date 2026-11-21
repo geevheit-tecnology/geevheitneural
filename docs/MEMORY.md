@@ -2,7 +2,11 @@
 
 ## Publicação das correções de produção — 2026-11-21
 - Dono autorizou levar para `main` apenas as correções prontas (mantendo a migração da API para a Vercel isolada na branch `trabalho/migracao-api-vercel`).
-- Portadas para `main`: rota `GET /v1/system/state` com bloqueio no painel quando o estado de pausa não é confirmado; `DELETE /v1/cards/{id}` e CRUD de apps via `UnitOfWork` com claims RLS e verificação de linhas afetadas (dono autenticado ao criar app); retry/bloqueio seguro no painel de agentes (`AgentsCockpit`); exibição de arquivos do workspace e prévia isolada em `CardDetailSheet`; desativação de consultas/SSE reais no modo demonstração.
+- Portadas para `main` (`1275761`, confirmadas em produção na Vercel e Render): rota `GET /v1/system/state` com bloqueio no painel quando o estado de pausa não é confirmado; `DELETE /v1/cards/{id}` e CRUD de apps via `UnitOfWork` com claims RLS e verificação de linhas afetadas (dono autenticado ao criar app); retry/bloqueio seguro no painel de agentes (`AgentsCockpit`); exibição de arquivos do workspace e prévia isolada em `CardDetailSheet`; desativação de consultas/SSE reais no modo demonstração.
+- Diagnóstico real (somente leitura) do banco de produção identificou 3 causas raiz para os sintomas relatados pelo dono:
+  1. `geev.system_state` estava `paused=true`, e 6 dos 7 agentes estavam `active=false` (só `dev=true`), sem provedor salvo em `geev.connectors`.
+  2. `ProcessCommandUseCase` (`IntentBuild`) criava cartão já em `em_execucao` antes de validar `StartBuildUseCase.CheckReady`, deixando cartões órfãos presos em `em_execucao` sem pipeline; corrigido para validar antes e criar em `prompt_aprovar`. Pipeline concluído também atualiza `current_task` para conclusão em vez de manter "Agente suporte em execução".
+  3. `ListCardsUseCase` e `GetCardDetailsUseCase` não usavam `UnitOfWork`/RLS, exibindo 3 cartões antigos de `owner_id` diferente que `DELETE` (com RLS) recusava apagar; além disso, `web/src/app/page.tsx` mesclava `geev_local_cards`/`geev_local_apps` sobre a resposta do servidor, ressuscitando itens excluídos ao reabrir. Corrigidos ambos (RLS em leitura de cartões e dados do servidor como fonte de verdade na sessão real).
 - Validados localmente: `go vet ./...`, `go test -race ./...`, `go build ./...` e build estático Next.js (`out/`).
 
 ## Diagnóstico de exclusões e fábrica — 2026-11-20

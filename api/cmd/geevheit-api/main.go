@@ -11,6 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/geevheit/neuralcenter/api/config"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/agents"
 	"github.com/geevheit/neuralcenter/api/internal/adapters/auth"
@@ -28,8 +31,6 @@ import (
 	"github.com/geevheit/neuralcenter/api/internal/domain/command"
 	"github.com/geevheit/neuralcenter/api/internal/domain/pipeline"
 	"github.com/geevheit/neuralcenter/api/internal/domain/system"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -97,8 +98,8 @@ func main() {
 	resumeSystemUC := app.NewResumeSystemUseCase(uow, publisher, clk)
 	getMoneyWaitingUC := app.NewGetMoneyWaitingUseCase(moneyReader)
 
-	listCardsUC := app.NewListCardsUseCase(cardRepo)
-	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo)
+	listCardsUC := app.NewListCardsUseCase(cardRepo, uow)
+	getCardDetailsUC := app.NewGetCardDetailsUseCase(cardRepo, uow)
 	deleteCardUC := app.NewDeleteCardUseCase(cardRepo, publisher, uow)
 
 	listAppsUC := app.NewListAppsUseCase(appRepo, uow)

@@ -1,6 +1,9 @@
 # Changelog — GeevheitNeural
 
 ## Correções de produção (RLS, estado de pausa e painel) — 2026-11-21
+- `ListCardsUseCase` e `GetCardDetailsUseCase` agora usam `UnitOfWork` com RLS/claims, alinhando leitura e exclusão de cartões ao dono autenticado.
+- `ProcessCommandUseCase` (`IntentBuild`) valida prontidão da fábrica (`CheckReady`: pausa, provedor e 7 agentes) antes de criar cartão, evitando cartões órfãos presos em `em_execucao`; conclusão do pipeline atualiza `current_task` corretamente.
+- Frontend em sessão real usa a resposta da API como fonte de verdade para cartões e apps, impedindo que `geev_local_cards`/`geev_local_apps` ressuscitem itens excluídos ao reabrir o app.
 - Adicionada rota autenticada `GET /v1/system/state` e leitura real do estado de pausa na interface, impedindo ações quando o estado não está confirmado.
 - Exclusão de cartões (`DELETE /v1/cards/{id}`) e CRUD de apps passam a usar `UnitOfWork` com contexto RLS/claims, dono autenticado na criação de apps e verificação de linhas afetadas em atualização/exclusão.
 - Painel de agentes permite tentar novamente em falha de carga, não exibe estado desconhecido como desligado e bloqueia alternância sem ID confirmado.

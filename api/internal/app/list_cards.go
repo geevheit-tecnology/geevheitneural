@@ -9,39 +9,81 @@ import (
 
 type ListCardsUseCase struct {
 	cardRepo CardRepository
+	uow      UnitOfWork
 }
 
-func NewListCardsUseCase(cardRepo CardRepository) *ListCardsUseCase {
-	return &ListCardsUseCase{cardRepo: cardRepo}
+func NewListCardsUseCase(cardRepo CardRepository, uow ...UnitOfWork) *ListCardsUseCase {
+	uc := &ListCardsUseCase{cardRepo: cardRepo}
+	if len(uow) > 0 {
+		uc.uow = uow[0]
+	}
+	return uc
 }
 
 func (uc *ListCardsUseCase) Execute(ctx context.Context) ([]CardListItemDTO, error) {
+	if uc.uow != nil {
+		var items []CardListItemDTO
+		err := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+			if tx.Cards == nil {
+				return fmt.Errorf("repositório de cartões indisponível")
+			}
+			var err error
+			items, err = tx.Cards.ListEnriched(ctx)
+			return err
+		})
+		return items, err
+	}
 	return uc.cardRepo.ListEnriched(ctx)
 }
 
 type GetCardDetailsUseCase struct {
 	cardRepo CardRepository
+	uow      UnitOfWork
 }
 
-func NewGetCardDetailsUseCase(cardRepo CardRepository) *GetCardDetailsUseCase {
-	return &GetCardDetailsUseCase{cardRepo: cardRepo}
+func NewGetCardDetailsUseCase(cardRepo CardRepository, uow ...UnitOfWork) *GetCardDetailsUseCase {
+	uc := &GetCardDetailsUseCase{cardRepo: cardRepo}
+	if len(uow) > 0 {
+		uc.uow = uow[0]
+	}
+	return uc
 }
 
 func (uc *GetCardDetailsUseCase) Execute(ctx context.Context, id string) (*CardDetailsDTO, error) {
-	c, err := uc.cardRepo.GetEnrichedByID(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("buscar cartão: %w", err)
+	var (
+		c      *CardListItemDTO
+		events []CardEventDTO
+		risk   *RiskReportDTO
+		err    error
+	)
+	load := func(repo CardRepository) error {
+		c, err = repo.GetEnrichedByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("buscar cartão: %w", err)
+		}
+		events, err = repo.ListEvents(ctx, id)
+		if err != nil {
+			return fmt.Errorf("buscar eventos do cartão: %w", err)
+		}
+		risk, err = repo.GetRiskReport(ctx, id)
+		if err != nil {
+			risk = nil
+		}
+		return nil
 	}
-
-	events, err := uc.cardRepo.ListEvents(ctx, id)
-	if err != nil {
-		return nil, fmt.Errorf("buscar eventos do cartão: %w", err)
-	}
-
-	risk, err := uc.cardRepo.GetRiskReport(ctx, id)
-	if err != nil {
-		// Não é erro fatal se não houver ficha de risco
-		risk = nil
+	if uc.uow != nil {
+		if txErr := uc.uow.RunInTx(ctx, func(tx Repositories) error {
+			if tx.Cards == nil {
+				return fmt.Errorf("repositório de cartões indisponível")
+			}
+			return load(tx.Cards)
+		}); txErr != nil {
+			return nil, txErr
+		}
+	} else {
+		if err := load(uc.cardRepo); err != nil {
+			return nil, err
+		}
 	}
 
 	st := card.Stage(c.Stage)
